@@ -1,0 +1,50 @@
+# Elixir Umbrella Project .gitignore
+
+# Elixir builds and artifacts
+/_build/
+/deps/
+/*.ez
+
+# Elixir Language Server
+/.elixir_ls/
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+/logs/
+
+# Test artifacts
+/cover/
+/doc/
+
+# Phoenix assets
+/apps/*/priv/static/
+/apps/*/assets/node_modules/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Protocol Buffers generated files (optional)
+# apps/shared/lib/proto/*.pb.ex
+
+# Mix lock file (keep this for reproducible builds)
+# mix.lock
+
+# Release builds
+/_build/prod/
+/rel/
+
+# Temporary files
+tmp/
+temp/

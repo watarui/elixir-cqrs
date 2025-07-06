@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "/pb";
+
+// 商品カテゴリ型の定義
+message Category {
+  string id = 1; // 商品カテゴリ番号
+  string name = 2; // 商品カテゴリ名
+}
+
+// 商品型の定義
+message Product {
+  string id = 1; // 商品番号
+  string name = 2; // 商品名
+  int32 price = 3; // 商品単価
+  optional Category category = 4; // 商品カテゴリ
+}
