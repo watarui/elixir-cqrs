@@ -20,7 +20,6 @@ config :query_service, QueryService.Infrastructure.Database.Repo,
   pool_size: 10
 
 # gRPC サーバーの設定
-config :grpc, start_server: true
 config :query_service, :grpc_port, 50052
 
 # Logger の設定

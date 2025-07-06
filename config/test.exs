@@ -21,7 +21,7 @@ config :query_service, QueryService.Infrastructure.Database.Connection,
   pool_size: 10
 
 # gRPC サーバーの設定（テスト環境では自動起動しない）
-config :grpc, start_server: false
+# start_server オプションは各サービスのSupervisor設定で個別に制御
 
 # Logger の設定
 config :logger, level: :warning

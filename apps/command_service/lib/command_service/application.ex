@@ -11,10 +11,11 @@ defmodule CommandService.Application do
   def start(_type, _args) do
     children = [
       # データベース接続
-      CommandService.Infrastructure.Database.Repo
+      CommandService.Infrastructure.Database.Repo,
 
-      # gRPC サーバー (一時的にコメントアウト)
-      # {GRPC.Server.Supervisor, [endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051]}
+      # gRPC サーバー
+      {GRPC.Server.Supervisor,
+       endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051, start_server: true}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
