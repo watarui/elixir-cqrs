@@ -11,7 +11,7 @@ defmodule QueryService.Application do
   def start(_type, _args) do
     children = [
       # データベース接続
-      QueryService.Infrastructure.Database.Connection
+      QueryService.Infrastructure.Database.Repo
 
       # gRPC サーバー (将来実装)
       # {QueryService.Presentation.GrpcServer, port: 50052}

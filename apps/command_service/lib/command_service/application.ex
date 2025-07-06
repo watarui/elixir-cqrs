@@ -11,7 +11,7 @@ defmodule CommandService.Application do
   def start(_type, _args) do
     children = [
       # データベース接続
-      CommandService.Infrastructure.Database.Connection
+      CommandService.Infrastructure.Database.Repo
 
       # gRPC サーバー (将来実装)
       # {CommandService.Presentation.GrpcServer, port: 50051}

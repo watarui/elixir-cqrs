@@ -11,7 +11,13 @@ defmodule Shared.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      protobuf: [
+        generate: [
+          input_path: "proto",
+          output_path: "lib/proto"
+        ]
+      ]
     ]
   end
 

@@ -1,4 +1,4 @@
-defmodule QueryService.Infrastructure.Database.Connection do
+defmodule QueryService.Infrastructure.Database.Repo do
   @moduledoc """
   Query Service用のデータベース接続
 

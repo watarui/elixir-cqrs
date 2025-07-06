@@ -1,7 +1,7 @@
 import Config
 
 # Query Service データベース設定（読み取り専用）
-config :query_service, QueryService.Infrastructure.Database.Connection,
+config :query_service, QueryService.Infrastructure.Database.Repo,
   database: "query_service_#{config_env()}",
   username: "postgres",
   password: "postgres",

@@ -13,7 +13,7 @@ defmodule QueryService.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      ecto_repos: [QueryService.Infrastructure.Database.Connection]
+      ecto_repos: [QueryService.Infrastructure.Database.Repo]
     ]
   end
 

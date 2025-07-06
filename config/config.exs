@@ -7,13 +7,14 @@ config :command_service, CommandService.Infrastructure.Database.Repo,
 
 # アプリケーション固有の設定
 config :command_service, ecto_repos: [CommandService.Infrastructure.Database.Repo]
+config :query_service, ecto_repos: [QueryService.Infrastructure.Database.Repo]
 
 # Query Service の設定
-config :query_service, QueryService.Infrastructure.Database.Connection,
+config :query_service, QueryService.Infrastructure.Database.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "query_service_db",
+  database: "query_service_dev",
   port: 5432,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -24,9 +25,7 @@ config :query_service, :grpc_port, 50052
 
 # Logger の設定
 config :logger,
-  level: :info,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :user_id]
+  level: :info
 
 # 環境別設定ファイルをインポート
 import_config "#{config_env()}.exs"

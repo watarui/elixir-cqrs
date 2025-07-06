@@ -1,4 +1,4 @@
-defmodule CommandService.Infrastructure.Database.Connection do
+defmodule CommandService.Infrastructure.Database.Repo do
   @moduledoc """
   Command Service用のデータベース接続
 

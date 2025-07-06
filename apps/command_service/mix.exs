@@ -13,7 +13,7 @@ defmodule CommandService.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      ecto_repos: [CommandService.Infrastructure.Database.Connection]
+      ecto_repos: [CommandService.Infrastructure.Database.Repo]
     ]
   end
 

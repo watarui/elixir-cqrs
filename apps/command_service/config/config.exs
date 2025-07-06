@@ -1,7 +1,7 @@
 import Config
 
 # Command Service データベース設定
-config :command_service, CommandService.Infrastructure.Database.Connection,
+config :command_service, CommandService.Infrastructure.Database.Repo,
   database: "command_service_#{config_env()}",
   username: "postgres",
   password: "postgres",
