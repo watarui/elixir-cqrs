@@ -7,12 +7,23 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
 
   alias QueryService.Infrastructure.Repositories.{ProductRepository, CategoryRepository}
 
+  # タイムスタンプ変換用ヘルパー関数
+  defp to_unix_timestamp(nil), do: 0
+
+  defp to_unix_timestamp(%NaiveDateTime{} = naive_dt) do
+    naive_dt
+    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTime.to_unix()
+  end
+
+  defp to_unix_timestamp(%DateTime{} = dt), do: DateTime.to_unix(dt)
+
   def get_product(%Query.ProductQueryRequest{id: id}, _stream) do
-    case ProductRepository.get_by_id(id) do
-      nil ->
+    case ProductRepository.find_by_id(id) do
+      {:error, :not_found} ->
         {:error, "Product not found"}
 
-      product ->
+      {:ok, product} ->
         response = %Query.ProductQueryResponse{
           product: format_product(product)
         }
@@ -22,11 +33,11 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
   end
 
   def get_product_by_name(%Query.ProductByNameRequest{name: name}, _stream) do
-    case ProductRepository.get_by_name(name) do
-      nil ->
+    case ProductRepository.find_by_name(name) do
+      {:error, :not_found} ->
         {:error, "Product not found"}
 
-      product ->
+      {:ok, product} ->
         response = %Query.ProductQueryResponse{
           product: format_product(product)
         }
@@ -36,74 +47,95 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
   end
 
   def list_products(%Query.Empty{}, _stream) do
-    products = ProductRepository.list_all()
+    case ProductRepository.list() do
+      {:ok, products} ->
+        response = %Query.ProductListResponse{
+          products: Enum.map(products, &format_product/1)
+        }
 
-    response = %Query.ProductListResponse{
-      products: Enum.map(products, &format_product/1)
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def get_products_by_category(%Query.ProductByCategoryRequest{category_id: category_id}, _stream) do
-    products = ProductRepository.get_by_category(category_id)
+    case ProductRepository.find_by_category_id(category_id) do
+      {:ok, products} ->
+        response = %Query.ProductListResponse{
+          products: Enum.map(products, &format_product/1)
+        }
 
-    response = %Query.ProductListResponse{
-      products: Enum.map(products, &format_product/1)
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def search_products(%Query.ProductSearchRequest{search_term: search_term}, _stream) do
-    products = ProductRepository.search(search_term)
+    case ProductRepository.search(search_term) do
+      {:ok, products} ->
+        response = %Query.ProductListResponse{
+          products: Enum.map(products, &format_product/1)
+        }
 
-    response = %Query.ProductListResponse{
-      products: Enum.map(products, &format_product/1)
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def get_products_by_price_range(
         %Query.ProductPriceRangeRequest{min_price: min_price, max_price: max_price},
         _stream
       ) do
-    products = ProductRepository.get_by_price_range(min_price, max_price)
+    case ProductRepository.find_by_price_range(%{min: min_price, max: max_price}) do
+      {:ok, products} ->
+        response = %Query.ProductListResponse{
+          products: Enum.map(products, &format_product/1)
+        }
 
-    response = %Query.ProductListResponse{
-      products: Enum.map(products, &format_product/1)
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def list_products_paginated(
         %Query.ProductPaginationRequest{page: page, per_page: per_page},
         _stream
       ) do
-    products = ProductRepository.list_paginated(page, per_page)
+    case ProductRepository.list_paginated(%{page: page, page_size: per_page}) do
+      {:ok, {products, _total_count}} ->
+        response = %Query.ProductListResponse{
+          products: Enum.map(products, &format_product/1)
+        }
 
-    response = %Query.ProductListResponse{
-      products: Enum.map(products, &format_product/1)
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def get_product_statistics(%Query.Empty{}, _stream) do
-    stats = ProductRepository.get_statistics()
+    case ProductRepository.get_statistics() do
+      {:ok, stats} ->
+        response = %Query.ProductStatisticsResponse{
+          total_count: stats.total_count,
+          has_products: stats.has_products,
+          products_with_timestamps: stats.products_with_timestamps
+        }
 
-    response = %Query.ProductStatisticsResponse{
-      total_count: stats.total_count,
-      has_products: stats.has_products,
-      average_price: stats.average_price,
-      min_price: stats.min_price,
-      max_price: stats.max_price,
-      products_with_timestamps: stats.products_with_timestamps
-    }
+        {:ok, response}
 
-    {:ok, response}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def product_exists(%Query.ProductExistsRequest{id: id}, _stream) do
@@ -119,25 +151,28 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
   # プライベート関数
 
   defp format_product(product) do
-    category = CategoryRepository.get_by_id(product.category_id)
+    # Product Domain ModelにはCategory名が既に含まれている
+    category =
+      if product.category_name do
+        %Query.Category{
+          id: product.category_id,
+          name: product.category_name,
+          # カテゴリの詳細情報が必要な場合は別途取得
+          created_at: 0,
+          updated_at: 0
+        }
+      else
+        nil
+      end
 
     %Query.Product{
       id: product.id,
       name: product.name,
       price: product.price |> Decimal.to_float(),
       category_id: product.category_id,
-      category: if(category, do: format_category(category), else: nil),
-      created_at: product.inserted_at |> DateTime.to_unix(),
-      updated_at: product.updated_at |> DateTime.to_unix()
-    }
-  end
-
-  defp format_category(category) do
-    %Query.Category{
-      id: category.id,
-      name: category.name,
-      created_at: category.inserted_at |> DateTime.to_unix(),
-      updated_at: category.updated_at |> DateTime.to_unix()
+      category: category,
+      created_at: to_unix_timestamp(product.created_at),
+      updated_at: to_unix_timestamp(product.updated_at)
     }
   end
 end

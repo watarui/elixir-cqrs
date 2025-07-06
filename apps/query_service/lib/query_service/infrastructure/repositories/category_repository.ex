@@ -9,46 +9,71 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
 
   alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Database.Schemas.CategorySchema
+  alias QueryService.Domain.Models.Category
 
-  def get_by_id(id) do
-    Repo.get(CategorySchema, id)
+  @impl true
+  def find_by_id(id) when is_binary(id) do
+    case Repo.get(CategorySchema, id) do
+      nil -> {:error, :not_found}
+      schema -> {:ok, schema_to_model(schema)}
+    end
   end
 
-  def get_by_name(name) do
-    Repo.get_by(CategorySchema, name: name)
+  @impl true
+  def find_by_name(name) when is_binary(name) do
+    case Repo.get_by(CategorySchema, name: name) do
+      nil -> {:error, :not_found}
+      schema -> {:ok, schema_to_model(schema)}
+    end
   end
 
-  def list_all do
-    Repo.all(CategorySchema)
+  @impl true
+  def list do
+    schemas = Repo.all(CategorySchema)
+    models = Enum.map(schemas, &schema_to_model/1)
+    {:ok, models}
   end
 
-  def search(search_term) do
+  @impl true
+  def search(search_term) when is_binary(search_term) do
     query =
       from(c in CategorySchema,
         where: ilike(c.name, ^"%#{search_term}%"),
         order_by: c.name
       )
 
-    Repo.all(query)
+    schemas = Repo.all(query)
+    models = Enum.map(schemas, &schema_to_model/1)
+    {:ok, models}
   end
 
-  def list_paginated(page, per_page) do
-    offset = (page - 1) * per_page
+  @impl true
+  def list_paginated(%{page: page, page_size: page_size}) do
+    offset = (page - 1) * page_size
 
     query =
       from(c in CategorySchema,
-        limit: ^per_page,
+        limit: ^page_size,
         offset: ^offset,
         order_by: c.name
       )
 
-    Repo.all(query)
+    schemas = Repo.all(query)
+    models = Enum.map(schemas, &schema_to_model/1)
+
+    total_count = count_all()
+    {:ok, {models, total_count}}
   end
 
-  def get_statistics do
-    total_query = from(c in CategorySchema, select: count(c.id))
-    total_count = Repo.one(total_query)
+  @impl true
+  def count do
+    total_count = count_all()
+    {:ok, total_count}
+  end
 
+  @impl true
+  def get_statistics do
+    total_count = count_all()
     has_categories = total_count > 0
 
     timestamps_query =
@@ -59,15 +84,30 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
 
     categories_with_timestamps = Repo.one(timestamps_query)
 
-    %{
+    statistics = %{
       total_count: total_count,
       has_categories: has_categories,
       categories_with_timestamps: categories_with_timestamps
     }
+
+    {:ok, statistics}
   end
 
+  # プライベートヘルパー関数
+  defp count_all do
+    total_query = from(c in CategorySchema, select: count(c.id))
+    Repo.one(total_query)
+  end
+
+  @impl true
   def exists?(id) do
     query = from(c in CategorySchema, where: c.id == ^id, select: count(c.id))
     Repo.one(query) > 0
+  end
+
+  # Schema to Domain Model変換
+  defp schema_to_model(schema) do
+    Category.new(schema.id, schema.name)
+    |> Category.with_timestamps(schema.inserted_at, schema.updated_at)
   end
 end
