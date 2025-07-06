@@ -10,8 +10,11 @@ defmodule CommandService.Application.Services.CategoryService do
 
   @repo CategoryRepo
 
-  @spec create_category(String.t(), String.t()) :: {:ok, Category.t()} | {:error, String.t()}
-  def create_category(id, name) do
+  @spec create_category(map()) :: {:ok, Category.t()} | {:error, String.t()}
+  def create_category(params) do
+    id = UUID.uuid4()
+    name = params[:name]
+
     # 既存チェック
     case @repo.exists?(id) do
       true ->
@@ -38,8 +41,10 @@ defmodule CommandService.Application.Services.CategoryService do
     @repo.find_by_id(id)
   end
 
-  @spec update_category(String.t(), String.t()) :: {:ok, Category.t()} | {:error, String.t()}
-  def update_category(id, new_name) do
+  @spec update_category(String.t(), map()) :: {:ok, Category.t()} | {:error, String.t()}
+  def update_category(id, params) do
+    new_name = params[:name]
+
     with {:ok, category} <- @repo.find_by_id(id),
          {:ok, updated_category} <- Category.update_name(category, new_name),
          {:ok, saved_category} <- @repo.update(updated_category) do

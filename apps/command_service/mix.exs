@@ -35,6 +35,9 @@ defmodule CommandService.MixProject do
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
 
+      # UUID
+      {:uuid, "~> 1.1"},
+
       # Development and test
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},

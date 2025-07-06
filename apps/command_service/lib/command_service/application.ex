@@ -13,8 +13,8 @@ defmodule CommandService.Application do
       # データベース接続
       CommandService.Infrastructure.Database.Repo
 
-      # gRPC サーバー (将来実装)
-      # {CommandService.Presentation.GrpcServer, port: 50051}
+      # gRPC サーバー (一時的にコメントアウト)
+      # {GRPC.Server.Supervisor, [endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

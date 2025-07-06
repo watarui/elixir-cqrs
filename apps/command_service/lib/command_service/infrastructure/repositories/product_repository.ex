@@ -11,7 +11,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   alias CommandService.Domain.Entities.Product
   alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
-  alias CommandService.Infrastructure.Database.{Connection, Schemas.ProductSchema}
+  alias CommandService.Infrastructure.Database.{Repo, Schemas.ProductSchema}
 
   @impl true
   def save(%Product{} = product) do
@@ -24,7 +24,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
     %ProductSchema{}
     |> ProductSchema.changeset(attrs)
-    |> Connection.insert()
+    |> Repo.insert()
     |> case do
       {:ok, schema} -> {:ok, schema_to_entity(schema)}
       {:error, changeset} -> {:error, format_error(changeset)}
@@ -33,7 +33,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def find_by_id(id) when is_binary(id) do
-    case Connection.get(ProductSchema, id) do
+    case Repo.get(ProductSchema, id) do
       nil -> {:error, :not_found}
       schema -> {:ok, schema_to_entity(schema)}
     end
@@ -41,7 +41,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def find_by_name(name) when is_binary(name) do
-    case Connection.get_by(ProductSchema, name: name) do
+    case Repo.get_by(ProductSchema, name: name) do
       nil -> {:error, :not_found}
       schema -> {:ok, schema_to_entity(schema)}
     end
@@ -51,7 +51,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   def find_by_category_id(category_id) when is_binary(category_id) do
     schemas =
       from(p in ProductSchema, where: p.category_id == ^category_id)
-      |> Connection.all()
+      |> Repo.all()
 
     entities = Enum.map(schemas, &schema_to_entity/1)
     {:ok, entities}
@@ -67,14 +67,14 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
       category_id: Product.category_id(product)
     }
 
-    case Connection.get(ProductSchema, id) do
+    case Repo.get(ProductSchema, id) do
       nil ->
         {:error, :not_found}
 
       schema ->
         schema
         |> ProductSchema.changeset(attrs)
-        |> Connection.update()
+        |> Repo.update()
         |> case do
           {:ok, updated_schema} -> {:ok, schema_to_entity(updated_schema)}
           {:error, changeset} -> {:error, format_error(changeset)}
@@ -84,12 +84,12 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def delete(id) when is_binary(id) do
-    case Connection.get(ProductSchema, id) do
+    case Repo.get(ProductSchema, id) do
       nil ->
         {:error, :not_found}
 
       schema ->
-        case Connection.delete(schema) do
+        case Repo.delete(schema) do
           {:ok, _} -> :ok
           {:error, changeset} -> {:error, format_error(changeset)}
         end
@@ -98,12 +98,12 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def exists?(id) when is_binary(id) do
-    Connection.exists?(from(p in ProductSchema, where: p.id == ^id))
+    Repo.exists?(from(p in ProductSchema, where: p.id == ^id))
   end
 
   @impl true
   def list do
-    schemas = Connection.all(ProductSchema)
+    schemas = Repo.all(ProductSchema)
     entities = Enum.map(schemas, &schema_to_entity/1)
     {:ok, entities}
   end

@@ -11,7 +11,7 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   alias CommandService.Domain.Entities.Category
   alias CommandService.Domain.ValueObjects.{CategoryId, CategoryName}
-  alias CommandService.Infrastructure.Database.{Connection, Schemas.CategorySchema}
+  alias CommandService.Infrastructure.Database.{Repo, Schemas.CategorySchema}
 
   @impl true
   def save(%Category{} = category) do
@@ -22,7 +22,7 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
     %CategorySchema{}
     |> CategorySchema.changeset(attrs)
-    |> Connection.insert()
+    |> Repo.insert()
     |> case do
       {:ok, schema} -> {:ok, schema_to_entity(schema)}
       {:error, changeset} -> {:error, format_error(changeset)}
@@ -31,7 +31,7 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   @impl true
   def find_by_id(id) when is_binary(id) do
-    case Connection.get(CategorySchema, id) do
+    case Repo.get(CategorySchema, id) do
       nil -> {:error, :not_found}
       schema -> {:ok, schema_to_entity(schema)}
     end
@@ -39,7 +39,7 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   @impl true
   def find_by_name(name) when is_binary(name) do
-    case Connection.get_by(CategorySchema, name: name) do
+    case Repo.get_by(CategorySchema, name: name) do
       nil -> {:error, :not_found}
       schema -> {:ok, schema_to_entity(schema)}
     end
@@ -53,14 +53,14 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
       name: Category.name(category)
     }
 
-    case Connection.get(CategorySchema, id) do
+    case Repo.get(CategorySchema, id) do
       nil ->
         {:error, :not_found}
 
       schema ->
         schema
         |> CategorySchema.changeset(attrs)
-        |> Connection.update()
+        |> Repo.update()
         |> case do
           {:ok, updated_schema} -> {:ok, schema_to_entity(updated_schema)}
           {:error, changeset} -> {:error, format_error(changeset)}
@@ -70,12 +70,12 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   @impl true
   def delete(id) when is_binary(id) do
-    case Connection.get(CategorySchema, id) do
+    case Repo.get(CategorySchema, id) do
       nil ->
         {:error, :not_found}
 
       schema ->
-        case Connection.delete(schema) do
+        case Repo.delete(schema) do
           {:ok, _} -> :ok
           {:error, changeset} -> {:error, format_error(changeset)}
         end
@@ -84,12 +84,12 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   @impl true
   def exists?(id) when is_binary(id) do
-    Connection.exists?(from(c in CategorySchema, where: c.id == ^id))
+    Repo.exists?(from(c in CategorySchema, where: c.id == ^id))
   end
 
   @impl true
   def list do
-    schemas = Connection.all(CategorySchema)
+    schemas = Repo.all(CategorySchema)
     entities = Enum.map(schemas, &schema_to_entity/1)
     {:ok, entities}
   end

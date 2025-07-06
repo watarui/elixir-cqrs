@@ -13,8 +13,8 @@ defmodule QueryService.Application do
       # データベース接続
       QueryService.Infrastructure.Database.Repo
 
-      # gRPC サーバー (将来実装)
-      # {QueryService.Presentation.GrpcServer, port: 50052}
+      # gRPC サーバー (一時的にコメントアウト)
+      # {GRPC.Server.Supervisor, [endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50052]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

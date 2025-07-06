@@ -60,9 +60,9 @@ defmodule ElixirCqrs.MixProject do
 
       # 全サービス起動
       "start.all": [
-        "cmd --app command_service mix phx.server &",
-        "cmd --app query_service mix phx.server &",
-        "cmd --app client_service mix phx.server &"
+        "cmd --app command_service mix run --no-halt",
+        "cmd --app query_service mix run --no-halt",
+        "cmd --app client_service mix phx.server"
       ],
 
       # 全データベースのセットアップ

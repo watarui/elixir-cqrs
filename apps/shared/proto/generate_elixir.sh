@@ -17,6 +17,7 @@ echo "Generating Elixir code from proto files..."
 
 protoc \
   --elixir_out=gen \
+  --grpc_out=gen \
   --proto_path=. \
   models.proto \
   error.proto \
