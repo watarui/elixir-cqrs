@@ -1,4 +1,4 @@
-# Elixir CQRS マイクロサービス
+# Elixir CQRS マイクロサービス（練習用）
 
 [![Elixir](https://img.shields.io/badge/elixir-1.14+-purple.svg)](https://elixir-lang.org/)
 [![Phoenix](https://img.shields.io/badge/phoenix-1.7+-orange.svg)](https://phoenixframework.org/)
