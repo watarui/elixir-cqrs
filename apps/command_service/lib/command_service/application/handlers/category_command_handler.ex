@@ -15,7 +15,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
     UpdateCategory
   }
 
-  alias Shared.Infrastructure.EventStore
+  alias Shared.Infrastructure.{EventStore, EventBus}
 
   @impl true
   def command_types do
@@ -33,7 +33,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
       Enum.each(events, &Shared.EventLogger.log_domain_event/1)
 
       # イベントバスに発行
-      Enum.each(events, &Shared.Infrastructure.EventBus.publish/1)
+      Enum.each(events, &EventBus.publish/1)
 
       {:ok, %{aggregate_id: command.id, events: events}}
     end

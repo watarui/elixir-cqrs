@@ -5,6 +5,8 @@ defmodule ClientService.GraphQL.Types.Category do
 
   use Absinthe.Schema.Notation
 
+  alias ClientService.GraphQL.Resolvers.CategoryResolver
+
   # カテゴリ型定義
   object :category do
     field(:id, non_null(:string), description: "カテゴリID")
@@ -15,7 +17,7 @@ defmodule ClientService.GraphQL.Types.Category do
     # 関連商品を遅延読み込み
     field :products, list_of(:product) do
       description("このカテゴリに属する商品一覧")
-      resolve(&ClientService.GraphQL.Resolvers.CategoryResolver.get_products/3)
+      resolve(&CategoryResolver.get_products/3)
     end
   end
 

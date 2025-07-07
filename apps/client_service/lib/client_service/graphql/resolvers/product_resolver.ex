@@ -5,6 +5,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   Command Service と Query Service への gRPC 通信を行います
   """
 
+  alias ClientService.GraphQL.BatchCache
   alias ClientService.Infrastructure.GrpcConnections
   alias Shared.Infrastructure.Grpc.ResilientClient
 
@@ -320,7 +321,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @spec get_category(%{category_id: String.t()}, any(), any()) ::
           {:ok, map()} | {:error, String.t()}
   def get_category(%{category_id: category_id}, _args, _context) do
-    ClientService.GraphQL.BatchCache.get_category(category_id, fn ->
+    BatchCache.get_category(category_id, fn ->
       # キャッシュミスの場合のみgRPC呼び出し
       with {:ok, channel} <- GrpcConnections.get_query_channel(),
            request <- %CategoryQueryRequest{id: category_id},

@@ -98,7 +98,7 @@ defmodule Shared.Infrastructure.Grpc.ResilientClient do
               }
             })
 
-          Shared.Infrastructure.Grpc.ResilientClient.call(
+          ResilientClient.call(
             fn -> apply(@stub_module, func_name, args) end,
             options
           )

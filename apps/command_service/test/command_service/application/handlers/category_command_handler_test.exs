@@ -5,8 +5,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
   alias CommandService.Application.Commands.{
     CreateCategoryCommand,
-    UpdateCategoryCommand,
-    DeleteCategoryCommand
+    DeleteCategoryCommand,
+    UpdateCategoryCommand
   }
 
   alias CommandService.Domain.Aggregates.Category

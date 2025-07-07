@@ -5,10 +5,10 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
   alias QueryService.Application.Queries.{
     GetOrderQuery,
-    ListOrdersQuery,
     GetOrdersByCustomerQuery,
     GetOrdersByStatusQuery,
-    GetOrderStatsQuery
+    GetOrderStatsQuery,
+    ListOrdersQuery
   }
 
   alias QueryService.Domain.ReadModels.Order

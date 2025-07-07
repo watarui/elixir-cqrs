@@ -5,13 +5,13 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
 
   alias CommandService.Application.Commands.{
     CreateProductCommand,
-    UpdateProductCommand,
-    DeleteProductCommand
+    DeleteProductCommand,
+    UpdateProductCommand
   }
 
   alias CommandService.Domain.Aggregates.Product
-  alias CommandService.Infrastructure.Repositories.ProductRepository
   alias CommandService.Infrastructure.EventStore.PostgresEventStore
+  alias CommandService.Infrastructure.Repositories.ProductRepository
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers

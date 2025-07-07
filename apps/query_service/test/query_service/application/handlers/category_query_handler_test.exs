@@ -4,10 +4,10 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
   alias QueryService.Application.Handlers.CategoryQueryHandler
 
   alias QueryService.Application.Queries.{
+    GetCategoryPathQuery,
     GetCategoryQuery,
-    ListCategoriesQuery,
     GetCategoryTreeQuery,
-    GetCategoryPathQuery
+    ListCategoriesQuery
   }
 
   alias QueryService.Domain.ReadModels.Category

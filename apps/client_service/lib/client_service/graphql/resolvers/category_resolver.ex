@@ -6,6 +6,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
 
   alias ClientService.Application.CqrsFacade
+  alias ClientService.GraphQL.BatchCache
   alias ClientService.Infrastructure.GrpcConnections
   require Logger
 
@@ -220,7 +221,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   @spec get_products(%{id: String.t()}, any(), any()) :: {:ok, [map()]} | {:error, String.t()}
   def get_products(%{id: category_id}, _args, _context) do
-    ClientService.GraphQL.BatchCache.get_products_by_category(category_id, fn ->
+    BatchCache.get_products_by_category(category_id, fn ->
       # キャッシュミスの場合のみgRPC呼び出し
       with {:ok, channel} <- GrpcConnections.get_query_channel(),
            request <- %ProductByCategoryRequest{category_id: category_id},

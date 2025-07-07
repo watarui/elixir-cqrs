@@ -31,15 +31,16 @@ defmodule Shared.Domain.Saga.SagaDefinition do
       @behaviour Shared.Domain.Saga.SagaDefinition
 
       # コマンドディスパッチャーの設定
-      @command_dispatcher Application.get_env(:shared, :command_dispatcher) ||
-                            CommandService.Infrastructure.CommandBus
+      defp get_command_dispatcher do
+        Application.get_env(:shared, :command_dispatcher, CommandService.Infrastructure.CommandBus)
+      end
 
       defp dispatch(command) do
-        @command_dispatcher.dispatch(command)
+        get_command_dispatcher().dispatch(command)
       end
 
       defp dispatch_parallel(commands) do
-        @command_dispatcher.dispatch_parallel(commands)
+        get_command_dispatcher().dispatch_parallel(commands)
       end
 
       defp dispatch_compensation(command) when is_list(command) do

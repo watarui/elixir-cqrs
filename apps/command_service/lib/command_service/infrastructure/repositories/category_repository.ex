@@ -130,7 +130,6 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
         String.replace(acc, "%{#{key}}", to_string(value))
       end)
     end)
-    |> Enum.map(fn {key, errors} -> "#{key}: #{Enum.join(errors, ", ")}" end)
-    |> Enum.join("; ")
+    |> Enum.map_join("; ", fn {key, errors} -> "#{key}: #{Enum.join(errors, ", ")}" end)
   end
 end

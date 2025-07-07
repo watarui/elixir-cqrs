@@ -4,6 +4,7 @@ defmodule Shared.Telemetry.Metrics do
   """
 
   import Telemetry.Metrics
+  alias Shared.Telemetry.SagaMetrics
 
   @doc """
   監視すべきメトリクスのリストを返す
@@ -114,7 +115,7 @@ defmodule Shared.Telemetry.Metrics do
       last_value("vm.total_run_queue_lengths.total"),
       last_value("vm.total_run_queue_lengths.cpu"),
       last_value("vm.system_counts.process_count")
-    ] ++ Shared.Telemetry.SagaMetrics.metrics()
+    ] ++ SagaMetrics.metrics()
   end
 
   @doc """

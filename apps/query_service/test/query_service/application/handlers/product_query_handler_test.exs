@@ -5,9 +5,9 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
   alias QueryService.Application.Queries.{
     GetProductQuery,
+    GetProductsByCategoryQuery,
     ListProductsQuery,
-    SearchProductsQuery,
-    GetProductsByCategoryQuery
+    SearchProductsQuery
   }
 
   alias QueryService.Domain.ReadModels.Product

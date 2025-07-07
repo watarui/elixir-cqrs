@@ -9,7 +9,7 @@ defmodule QueryService.Application.ProjectionManager do
   use GenServer
   require Logger
 
-  alias Shared.Infrastructure.EventStore
+  alias Shared.Infrastructure.{EventStore, EventBus}
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
@@ -52,7 +52,7 @@ defmodule QueryService.Application.ProjectionManager do
     }
 
     # イベントバスに登録
-    Shared.Infrastructure.EventBus.subscribe(self())
+    EventBus.subscribe(self())
 
     # ポーリングを開始
     Logger.info("Scheduling first poll in #{state.poll_interval}ms")

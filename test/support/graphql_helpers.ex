@@ -52,9 +52,7 @@ defmodule ElixirCqrs.GraphQLHelpers do
   end
 
   defp format_params(params) do
-    params
-    |> Enum.map(fn {name, type} -> "$#{name}: #{type}" end)
-    |> Enum.join(", ")
+    Enum.map_join(params, ", ", fn {name, type} -> "$#{name}: #{type}" end)
   end
 
   @doc """

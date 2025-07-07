@@ -7,11 +7,13 @@ defmodule CommandService.Application do
 
   use Application
 
+  alias Shared.Telemetry.{Setup, Metrics}
+
   @impl true
   def start(_type, _args) do
     # OpenTelemetryとTelemetryの初期化
-    Shared.Telemetry.Setup.setup_opentelemetry()
-    Shared.Telemetry.Setup.attach_telemetry_handlers()
+    Setup.setup_opentelemetry()
+    Setup.attach_telemetry_handlers()
 
     # OpenTelemetry Ecto instrumentation
     # Docker環境ではモジュールがロードされていない可能性があるため、エラーハンドリングを追加
@@ -24,7 +26,7 @@ defmodule CommandService.Application do
       CommandService.Infrastructure.Database.Repo,
 
       # Telemetry監視
-      {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()}
+      {Telemetry.Metrics.ConsoleReporter, metrics: Metrics.metrics()}
     ]
 
     # テスト環境ではPrometheusエクスポーターを起動しない
@@ -35,7 +37,7 @@ defmodule CommandService.Application do
             TelemetryMetricsPrometheus,
             # Prometheusエクスポーターは内部でPlugを使用するため、
             # 別のPlug.Cowboyは不要
-            metrics: Shared.Telemetry.Metrics.metrics(), port: 9569, plug_cowboy_opts: []
+            metrics: Metrics.metrics(), port: 9569, plug_cowboy_opts: []
           }
         ]
       else

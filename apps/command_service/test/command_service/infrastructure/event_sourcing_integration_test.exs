@@ -429,7 +429,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
 
       # Verify no partial writes
       stored_events = PostgresEventStore.get_events(aggregate_id)
-      assert length(stored_events) == 0 || length(stored_events) == 2
+      assert Enum.empty?(stored_events) || length(stored_events) == 2
     end
   end
 

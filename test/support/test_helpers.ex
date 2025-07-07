@@ -4,12 +4,18 @@ defmodule ElixirCqrs.TestHelpers do
   """
 
   alias ElixirCqrs.Factory
+  alias CommandService.Application.CommandBus
+  alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
+  alias CommandService.Infrastructure.EventStore.PostgresEventStore
+  alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
+  alias QueryService.Infrastructure.Repositories.{ProductRepository, CategoryRepository}
+  alias ClientService.GraphQL.Schema
 
   @doc """
   Sets up the test database for CommandService.
   """
   def setup_command_db(_context) do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandRepo)
     :ok
   end
 
@@ -17,7 +23,7 @@ defmodule ElixirCqrs.TestHelpers do
   Sets up the test database for QueryService.
   """
   def setup_query_db(_context) do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryRepo)
     :ok
   end
 
@@ -37,11 +43,11 @@ defmodule ElixirCqrs.TestHelpers do
     product = Factory.build(:product, attrs)
     command = Factory.build(:create_product_command, payload: product)
 
-    {:ok, event} = CommandService.Application.CommandBus.dispatch(command)
+    {:ok, event} = CommandBus.dispatch(command)
 
     # Wait for projection to be updated
     wait_for_projection(fn ->
-      QueryService.Infrastructure.Repositories.ProductRepository.get(product.id)
+      ProductRepository.get(product.id)
     end)
 
     product
@@ -54,11 +60,11 @@ defmodule ElixirCqrs.TestHelpers do
     category = Factory.build(:category, attrs)
     command = Factory.build(:create_category_command, payload: category)
 
-    {:ok, event} = CommandService.Application.CommandBus.dispatch(command)
+    {:ok, event} = CommandBus.dispatch(command)
 
     # Wait for projection to be updated
     wait_for_projection(fn ->
-      QueryService.Infrastructure.Repositories.CategoryRepository.get(category.id)
+      CategoryRepository.get(category.id)
     end)
 
     category
@@ -90,7 +96,7 @@ defmodule ElixirCqrs.TestHelpers do
   Asserts that an event was published to the event store.
   """
   def assert_event_published(event_type, aggregate_id) do
-    events = CommandService.Infrastructure.EventStore.PostgresEventStore.get_events(aggregate_id)
+    events = PostgresEventStore.get_events(aggregate_id)
 
     assert Enum.any?(events, fn event ->
       event.event_type == event_type
@@ -135,7 +141,7 @@ defmodule ElixirCqrs.TestHelpers do
   Executes a GraphQL query and returns the result.
   """
   def execute_graphql(query, variables \\ %{}, context \\ %{}) do
-    Absinthe.run(query, ClientService.GraphQL.Schema,
+    Absinthe.run(query, Schema,
       variables: variables,
       context: context
     )

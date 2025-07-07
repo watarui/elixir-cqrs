@@ -19,17 +19,15 @@ defmodule CommandService.Application.Services.ProductService do
 
     # 純粋な関数でビジネスルールを検証
     with :ok <- validate_product_params(params),
-         {:ok, product} <- Product.new(id, params[:name], params[:price], params[:category_id]),
-         {:ok, saved_product} <- repo().save(product) do
-      {:ok, saved_product}
+         {:ok, product} <- Product.new(id, params[:name], params[:price], params[:category_id]) do
+      repo().save(product)
     end
   end
 
   # 純粋な検証関数
   defp validate_product_params(params) do
-    with :ok <- ProductLogic.validate_product_name_format(params[:name] || ""),
-         :ok <- ProductLogic.validate_non_zero_price(params[:price] || 0) do
-      :ok
+    with :ok <- ProductLogic.validate_product_name_format(params[:name] || "") do
+      ProductLogic.validate_non_zero_price(params[:price] || 0)
     end
   end
 

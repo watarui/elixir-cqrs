@@ -4,9 +4,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
   alias CommandService.Application.Handlers.OrderCommandHandler
 
   alias CommandService.Application.Commands.{
+    CancelOrderCommand,
     CreateOrderCommand,
-    UpdateOrderCommand,
-    CancelOrderCommand
+    UpdateOrderCommand
   }
 
   alias CommandService.Domain.Aggregates.Order

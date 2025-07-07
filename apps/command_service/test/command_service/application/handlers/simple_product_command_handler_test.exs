@@ -5,8 +5,8 @@ defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
 
   alias CommandService.Application.Commands.ProductCommands.{
     CreateProduct,
-    UpdateProduct,
-    DeleteProduct
+    DeleteProduct,
+    UpdateProduct
   }
 
   describe "handle CreateProductCommand" do
