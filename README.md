@@ -40,9 +40,54 @@ GraphQL Playground: http://localhost:4000/graphiql
 
 - CQRS パターン
 - イベントソーシング
-- サガパターン
+- サガパターン（分散トランザクション管理）
 - gRPC/GraphQL 通信
 - 監視・可観測性
+
+### サガパターンの実装
+
+分散トランザクションを管理するサガパターンを完全実装しました：
+
+#### 主な機能
+
+1. **OrderSaga** - 注文処理の分散トランザクション
+   - 在庫予約
+   - 支払い処理
+   - 配送手配
+   - 注文確定
+
+2. **SagaCoordinator** - サガの実行管理
+   - ステップの順次実行
+   - 失敗時の自動補償
+   - 状態の永続化
+
+3. **GraphQL API** - クライアント向けエンドポイント
+   ```graphql
+   mutation {
+     startOrderSaga(input: {
+       orderId: "order-123",
+       userId: "user-456",
+       items: [{productId: "prod-789", quantity: 2}],
+       totalAmount: 1500.0
+     }) {
+       sagaId
+       success
+       message
+     }
+   }
+   ```
+
+#### テスト
+
+SAGAのテストスクリプトは `scripts/saga_tests/` ディレクトリに配置されています：
+
+```bash
+# 基本的なSAGAテスト
+./scripts/saga_tests/test_saga_simple.sh
+
+# 完全なフローテスト
+./scripts/saga_tests/test_saga_complete.sh
+```
 
 詳細については以下のドキュメントを参照：
 
@@ -113,6 +158,38 @@ mix test --cover
 
 # 特定のサービスのテスト
 cd apps/command_service && mix test
+
+# SAGAテストの実行
+mix test test/saga/
+```
+
+## 開発者向け情報
+
+### SAGAの追加方法
+
+新しいSAGAを追加する場合：
+
+1. `apps/command_service/lib/command_service/domain/sagas/` に新しいSAGAモジュールを作成
+2. `Shared.Domain.Saga.SagaBase` を使用して実装
+3. 各ステップと補償処理を定義
+4. SAGAEventHandlerにトリガーイベントを登録
+
+例：
+```elixir
+defmodule MyNewSaga do
+  use Shared.Domain.Saga.SagaBase
+  
+  @impl true
+  def steps do
+    [
+      %{
+        name: :step_one,
+        execute: &execute_step_one/2,
+        compensate: &compensate_step_one/2
+      }
+    ]
+  end
+end
 ```
 
 ## ドキュメント

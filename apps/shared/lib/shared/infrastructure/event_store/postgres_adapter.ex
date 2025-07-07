@@ -87,7 +87,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       current_version = get_stream_version(conn, stream_name)
       Logger.debug("Current version for stream #{stream_name}: #{current_version}")
       
-      if current_version == expected_version do
+      if expected_version == :any_version || current_version == expected_version do
         # イベントを挿入
         version = Enum.reduce(events, current_version, fn event, version ->
           new_version = version + 1
@@ -199,7 +199,12 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     SET snapshot_data = $2, version = $3, created_at = $4
     """
 
-    snapshot_data = Jason.encode!(Map.from_struct(snapshot))
+    # snapshotが既にマップの場合はそのまま使用
+    snapshot_data = if is_map(snapshot) and not is_struct(snapshot) do
+      Jason.encode!(snapshot)
+    else
+      Jason.encode!(Map.from_struct(snapshot))
+    end
     
     case Postgrex.query(state.conn, query, [aggregate_id, snapshot_data, version, DateTime.utc_now()]) do
       {:ok, _} -> {:reply, :ok, state}
@@ -355,6 +360,14 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       "CategoryCreated" -> Shared.Domain.Events.CategoryEvents.CategoryCreated
       "CategoryUpdated" -> Shared.Domain.Events.CategoryEvents.CategoryUpdated
       "CategoryDeleted" -> Shared.Domain.Events.CategoryEvents.CategoryDeleted
+      # Saga events
+      "SagaStarted" -> Shared.Domain.Saga.SagaEvents.SagaStarted
+      "SagaCompleted" -> Shared.Domain.Saga.SagaEvents.SagaCompleted
+      "SagaFailed" -> Shared.Domain.Saga.SagaEvents.SagaFailed
+      "SagaCompensated" -> Shared.Domain.Saga.SagaEvents.SagaCompensated
+      "SagaStepCompleted" -> Shared.Domain.Saga.SagaEvents.SagaStepCompleted
+      "SagaStepFailed" -> Shared.Domain.Saga.SagaEvents.SagaStepFailed
+      "SagaCompensationStarted" -> Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
       _ -> raise "Unknown event type: #{event_type}"
     end
   end

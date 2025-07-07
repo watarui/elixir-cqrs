@@ -64,3 +64,41 @@ service ProductCommand {
   // 商品を削除した結果を返す
   rpc Delete(ProductUpParam) returns (ProductUpResult);
 }
+
+// Saga関連の型定義
+message OrderItem {
+  string productId = 1;
+  string productName = 2;
+  int32 quantity = 3;
+  double unitPrice = 4;
+  double subtotal = 5;
+}
+
+message ShippingAddress {
+  string street = 1;
+  string city = 2;
+  string postalCode = 3;
+}
+
+// Order Saga開始パラメータ
+message StartOrderSagaParam {
+  string orderId = 1;
+  string customerId = 2;
+  repeated OrderItem items = 3;
+  double totalAmount = 4;
+  ShippingAddress shippingAddress = 5;
+}
+
+// Saga開始結果
+message StartSagaResult {
+  string sagaId = 1;
+  string status = 2;
+  google.protobuf.Timestamp startedAt = 3;
+  Error error = 4;
+}
+
+// Sagaコマンドサービス
+service SagaCommand {
+  // Order Sagaを開始
+  rpc StartOrderSaga(StartOrderSagaParam) returns (StartSagaResult);
+}

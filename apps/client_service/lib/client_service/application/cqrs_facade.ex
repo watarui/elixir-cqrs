@@ -319,7 +319,7 @@ defmodule ClientService.Application.CqrsFacade do
       try do
         request = %Proto.StartOrderSagaParam{
           orderId: saga_context.order_id,
-          customerId: saga_context.customer_id,
+          customerId: Map.get(saga_context, :customer_id) || Map.get(saga_context, :user_id),
           items: Enum.map(saga_context.items, fn item ->
             %Proto.OrderItem{
               productId: Map.get(item, :product_id, ""),
@@ -330,33 +330,23 @@ defmodule ClientService.Application.CqrsFacade do
             }
           end),
           totalAmount: saga_context.total_amount,
-          shippingAddress: %Proto.ShippingAddress{
-            street: saga_context.shipping_address.street,
-            city: saga_context.shipping_address.city,
-            postalCode: saga_context.shipping_address.postal_code
-          }
+          shippingAddress: build_shipping_address(saga_context)
         }
         
         Logger.info("Sending saga request: #{inspect(request)}")
         
-        # サガパターンはまだ完全に実装されていないため、一時的にモックレスポンスを返す
-        saga_id = "saga-#{saga_context.order_id}-#{System.unique_integer([:positive])}"
-        Logger.info("Mock saga started with ID: #{saga_id}")
-        {:ok, saga_id}
-        
-        # TODO: gRPCが正しく動作するようになったら以下のコードを有効化
-        # case Proto.SagaCommand.Stub.start_order_saga(channel, request) do
-        #   {:ok, response} ->
-        #     Logger.info("Saga response: #{inspect(response)}")
-        #     if response.error do
-        #       {:error, response.error.message}
-        #     else
-        #       {:ok, response.sagaId}
-        #     end
-        #   {:error, reason} ->
-        #     Logger.error("Failed to start saga: #{inspect(reason)}")
-        #     {:error, :saga_start_failed}
-        # end
+        case Proto.SagaCommand.Stub.start_order_saga(channel, request) do
+          {:ok, response} ->
+            Logger.info("Saga response: #{inspect(response)}")
+            if response.error do
+              {:error, response.error.message}
+            else
+              {:ok, response.sagaId}
+            end
+          {:error, reason} ->
+            Logger.error("Failed to start saga: #{inspect(reason)}")
+            {:error, :saga_start_failed}
+        end
       rescue
         error ->
           Logger.error("Exception in start_saga: #{inspect(error)}")
@@ -424,5 +414,22 @@ defmodule ClientService.Application.CqrsFacade do
   defp timestamp_to_datetime(nil), do: nil
   defp timestamp_to_datetime(timestamp) do
     DateTime.from_unix!(timestamp.seconds)
+  end
+  
+  defp build_shipping_address(saga_context) do
+    case Map.get(saga_context, :shipping_address) do
+      nil ->
+        %Proto.ShippingAddress{
+          street: "Default Street",
+          city: "Default City",
+          postalCode: "00000"
+        }
+      address ->
+        %Proto.ShippingAddress{
+          street: Map.get(address, :street, "Default Street"),
+          city: Map.get(address, :city, "Default City"),
+          postalCode: Map.get(address, :postal_code, "00000")
+        }
+    end
   end
 end

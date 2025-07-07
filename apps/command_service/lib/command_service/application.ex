@@ -45,12 +45,12 @@ defmodule CommandService.Application do
       
       # サガコーディネーター
       {Shared.Infrastructure.Saga.SagaCoordinator, 
-       saga_modules: [CommandService.Domain.Sagas.OrderSaga]},
+       saga_modules: [Shared.Infrastructure.Saga.OrderSaga]},
       
       # サガイベントハンドラー
       {Shared.Infrastructure.Saga.SagaEventHandler, [
         saga_triggers: %{
-          "order_created" => CommandService.Domain.Sagas.OrderSaga
+          "order_created" => Shared.Infrastructure.Saga.OrderSaga
         }
       ]},
 

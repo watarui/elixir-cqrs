@@ -14,39 +14,24 @@ defmodule CommandService.Infrastructure.SagaCommandDispatcher do
   
   @impl true
   def dispatch(command) do
-    case get_command_type(command) do
-      nil ->
-        {:error, "Unknown command type"}
+    # SAGAコマンドハンドラーを直接使用
+    alias CommandService.Application.Handlers.SagaCommandHandler
+    
+    case SagaCommandHandler.handle_command(command) do
+      {:ok, result} ->
+        Logger.info("Saga command dispatched successfully",
+          command_type: Map.get(command, :type),
+          saga_id: get_in(command, [:metadata, :saga_id])
+        )
+        {:ok, result}
         
-      command_type ->
-        # コマンドにsaga_idを含むmetadataを追加
-        enriched_command = enrich_command_with_saga_metadata(command)
-        
-        # コマンドバスに送信
-        case CommandBus.execute(enriched_command) do
-          {:ok, result} ->
-            Logger.info("Saga command dispatched successfully",
-              command_type: command_type,
-              saga_id: get_in(command, [:metadata, :saga_id])
-            )
-            
-            # 成功イベントを発行（サガが監視できるように）
-            publish_command_result_event(enriched_command, :success, result)
-            
-            {:ok, result}
-            
-          {:error, reason} = error ->
-            Logger.error("Failed to dispatch saga command",
-              command_type: command_type,
-              saga_id: get_in(command, [:metadata, :saga_id]),
-              error: inspect(reason)
-            )
-            
-            # 失敗イベントを発行
-            publish_command_result_event(enriched_command, :failure, reason)
-            
-            error
-        end
+      {:error, reason} = error ->
+        Logger.error("Failed to dispatch saga command",
+          command_type: Map.get(command, :type),
+          saga_id: get_in(command, [:metadata, :saga_id]),
+          error: inspect(reason)
+        )
+        error
     end
   end
   
@@ -67,6 +52,7 @@ defmodule CommandService.Infrastructure.SagaCommandDispatcher do
     if Enum.empty?(errors) do
       {:ok, Enum.map(results, fn {:ok, result} -> result end)}
     else
+      # エラーがリストで返されている場合の処理
       {:error, errors}
     end
   end

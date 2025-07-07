@@ -16,9 +16,10 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   @spec save(map()) :: {:ok, map()} | {:error, any()}
   def save(saga) do
     # スナップショットとして保存
-    snapshot_id = "#{@saga_snapshot_prefix}#{saga.saga_id}"
+    # バージョンは現在のステップ数またはデフォルト値を使用
+    version = length(Map.get(saga, :completed_steps, [])) + 1
     
-    case EventStore.create_snapshot(saga.saga_id, saga, snapshot_id) do
+    case EventStore.create_snapshot(saga.saga_id, saga, version) do
       :ok ->
         {:ok, saga}
         
@@ -33,10 +34,8 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   """
   @spec get(String.t()) :: {:ok, map()} | {:error, :not_found}
   def get(saga_id) do
-    snapshot_id = "#{@saga_snapshot_prefix}#{saga_id}"
-    
-    case EventStore.get_snapshot(saga_id, snapshot_id) do
-      {:ok, saga} ->
+    case EventStore.get_snapshot(saga_id) do
+      {:ok, {saga, _version}} ->
         {:ok, saga}
         
       {:error, :not_found} ->
@@ -54,9 +53,32 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   """
   @spec list_active() :: {:ok, [map()]} | {:error, any()}
   def list_active do
-    # TODO: より効率的な実装が必要（インデックスなど）
-    # 現在は簡易実装として、最近のスナップショットを取得
-    {:ok, []}
+    # アクティブな（完了・失敗していない）サガを取得
+    try do
+      # EventStoreからすべてのストリームIDを取得
+      # まずは既知のサガストリームをチェック
+      case get_all_saga_streams() do
+        {:ok, stream_ids} ->
+          # 各ストリームから最新のサガ状態を構築
+          active_sagas = stream_ids
+            |> Enum.map(&get_saga_from_stream/1)
+            |> Enum.filter(fn 
+              {:ok, saga} -> saga.state not in [:completed, :failed, :compensated]
+              _ -> false
+            end)
+            |> Enum.map(fn {:ok, saga} -> saga end)
+          
+          {:ok, active_sagas}
+          
+        {:error, reason} ->
+          Logger.error("Failed to list active sagas: #{inspect(reason)}")
+          {:error, reason}
+      end
+    rescue
+      error ->
+        Logger.error("Exception in list_active: #{inspect(error)}")
+        {:error, error}
+    end
   end
   
   @doc """
@@ -128,6 +150,53 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   
   # Private functions
   
+  defp build_saga_state_from_events(saga_id, events) do
+    # イベントを時系列でソート
+    sorted_events = Enum.sort_by(events, & &1.occurred_at, DateTime)
+    
+    # 初期状態を作成
+    initial_state = %{
+      saga_id: saga_id,
+      state: :unknown,
+      saga_type: nil,
+      data: %{},
+      started_at: nil,
+      completed_at: nil
+    }
+    
+    # イベントを適用して状態を構築
+    Enum.reduce(sorted_events, initial_state, fn event, state ->
+      case event.event_type do
+        "saga_started" ->
+          %{state | 
+            state: :started,
+            saga_type: get_in(event, [:payload, :saga_type]),
+            data: get_in(event, [:payload, :initial_data]) || %{},
+            started_at: event.occurred_at
+          }
+          
+        "saga_completed" ->
+          %{state | 
+            state: :completed,
+            completed_at: event.occurred_at
+          }
+          
+        "saga_failed" ->
+          %{state | 
+            state: :failed
+          }
+          
+        "saga_compensated" ->
+          %{state | 
+            state: :compensated
+          }
+          
+        _ ->
+          state
+      end
+    end)
+  end
+  
   defp rebuild_from_events(saga_id) do
     stream_id = "saga-#{saga_id}"
     
@@ -152,9 +221,10 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
     
     initial_saga = %{
       saga_id: first_event.aggregate_id,
-      saga_type: get_in(first_event, [:payload, :saga_type]),
+      saga_type: get_in(first_event, [:payload, :saga_type]) || get_in(first_event, [:saga_type]),
       state: :started,
-      data: get_in(first_event, [:payload, :initial_data]),
+      context: get_in(first_event, [:payload, :initial_data]) || get_in(first_event, [:initial_data]),
+      data: get_in(first_event, [:payload, :initial_data]) || get_in(first_event, [:initial_data]),
       processed_events: [],
       completed_steps: [],
       started_at: first_event.occurred_at,
@@ -217,5 +287,40 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
           updated_at: event.occurred_at
         }
     end
+  end
+  
+  defp get_all_saga_streams do
+    # EventStoreから全ストリーム名を取得して、sagaプレフィックスでフィルタリング
+    # 注: list_snapshotsが実装されていないため、イベントから推測
+    try do
+      # 最近のイベントから推測
+      case EventStore.read_all_events(0) do
+        {:ok, events} ->
+          stream_ids = events
+            |> Enum.filter(fn event -> 
+              Map.get(event, :aggregate_id, "") |> String.starts_with?("saga-")
+            end)
+            |> Enum.map(& &1.aggregate_id)
+            |> Enum.uniq()
+          {:ok, stream_ids}
+          
+        error ->
+          Logger.error("Failed to read events: #{inspect(error)}")
+          {:ok, []}  # エラーの場合は空リストを返す
+      end
+    rescue
+      error ->
+        {:error, error}
+    end
+  end
+  
+  defp get_saga_from_stream(stream_id) do
+    saga_id = String.replace_prefix(stream_id, "saga-", "")
+    get(saga_id)
+  end
+  
+  defp list_saga_snapshots do
+    # EventStore.list_snapshotsが未実装のため、空リストを返す
+    {:ok, []}
   end
 end

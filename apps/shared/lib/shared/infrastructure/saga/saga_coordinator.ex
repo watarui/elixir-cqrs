@@ -87,7 +87,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     event = SagaEvents.SagaStarted.new(saga_id, saga.saga_type, initial_data, metadata)
     
     case persist_saga_event(event) do
-      :ok ->
+      {:ok, _version} ->
         # サガを永続化
         case SagaRepository.save(saga) do
           {:ok, _} ->
@@ -390,12 +390,13 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   defp dispatch_commands(commands, saga_id) do
     Enum.each(commands, fn command ->
       # コマンドにsaga_idを追加
-      command_with_saga = Map.put(command, :metadata, %{saga_id: saga_id})
+      existing_metadata = Map.get(command, :metadata, %{})
+      command_with_saga = Map.put(command, :metadata, Map.put(existing_metadata, :saga_id, saga_id))
       
       # コマンドバスに送信
       case dispatch_command(command_with_saga) do
         {:ok, _} ->
-          Logger.info("Dispatched command for saga #{saga_id}: #{inspect(command.type)}")
+          Logger.info("Dispatched command for saga #{saga_id}: #{inspect(Map.get(command, :type, "unknown"))}")
           
         {:error, reason} ->
           Logger.error("Failed to dispatch command for saga #{saga_id}: #{inspect(reason)}")

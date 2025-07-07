@@ -11,7 +11,8 @@ defmodule CommandService.Application.CommandBus do
   alias CommandService.Application.Handlers.{
     ProductCommandHandler,
     CategoryCommandHandler,
-    OrderCommandHandler
+    OrderCommandHandler,
+    SagaCommandHandler
   }
 
   # Client API

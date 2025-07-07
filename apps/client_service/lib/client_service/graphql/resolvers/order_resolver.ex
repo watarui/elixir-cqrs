@@ -138,7 +138,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
       total_amount: input.total_amount
     }
     
-    case CqrsFacade.start_saga(saga_context) do
+    case CqrsFacade.start_order_saga(saga_context) do
       {:ok, saga_id} ->
         {:ok, %{
           saga_id: saga_id,
@@ -219,9 +219,21 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
   end
 
   defp validate_items(items) do
-    # 在庫チェックなどのバリデーション
-    # TODO: 実装
-    :ok
+    # 商品の基本検証
+    cond do
+      Enum.empty?(items) ->
+        {:error, "Order must have at least one item"}
+        
+      Enum.any?(items, &(&1.quantity <= 0)) ->
+        {:error, "Item quantity must be positive"}
+        
+      Enum.any?(items, &(&1.unit_price < 0)) ->
+        {:error, "Item price cannot be negative"}
+        
+      true ->
+        # 在庫チェックはサガのreserve_inventoryステップで実行される
+        :ok
+    end
   end
 
   defp calculate_total(items) do
@@ -238,5 +250,46 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
       price: item.unit_price,
       subtotal: item.subtotal
     }
+  end
+  
+  defp format_order_items(nil), do: []
+  defp format_order_items(items) when is_list(items) do
+    Enum.map(items, &format_order_item/1)
+  end
+  
+  defp validate_cancellable_status(status) do
+    cancellable_statuses = [:pending, :processing, :confirmed]
+    
+    if status in cancellable_statuses do
+      :ok
+    else
+      {:error, :not_cancellable}
+    end
+  end
+  
+  defp get_saga_state_internal(order_id) do
+    # サガの状態を取得
+    saga_id = "saga-#{order_id}"
+    
+    case CqrsFacade.query({:get_saga_status, saga_id}) do
+      {:ok, saga} ->
+        {:ok, %{
+          saga_id: saga.saga_id,
+          state: saga.state,
+          completed_steps: saga.completed_steps || [],
+          current_step: saga.current_step,
+          error: saga.error,
+          started_at: saga.started_at,
+          completed_at: saga.completed_at
+        }}
+        
+      {:error, :not_found} ->
+        # サガが見つからない場合はnilを返す
+        {:ok, nil}
+        
+      {:error, reason} ->
+        Logger.error("Failed to fetch saga state: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 end

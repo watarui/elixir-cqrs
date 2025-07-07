@@ -18,7 +18,8 @@ config :logger, :console,
 
 # Shared 設定
 config :shared,
-  service_name: "command_service"
+  service_name: "command_service",
+  command_dispatcher: CommandService.Infrastructure.SagaCommandDispatcher
 
 # 環境別設定の読み込み
 import_config "#{config_env()}.exs"

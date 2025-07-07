@@ -81,6 +81,14 @@ defmodule ClientService.GraphQL.Types.Order do
     field :user_id, non_null(:string)
     field :items, non_null(list_of(:order_item_input))
     field :total_amount, non_null(:float)
+    field :shipping_address, :shipping_address_input
+  end
+  
+  # 配送先住所入力型
+  input_object :shipping_address_input do
+    field :street, non_null(:string)
+    field :city, non_null(:string)
+    field :postal_code, non_null(:string)
   end
   
   # SAGA開始結果型
