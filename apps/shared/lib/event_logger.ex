@@ -13,6 +13,7 @@ defmodule Shared.EventLogger do
       iex> EventLogger.log_event("ProductCreated", %{id: 1, name: "Laptop"})
       :ok
   """
+  @spec log_event(String.t(), map()) :: :ok
   def log_event(event_type, data) do
     event = %{
       event_type: event_type,
@@ -30,6 +31,7 @@ defmodule Shared.EventLogger do
   @doc """
   ドメインイベントを記録する（構造化）
   """
+  @spec log_domain_event(struct()) :: :ok
   def log_domain_event(event_struct) do
     event = %{
       event_type: event_struct.__struct__,

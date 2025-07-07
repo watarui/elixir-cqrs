@@ -34,6 +34,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @doc """
   gRPC接続管理プロセスを開始する
   """
+  @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(_opts \\ []) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -41,6 +42,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @doc """
   コマンドサービスのチャンネルを取得する
   """
+  @spec get_command_channel() :: {:ok, GRPC.Channel.t()} | {:error, term()}
   def get_command_channel do
     case GenServer.call(__MODULE__, :get_command_channel) do
       {:ok, channel} -> {:ok, channel}
@@ -51,6 +53,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @doc """
   クエリサービスのチャンネルを取得する
   """
+  @spec get_query_channel() :: {:ok, GRPC.Channel.t()} | {:error, term()}
   def get_query_channel do
     case GenServer.call(__MODULE__, :get_query_channel) do
       {:ok, channel} -> {:ok, channel}
@@ -61,6 +64,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @doc """
   全接続の状態を取得する
   """
+  @spec get_connection_status() :: map()
   def get_connection_status do
     GenServer.call(__MODULE__, :get_connection_status)
   end
@@ -68,6 +72,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @doc """
   接続を強制的に再接続する
   """
+  @spec reconnect() :: :ok
   def reconnect do
     GenServer.cast(__MODULE__, :reconnect)
   end

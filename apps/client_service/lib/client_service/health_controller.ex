@@ -8,6 +8,7 @@ defmodule ClientService.HealthController do
   @doc """
   健全性チェックエンドポイント
   """
+  @spec check(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def check(conn, _params) do
     health_status = %{
       status: "healthy",

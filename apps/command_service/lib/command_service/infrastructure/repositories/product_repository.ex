@@ -12,6 +12,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   alias CommandService.Domain.Entities.Product
   alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
   alias CommandService.Infrastructure.Database.{Repo, Schemas.ProductSchema}
+  alias Shared.Errors.{AppError, ErrorConverter}
 
   @impl true
   def save(%Product{} = product) do
@@ -34,7 +35,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   @impl true
   def find_by_id(id) when is_binary(id) do
     case Repo.get(ProductSchema, id) do
-      nil -> {:error, :not_found}
+      nil -> {:error, AppError.not_found("Product not found", %{id: id})}
       schema -> {:ok, schema_to_entity(schema)}
     end
   end
@@ -42,7 +43,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   @impl true
   def find_by_name(name) when is_binary(name) do
     case Repo.get_by(ProductSchema, name: name) do
-      nil -> {:error, :not_found}
+      nil -> {:error, AppError.not_found("Product not found", %{name: name})}
       schema -> {:ok, schema_to_entity(schema)}
     end
   end
@@ -106,6 +107,86 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
     schemas = Repo.all(ProductSchema)
     entities = Enum.map(schemas, &schema_to_entity/1)
     {:ok, entities}
+  end
+
+  @impl true
+  def count(conditions \\ %{}) do
+    query = from(p in ProductSchema)
+    
+    query = 
+      Enum.reduce(conditions, query, fn
+        {:category_id, category_id}, query ->
+          where(query, [p], p.category_id == ^category_id)
+        {:min_price, min_price}, query ->
+          where(query, [p], p.price >= ^min_price)
+        {:max_price, max_price}, query ->
+          where(query, [p], p.price <= ^max_price)
+        _, query ->
+          query
+      end)
+    
+    {:ok, Repo.aggregate(query, :count, :id)}
+  rescue
+    error -> {:error, AppError.infrastructure_error("Failed to count products", %{error: inspect(error)})}
+  end
+
+  @impl true
+  def transaction(fun) when is_function(fun) do
+    Repo.transaction(fun)
+  rescue
+    error -> {:error, AppError.infrastructure_error("Transaction failed", %{error: inspect(error)})}
+  end
+
+  @impl true
+  def find_by_price_range(min_price, max_price) do
+    schemas = 
+      from(p in ProductSchema,
+        where: p.price >= ^min_price and p.price <= ^max_price,
+        order_by: [asc: p.price]
+      )
+      |> Repo.all()
+    
+    entities = Enum.map(schemas, &schema_to_entity/1)
+    {:ok, entities}
+  rescue
+    error -> {:error, AppError.infrastructure_error("Failed to find products by price range", %{error: inspect(error)})}
+  end
+
+  @impl true
+  def search(keyword) when is_binary(keyword) do
+    pattern = "%#{keyword}%"
+    
+    schemas = 
+      from(p in ProductSchema,
+        where: ilike(p.name, ^pattern),
+        order_by: [asc: p.name]
+      )
+      |> Repo.all()
+    
+    entities = Enum.map(schemas, &schema_to_entity/1)
+    {:ok, entities}
+  rescue
+    error -> {:error, AppError.infrastructure_error("Failed to search products", %{error: inspect(error)})}
+  end
+
+  @impl true
+  def paginate(page, per_page) when page > 0 and per_page > 0 do
+    offset = (page - 1) * per_page
+    
+    query = from(p in ProductSchema, order_by: [desc: p.inserted_at])
+    
+    total_count = Repo.aggregate(query, :count, :id)
+    
+    schemas = 
+      query
+      |> limit(^per_page)
+      |> offset(^offset)
+      |> Repo.all()
+    
+    entities = Enum.map(schemas, &schema_to_entity/1)
+    {:ok, {entities, total_count}}
+  rescue
+    error -> {:error, AppError.infrastructure_error("Failed to paginate products", %{error: inspect(error)})}
   end
 
   # プライベート関数 - スキーマからエンティティへの変換

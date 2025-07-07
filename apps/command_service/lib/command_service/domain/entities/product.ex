@@ -38,8 +38,42 @@ defmodule CommandService.Domain.Entities.Product do
     end
   end
 
+  @doc """
+  商品情報を更新します
+  
+  与えられたパラメータマップに基づいて、商品の各フィールドを更新します。
+  nilまたは空文字列のフィールドはスキップされます。
+  
+  ## パラメータ
+    - product: 更新対象の商品エンティティ
+    - params: 更新するフィールドを含むマップ
+      - :name - 商品名（オプション）
+      - :price - 価格（オプション）
+      - :category_id - カテゴリID（オプション）
+  
+  ## 戻り値
+    - {:ok, updated_product} - 更新成功
+    - {:error, reason} - バリデーションエラー
+  """
+  @spec update(t(), map()) :: {:ok, t()} | {:error, String.t()}
+  def update(%__MODULE__{} = product, params) when is_map(params) do
+    update_fields = [
+      {:name, params[:name], &update_name/2},
+      {:price, params[:price], &update_price/2},
+      {:category_id, params[:category_id], &update_category/2}
+    ]
+    
+    Enum.reduce_while(update_fields, {:ok, product}, fn {_field, value, update_fn}, {:ok, current_product} ->
+      case maybe_apply_field_update(current_product, value, update_fn) do
+        {:ok, updated_product} -> {:cont, {:ok, updated_product}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  # 個別フィールド更新メソッド（内部使用）
   @spec update_name(t(), String.t()) :: {:ok, t()} | {:error, String.t()}
-  def update_name(%__MODULE__{} = product, new_name) do
+  defp update_name(%__MODULE__{} = product, new_name) do
     case ProductName.new(new_name) do
       {:ok, name} ->
         {:ok, %__MODULE__{product | name: name, updated_at: DateTime.utc_now()}}
@@ -50,7 +84,7 @@ defmodule CommandService.Domain.Entities.Product do
   end
 
   @spec update_price(t(), String.t() | number()) :: {:ok, t()} | {:error, String.t()}
-  def update_price(%__MODULE__{} = product, new_price) do
+  defp update_price(%__MODULE__{} = product, new_price) do
     case ProductPrice.new(new_price) do
       {:ok, price} ->
         {:ok, %__MODULE__{product | price: price, updated_at: DateTime.utc_now()}}
@@ -61,7 +95,7 @@ defmodule CommandService.Domain.Entities.Product do
   end
 
   @spec update_category(t(), String.t()) :: {:ok, t()} | {:error, String.t()}
-  def update_category(%__MODULE__{} = product, new_category_id) do
+  defp update_category(%__MODULE__{} = product, new_category_id) do
     case CategoryId.new(new_category_id) do
       {:ok, category_id} ->
         {:ok, %__MODULE__{product | category_id: category_id, updated_at: DateTime.utc_now()}}
@@ -70,6 +104,13 @@ defmodule CommandService.Domain.Entities.Product do
         error
     end
   end
+  
+  # フィールド更新のヘルパー関数
+  @spec maybe_apply_field_update(t(), any(), (t(), any() -> {:ok, t()} | {:error, String.t()})) ::
+          {:ok, t()} | {:error, String.t()}
+  defp maybe_apply_field_update(product, nil, _update_fn), do: {:ok, product}
+  defp maybe_apply_field_update(product, "", _update_fn), do: {:ok, product}
+  defp maybe_apply_field_update(product, value, update_fn), do: update_fn.(product, value)
 
   @spec id(t()) :: String.t()
   def id(%__MODULE__{id: id}), do: ProductId.value(id)
