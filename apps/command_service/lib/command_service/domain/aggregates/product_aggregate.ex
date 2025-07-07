@@ -27,11 +27,14 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
         }
 
   use Shared.Domain.Aggregate.Base
+  
+  @impl true
+  def aggregate_id(%__MODULE__{id: nil}), do: nil
+  def aggregate_id(%__MODULE__{id: id}), do: ProductId.value(id)
 
   # コマンドハンドラー
 
   @impl true
-  # コマンドハンドラー
   def execute(%__MODULE__{deleted: true}, _command) do
     {:error, "Cannot execute commands on deleted product"}
   end
@@ -101,12 +104,6 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
     end
   end
 
-  # パラメータの検証とフィルタリング
-  defp validate_and_filter_params(params) do
-    filtered = ProductLogic.filter_update_params(params)
-    ProductLogic.apply_price_update_rules(filtered)
-  end
-
   def execute(%__MODULE__{id: id}, {:delete_product, params}) when not is_nil(id) do
     metadata = AggregateLogic.build_command_metadata(params)
 
@@ -122,6 +119,13 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   def execute(_aggregate, _command) do
     {:error, "Invalid command"}
   end
+
+  # パラメータの検証とフィルタリング
+  defp validate_and_filter_params(params) do
+    filtered = ProductLogic.filter_update_params(params)
+    ProductLogic.apply_price_update_rules(filtered)
+  end
+
 
   # イベントハンドラー
 

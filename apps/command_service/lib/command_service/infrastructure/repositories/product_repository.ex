@@ -10,9 +10,8 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   import Ecto.Query, warn: false
 
   alias CommandService.Domain.Entities.Product
-  alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
   alias CommandService.Infrastructure.Database.{Repo, Schemas.ProductSchema}
-  alias Shared.Errors.{AppError, ErrorConverter}
+  alias Shared.Errors.AppError
 
   @impl true
   def save(%Product{} = product) do

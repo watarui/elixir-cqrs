@@ -27,8 +27,6 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
     }
   end
 
-  defp datetime_to_timestamp(nil), do: nil
-
   def update_category(%Proto.CategoryUpParam{} = request, _stream) do
     case request.crud do
       :INSERT ->

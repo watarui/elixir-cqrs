@@ -6,7 +6,7 @@ defmodule Shared.Domain.Aggregate.Base do
   @doc """
   アグリゲートIDを返す
   """
-  @callback aggregate_id() :: String.t()
+  @callback aggregate_id(aggregate :: struct()) :: String.t() | nil
 
   @doc """
   アグリゲートのバージョンを返す
@@ -31,9 +31,6 @@ defmodule Shared.Domain.Aggregate.Base do
   defmacro __using__(_opts) do
     quote do
       @behaviour Shared.Domain.Aggregate.Base
-
-      @impl true
-      def aggregate_id, do: nil
 
       @impl true
       def version, do: 0

@@ -204,7 +204,7 @@ defmodule QueryService.Application.ProjectionManager do
     end
   end
 
-  defp handle_product_price_changed(%ProductPriceChanged{} = event, state) do
+  defp handle_product_price_changed(%ProductPriceChanged{} = event, _state) do
     # 価格変更は監査ログとして記録（実際の更新はProductUpdatedで行われる）
     Logger.info("Product price changed: #{event.aggregate_id} from #{event.old_price} to #{event.new_price}")
   end

@@ -67,7 +67,9 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
       limit = query.limit || 20
       offset = query.offset || 0
       
-      products = ProductRepo.list_all()
+      {:ok, all_products} = ProductRepo.list()
+      
+      products = all_products
       |> filter_by_search_term(query.search_term)
       |> filter_by_category(query.category_id)
       |> filter_by_price_range(query.min_price, query.max_price)

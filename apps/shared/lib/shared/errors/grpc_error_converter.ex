@@ -8,23 +8,15 @@ defmodule Shared.Errors.GrpcErrorConverter do
   
   alias Shared.Errors.AppError
   
-  # gRPCステータスコードの定義
-  @grpc_status_ok 0
-  @grpc_status_cancelled 1
+  # gRPCステータスコードの定義（使用中のもののみ）
   @grpc_status_unknown 2
   @grpc_status_invalid_argument 3
-  @grpc_status_deadline_exceeded 4
   @grpc_status_not_found 5
   @grpc_status_already_exists 6
   @grpc_status_permission_denied 7
-  @grpc_status_resource_exhausted 8
   @grpc_status_failed_precondition 9
-  @grpc_status_aborted 10
-  @grpc_status_out_of_range 11
-  @grpc_status_unimplemented 12
   @grpc_status_internal 13
   @grpc_status_unavailable 14
-  @grpc_status_data_loss 15
   @grpc_status_unauthenticated 16
   
   # AppError typeをgRPCエラータイプにマッピング

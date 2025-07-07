@@ -4,7 +4,6 @@ defmodule ClientService.GraphQL.Types.Product do
   """
 
   use Absinthe.Schema.Notation
-  import Absinthe.Resolution.Helpers
 
   # 商品型定義
   object :product do

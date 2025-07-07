@@ -4,7 +4,6 @@ defmodule ClientService.GraphQL.Types.Category do
   """
 
   use Absinthe.Schema.Notation
-  import Absinthe.Resolution.Helpers
 
   # カテゴリ型定義
   object :category do

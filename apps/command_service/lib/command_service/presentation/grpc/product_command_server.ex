@@ -12,7 +12,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
     DeleteProduct
   }
   alias CommandService.Application.CommandBus
-  alias Shared.Errors.{AppError, GrpcErrorConverter}
+  alias Shared.Errors.GrpcErrorConverter
   alias Shared.Infrastructure.EventStore
   alias CommandService.Domain.Aggregates.ProductAggregate
 
@@ -26,8 +26,6 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
       nanos: nanos
     }
   end
-
-  defp datetime_to_timestamp(nil), do: nil
 
   def update_product(%Proto.ProductUpParam{} = request, _stream) do
     case request.crud do

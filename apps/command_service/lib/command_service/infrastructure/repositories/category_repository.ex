@@ -10,7 +10,6 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
   import Ecto.Query, warn: false
 
   alias CommandService.Domain.Entities.Category
-  alias CommandService.Domain.ValueObjects.{CategoryId, CategoryName}
   alias CommandService.Infrastructure.Database.{Repo, Schemas.CategorySchema}
 
   @impl true
@@ -92,6 +91,18 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
     schemas = Repo.all(CategorySchema)
     entities = Enum.map(schemas, &schema_to_entity/1)
     {:ok, entities}
+  end
+
+  @impl true
+  def has_products?(category_id) when is_binary(category_id) do
+    alias CommandService.Infrastructure.Database.Schemas.ProductSchema
+    
+    query = from(p in ProductSchema,
+      where: p.category_id == ^category_id,
+      select: count(p.id)
+    )
+    
+    Repo.one(query) > 0
   end
 
   # プライベート関数 - スキーマからエンティティへの変換

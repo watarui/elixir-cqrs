@@ -23,6 +23,10 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
         }
 
   use Shared.Domain.Aggregate.Base
+  
+  @impl true
+  def aggregate_id(%__MODULE__{id: nil}), do: nil
+  def aggregate_id(%__MODULE__{id: id}), do: CategoryId.value(id)
 
   # コマンドハンドラー
 
@@ -51,14 +55,22 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
       "" -> {:ok, []}
       new_name ->
         case CategoryName.new(new_name) do
-          {:ok, name} when name != aggregate.name ->
-            event = CategoryUpdated.new(
-              CategoryId.value(id),
-              CategoryName.value(aggregate.name),
-              CategoryName.value(name),
-              %{user_id: params[:user_id]}
-            )
-            {:ok, [event]}
+          {:ok, name} ->
+            # 現在の名前と比較
+            current_name = if aggregate.name, do: CategoryName.value(aggregate.name), else: ""
+            new_name_value = CategoryName.value(name)
+            
+            if current_name != new_name_value do
+              event = CategoryUpdated.new(
+                CategoryId.value(id),
+                current_name,
+                new_name_value,
+                %{user_id: params[:user_id]}
+              )
+              {:ok, [event]}
+            else
+              {:ok, []}
+            end
           _ ->
             {:ok, []}
         end
@@ -143,12 +155,4 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
     end
   end
   
-  @spec load_from_events(list(struct())) :: t()
-  def load_from_events(events) do
-    Enum.reduce(events, new(), fn event, aggregate ->
-      aggregate
-      |> apply_event(event)
-      |> Map.update!(:version, &(&1 + 1))
-    end)
-  end
 end
