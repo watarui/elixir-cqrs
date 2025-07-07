@@ -135,7 +135,15 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
           quantity: item.quantity
         }
       end),
-      total_amount: input.total_amount
+      total_amount: input.total_amount,
+      shipping_address: case Map.get(input, :shipping_address) do
+        nil -> nil
+        address -> %{
+          street: address.street,
+          city: address.city,
+          postal_code: address.postal_code
+        }
+      end
     }
     
     case CqrsFacade.start_order_saga(saga_context) do

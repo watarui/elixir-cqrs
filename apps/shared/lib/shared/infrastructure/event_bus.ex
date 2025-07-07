@@ -62,7 +62,12 @@ defmodule Shared.Infrastructure.EventBus do
 
   @impl GenServer
   def handle_cast({:publish, event}, state) do
-    event_type = event.__struct__
+    # イベントタイプを取得（構造体またはマップのevent_typeフィールド）
+    event_type = cond do
+      is_struct(event) -> event.__struct__
+      is_map(event) and Map.has_key?(event, :event_type) -> event.event_type
+      true -> :unknown_event
+    end
     
     # 全体購読者に通知
     Enum.each(state.subscribers, fn
