@@ -23,6 +23,14 @@ defmodule QueryService.Application do
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
       
+      # Prometheusエクスポーター
+      {TelemetryMetricsPrometheus, 
+       metrics: Shared.Telemetry.Metrics.metrics(),
+       port: 9570},
+      
+      # HTTPサーバー for metrics endpoint
+      {Plug.Cowboy, scheme: :http, plug: QueryService.MetricsPlug, options: [port: 9570]},
+      
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,
 

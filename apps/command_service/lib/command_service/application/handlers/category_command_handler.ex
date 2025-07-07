@@ -47,6 +47,9 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
       # イベントをログに記録
       Enum.each(new_events, &Shared.EventLogger.log_domain_event/1)
       
+      # イベントバスに発行
+      Enum.each(new_events, &Shared.Infrastructure.EventBus.publish/1)
+      
       {:ok, %{aggregate_id: command.id, events: new_events}}
     else
       {:error, :not_found} -> {:error, "Category not found"}
@@ -63,6 +66,9 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
       
       # イベントをログに記録
       Enum.each(new_events, &Shared.EventLogger.log_domain_event/1)
+      
+      # イベントバスに発行
+      Enum.each(new_events, &Shared.Infrastructure.EventBus.publish/1)
       
       {:ok, %{aggregate_id: command.id, events: new_events}}
     else

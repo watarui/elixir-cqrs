@@ -67,6 +67,7 @@ services:
     container_name: elixir-cqrs-command-service
     ports:
       - "50051:50051"
+      - "9569:9569"  # Prometheus metrics
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres-command:5432/command_service_dev
       - EVENT_STORE_HOST=postgres-event
@@ -90,6 +91,7 @@ services:
     container_name: elixir-cqrs-query-service
     ports:
       - "50052:50052"
+      - "9570:9570"  # Prometheus metrics
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres-query:5432/query_service_dev
       - EVENT_STORE_HOST=postgres-event

@@ -22,6 +22,14 @@ defmodule CommandService.Application do
 
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
+      
+      # Prometheusエクスポーター
+      {TelemetryMetricsPrometheus, 
+       metrics: Shared.Telemetry.Metrics.metrics(),
+       port: 9569},
+      
+      # HTTPサーバー for metrics endpoint
+      {Plug.Cowboy, scheme: :http, plug: CommandService.MetricsPlug, options: [port: 9569]},
 
       # イベントストア (PostgreSQL)
       {Shared.Infrastructure.EventStore.PostgresAdapter, []},

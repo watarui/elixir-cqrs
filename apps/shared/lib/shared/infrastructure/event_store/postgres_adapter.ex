@@ -64,8 +64,11 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       port: opts[:port] || System.get_env("EVENT_STORE_PORT", "5432") |> String.to_integer()
     ]
 
+    Logger.info("Connecting to event store with config: #{inspect(Map.new(db_config) |> Map.delete(:password))}")
+
     case Postgrex.start_link(db_config) do
       {:ok, conn} ->
+        Logger.info("Successfully connected to event store")
         create_tables(conn)
         {:ok, %{conn: conn}}
       
@@ -77,27 +80,43 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl GenServer
   def handle_call({:append_to_stream, stream_name, events, expected_version}, _from, state) do
+    Logger.info("Appending #{length(events)} events to stream: #{stream_name}, expected version: #{expected_version}")
+    
     result = Postgrex.transaction(state.conn, fn conn ->
       # 現在のバージョンを確認
       current_version = get_stream_version(conn, stream_name)
+      Logger.debug("Current version for stream #{stream_name}: #{current_version}")
       
       if current_version == expected_version do
         # イベントを挿入
         version = Enum.reduce(events, current_version, fn event, version ->
           new_version = version + 1
-          insert_event(conn, stream_name, event, new_version)
+          case insert_event(conn, stream_name, event, new_version) do
+            {:ok, _} ->
+              Logger.debug("Event inserted: #{event.__struct__} at version #{new_version}")
+            {:error, reason} ->
+              Logger.error("Failed to insert event: #{inspect(reason)}")
+              raise "Event insertion failed: #{inspect(reason)}"
+          end
           new_version
         end)
         {:ok, version}
       else
+        Logger.error("Version mismatch: expected #{expected_version}, got #{current_version}")
         {:error, :version_mismatch}
       end
     end)
 
     case result do
-      {:ok, {:ok, version}} -> {:reply, {:ok, version}, state}
-      {:ok, error} -> {:reply, error, state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
+      {:ok, {:ok, version}} -> 
+        Logger.info("Successfully appended events, new version: #{version}")
+        {:reply, {:ok, version}, state}
+      {:ok, error} -> 
+        Logger.error("Transaction failed: #{inspect(error)}")
+        {:reply, error, state}
+      {:error, reason} -> 
+        Logger.error("Database error: #{inspect(reason)}")
+        {:reply, {:error, reason}, state}
     end
   end
 
@@ -280,14 +299,26 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
     event_type = event.__struct__ |> Module.split() |> List.last()
     event_data = Jason.encode!(Map.from_struct(event))
+    occurred_at = event.occurred_at || DateTime.utc_now()
     
-    Postgrex.query(conn, query, [
+    Logger.debug("Inserting event: type=#{event_type}, stream=#{stream_name}, version=#{version}")
+    
+    result = Postgrex.query(conn, query, [
       stream_name,
       version,
       event_type,
       event_data,
-      event.occurred_at || DateTime.utc_now()
+      occurred_at
     ])
+    
+    case result do
+      {:ok, _} -> 
+        Logger.debug("Event successfully inserted")
+        {:ok, nil}
+      {:error, reason} -> 
+        Logger.error("Event insertion failed: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   defp deserialize_event([event_type, event_data, _version, occurred_at]) do

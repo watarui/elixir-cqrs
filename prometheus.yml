@@ -13,13 +13,13 @@ scrape_configs:
   # Command Service
   - job_name: 'command-service'
     static_configs:
-      - targets: ['host.docker.internal:50051']
+      - targets: ['host.docker.internal:9569']  # HTTPメトリクスポート
         labels:
           service: 'command-service'
           
   # Query Service
   - job_name: 'query-service'
     static_configs:
-      - targets: ['host.docker.internal:50052']
+      - targets: ['host.docker.internal:9570']  # HTTPメトリクスポート
         labels:
           service: 'query-service'

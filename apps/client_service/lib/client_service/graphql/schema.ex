@@ -9,8 +9,9 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Category)
   import_types(ClientService.GraphQL.Types.Product)
   import_types(ClientService.GraphQL.Types.Common)
+  import_types(ClientService.GraphQL.Types.Order)
 
-  alias ClientService.GraphQL.Resolvers.{CategoryResolver, ProductResolver}
+  alias ClientService.GraphQL.Resolvers.{CategoryResolver, ProductResolver, OrderResolver}
 
   # Query定義
   query do
@@ -94,6 +95,22 @@ defmodule ClientService.GraphQL.Schema do
       arg(:id, non_null(:string))
       resolve(&ProductResolver.product_exists/3)
     end
+
+    @desc "注文関連のクエリ"
+    field :order, :order do
+      arg(:id, non_null(:string))
+      resolve(&OrderResolver.get_order/3)
+    end
+
+    field :user_orders, list_of(:order) do
+      arg(:user_id, non_null(:string))
+      resolve(&OrderResolver.list_user_orders/3)
+    end
+
+    field :saga_state, :saga_state do
+      arg(:order_id, non_null(:string))
+      resolve(&OrderResolver.get_saga_state/3)
+    end
   end
 
   # Mutation定義
@@ -128,6 +145,17 @@ defmodule ClientService.GraphQL.Schema do
     field :delete_product, :boolean do
       arg(:id, non_null(:string))
       resolve(&ProductResolver.delete_product/3)
+    end
+
+    @desc "注文関連のミューテーション"
+    field :create_order, :order do
+      arg(:input, non_null(:order_create_input))
+      resolve(&OrderResolver.create_order/3)
+    end
+
+    field :cancel_order, :boolean do
+      arg(:input, non_null(:order_cancel_input))
+      resolve(&OrderResolver.cancel_order/3)
     end
   end
 
