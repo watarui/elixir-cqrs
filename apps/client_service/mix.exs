@@ -52,7 +52,7 @@ defmodule ClientService.MixProject do
       {:uuid, "~> 1.1"},
 
       # OpenTelemetry Phoenix instrumentation
-      {:opentelemetry_phoenix, "~> 1.1"},
+      {:opentelemetry_phoenix, "~> 2.0"},
       {:opentelemetry_absinthe, "~> 1.0"},
 
       # Prometheus メトリクス
