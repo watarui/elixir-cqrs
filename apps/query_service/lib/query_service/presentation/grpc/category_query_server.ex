@@ -7,16 +7,18 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
 
   alias QueryService.Infrastructure.Repositories.CategoryRepository
 
-  # タイムスタンプ変換用ヘルパー関数
-  defp to_unix_timestamp(nil), do: 0
+  # Helper function to convert DateTime to Unix timestamp
+  defp datetime_to_unix_timestamp(%DateTime{} = datetime) do
+    DateTime.to_unix(datetime)
+  end
 
-  defp to_unix_timestamp(%NaiveDateTime{} = naive_dt) do
-    naive_dt
+  defp datetime_to_unix_timestamp(%NaiveDateTime{} = naive_datetime) do
+    naive_datetime
     |> DateTime.from_naive!("Etc/UTC")
     |> DateTime.to_unix()
   end
 
-  defp to_unix_timestamp(%DateTime{} = dt), do: DateTime.to_unix(dt)
+  defp datetime_to_unix_timestamp(nil), do: 0
 
   def get_category(%Query.CategoryQueryRequest{id: id}, _stream) do
     case CategoryRepository.find_by_id(id) do
@@ -28,8 +30,8 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           category: %Query.Category{
             id: category.id,
             name: category.name,
-            created_at: to_unix_timestamp(category.created_at),
-            updated_at: to_unix_timestamp(category.updated_at)
+            created_at: datetime_to_unix_timestamp(category.created_at),
+            updated_at: datetime_to_unix_timestamp(category.updated_at)
           }
         }
 
@@ -47,8 +49,8 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           category: %Query.Category{
             id: category.id,
             name: category.name,
-            created_at: to_unix_timestamp(category.created_at),
-            updated_at: to_unix_timestamp(category.updated_at)
+            created_at: datetime_to_unix_timestamp(category.created_at),
+            updated_at: datetime_to_unix_timestamp(category.updated_at)
           }
         }
 
@@ -65,8 +67,8 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
               %Query.Category{
                 id: category.id,
                 name: category.name,
-                created_at: to_unix_timestamp(category.created_at),
-                updated_at: to_unix_timestamp(category.updated_at)
+                created_at: datetime_to_unix_timestamp(category.created_at),
+                updated_at: datetime_to_unix_timestamp(category.updated_at)
               }
             end)
         }
@@ -87,8 +89,8 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
               %Query.Category{
                 id: category.id,
                 name: category.name,
-                created_at: to_unix_timestamp(category.created_at),
-                updated_at: to_unix_timestamp(category.updated_at)
+                created_at: datetime_to_unix_timestamp(category.created_at),
+                updated_at: datetime_to_unix_timestamp(category.updated_at)
               }
             end)
         }
@@ -112,8 +114,8 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
               %Query.Category{
                 id: category.id,
                 name: category.name,
-                created_at: to_unix_timestamp(category.created_at),
-                updated_at: to_unix_timestamp(category.updated_at)
+                created_at: datetime_to_unix_timestamp(category.created_at),
+                updated_at: datetime_to_unix_timestamp(category.updated_at)
               }
             end)
         }

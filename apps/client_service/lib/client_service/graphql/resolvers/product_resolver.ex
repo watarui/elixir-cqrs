@@ -171,7 +171,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          request <- %ProductUpParam{
            crud: :INSERT,
            name: input.name,
-           price: input.price,
+           price: round(input.price),
            categoryId: input.category_id
          },
          {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
@@ -179,7 +179,14 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       # TODO: Add PubSub support
       # Absinthe.Subscription.publish(context.pubsub, response.product, product_created: "*")
 
-      {:ok, format_product(response.product)}
+      case response do
+        %{product: nil, error: %{message: message}} ->
+          {:error, message}
+        %{product: product} when not is_nil(product) ->
+          {:ok, format_product(product)}
+        _ ->
+          {:error, "Unexpected response format"}
+      end
     else
       {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
@@ -194,9 +201,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          request <- %ProductUpParam{
            crud: :UPDATE,
            id: input.id,
-           name: input.name,
-           price: input.price,
-           categoryId: input.category_id
+           name: Map.get(input, :name),
+           price: if(Map.has_key?(input, :price) && input.price, do: round(input.price), else: nil),
+           categoryId: Map.get(input, :category_id)
          },
          {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 更新成功通知を送信
@@ -253,9 +260,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       id: product.id,
       name: product.name,
       price: product.price,
-      category_id: product.category_id,
-      created_at: format_timestamp(product.created_at),
-      updated_at: format_timestamp(product.updated_at)
+      category_id: if(product.category, do: product.category.id, else: nil),
+      created_at: format_timestamp(Map.get(product, :created_at)),
+      updated_at: format_timestamp(Map.get(product, :updated_at))
     }
   end
 

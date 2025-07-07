@@ -14,14 +14,18 @@ defmodule CommandService.Domain.ValueObjects.ProductPrice do
   @max_price Decimal.new("999999.99")
 
   @spec new(Decimal.t() | String.t() | number()) :: {:ok, t()} | {:error, String.t()}
-  def new(value) when is_number(value) do
-    value |> Decimal.new() |> new()
+  def new(value) when is_integer(value) do
+    value |> to_string() |> Decimal.new() |> new()
+  end
+  
+  def new(value) when is_float(value) do
+    value |> to_string() |> Decimal.new() |> new()
   end
 
   def new(value) when is_binary(value) do
     case Decimal.parse(value) do
-      {:ok, decimal} -> new(decimal)
-      :error -> {:error, "Invalid price format"}
+      {decimal, ""} -> new(decimal)
+      _ -> {:error, "Invalid price format"}
     end
   end
 
@@ -48,8 +52,8 @@ defmodule CommandService.Domain.ValueObjects.ProductPrice do
     end
   end
 
-  @spec to_string(t()) :: String.t()
-  def to_string(%__MODULE__{value: value}), do: Decimal.to_string(value)
+  @spec to_string_value(t()) :: String.t()
+  def to_string_value(%__MODULE__{value: value}), do: Decimal.to_string(value)
 
   @spec value(t()) :: Decimal.t()
   def value(%__MODULE__{value: value}), do: value

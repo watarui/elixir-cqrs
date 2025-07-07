@@ -142,7 +142,14 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
       # TODO: Add PubSub support
       # Absinthe.Subscription.publish(context.pubsub, response.category, category_created: "*")
 
-      {:ok, format_category(response.category)}
+      case response do
+        %{category: nil, error: %{message: message}} ->
+          {:error, message}
+        %{category: category} when not is_nil(category) ->
+          {:ok, format_category(category)}
+        _ ->
+          {:error, "Unexpected response format"}
+      end
     else
       {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
@@ -235,8 +242,8 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
     %{
       id: category.id,
       name: category.name,
-      created_at: format_timestamp(category.created_at),
-      updated_at: format_timestamp(category.updated_at)
+      created_at: format_timestamp(Map.get(category, :created_at)),
+      updated_at: format_timestamp(Map.get(category, :updated_at))
     }
   end
 

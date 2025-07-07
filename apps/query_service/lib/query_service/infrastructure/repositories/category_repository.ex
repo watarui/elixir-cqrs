@@ -108,6 +108,11 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
   # Schema to Domain Model変換
   defp schema_to_model(schema) do
     Category.new(schema.id, schema.name)
-    |> Category.with_timestamps(schema.inserted_at, schema.updated_at)
+    |> Category.with_timestamps(to_datetime(schema.inserted_at), to_datetime(schema.updated_at))
   end
+
+  # タイムスタンプ変換ヘルパー関数
+  defp to_datetime(nil), do: nil
+  defp to_datetime(%NaiveDateTime{} = naive_dt), do: DateTime.from_naive!(naive_dt, "Etc/UTC")
+  defp to_datetime(%DateTime{} = dt), do: dt
 end

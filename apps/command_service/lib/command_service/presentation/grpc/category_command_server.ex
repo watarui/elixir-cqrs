@@ -7,6 +7,19 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   alias CommandService.Application.Services.CategoryService
 
+  # Helper function to convert DateTime to Google.Protobuf.Timestamp
+  defp datetime_to_timestamp(%DateTime{} = datetime) do
+    seconds = DateTime.to_unix(datetime)
+    nanos = datetime.microsecond |> elem(0) |> Kernel.*(1000)
+    
+    %Google.Protobuf.Timestamp{
+      seconds: seconds,
+      nanos: nanos
+    }
+  end
+
+  defp datetime_to_timestamp(nil), do: nil
+
   def update_category(%Proto.CategoryUpParam{} = request, _stream) do
     case request.crud do
       :INSERT ->
@@ -31,7 +44,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
         response = %Proto.CategoryUpResult{
           category: format_category(category),
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -43,7 +56,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
             type: "CREATION_FAILED",
             message: "Failed to create category: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -56,7 +69,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
         response = %Proto.CategoryUpResult{
           category: format_category(category),
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -68,7 +81,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
             type: "UPDATE_FAILED",
             message: "Failed to update category: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -81,7 +94,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
         response = %Proto.CategoryUpResult{
           category: nil,
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -93,7 +106,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
             type: "DELETE_FAILED",
             message: "Failed to delete category: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -102,8 +115,8 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   defp format_category(category) do
     %Proto.Category{
-      id: category.id.value,
-      name: category.name.value
+      id: CommandService.Domain.Entities.Category.id(category),
+      name: CommandService.Domain.Entities.Category.name(category)
     }
   end
 end

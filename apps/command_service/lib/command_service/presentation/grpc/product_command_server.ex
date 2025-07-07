@@ -7,6 +7,19 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
 
   alias CommandService.Application.Services.ProductService
 
+  # Helper function to convert DateTime to Google.Protobuf.Timestamp
+  defp datetime_to_timestamp(%DateTime{} = datetime) do
+    seconds = DateTime.to_unix(datetime)
+    nanos = datetime.microsecond |> elem(0) |> Kernel.*(1000)
+    
+    %Google.Protobuf.Timestamp{
+      seconds: seconds,
+      nanos: nanos
+    }
+  end
+
+  defp datetime_to_timestamp(nil), do: nil
+
   def update_product(%Proto.ProductUpParam{} = request, _stream) do
     case request.crud do
       :INSERT ->
@@ -30,12 +43,12 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
          price: price,
          categoryId: category_id
        }) do
-    case ProductService.create_product(%{name: name, price: price, category_id: category_id}) do
+    case ProductService.create_product(%{name: name, price: to_string(price), category_id: category_id}) do
       {:ok, product} ->
         response = %Proto.ProductUpResult{
           product: format_product(product),
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -47,7 +60,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
             type: "CREATION_FAILED",
             message: "Failed to create product: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -60,12 +73,12 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
          price: price,
          categoryId: category_id
        }) do
-    case ProductService.update_product(id, %{name: name, price: price, category_id: category_id}) do
+    case ProductService.update_product(id, %{name: name, price: if(price, do: to_string(price), else: nil), category_id: category_id}) do
       {:ok, product} ->
         response = %Proto.ProductUpResult{
           product: format_product(product),
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -77,7 +90,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
             type: "UPDATE_FAILED",
             message: "Failed to update product: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -90,7 +103,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
         response = %Proto.ProductUpResult{
           product: nil,
           error: nil,
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -102,7 +115,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
             type: "DELETE_FAILED",
             message: "Failed to delete product: #{inspect(reason)}"
           },
-          timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
+          timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
         response
@@ -111,9 +124,9 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
 
   defp format_product(product) do
     %Proto.Product{
-      id: product.id.value,
-      name: product.name.value,
-      price: product.price.value |> Decimal.to_float() |> trunc(),
+      id: CommandService.Domain.Entities.Product.id(product),
+      name: CommandService.Domain.Entities.Product.name(product),
+      price: CommandService.Domain.Entities.Product.price(product) |> Decimal.to_float() |> trunc(),
       category: nil
     }
   end

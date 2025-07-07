@@ -2,12 +2,16 @@ syntax = "proto3";
 
 package proto;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "/pb";
 
 // 商品カテゴリ型の定義
 message Category {
   string id = 1; // 商品カテゴリ番号
   string name = 2; // 商品カテゴリ名
+  google.protobuf.Timestamp created_at = 3; // 作成日時
+  google.protobuf.Timestamp updated_at = 4; // 更新日時
 }
 
 // 商品型の定義
@@ -16,4 +20,6 @@ message Product {
   string name = 2; // 商品名
   int32 price = 3; // 商品単価
   optional Category category = 4; // 商品カテゴリ
+  google.protobuf.Timestamp created_at = 5; // 作成日時
+  google.protobuf.Timestamp updated_at = 6; // 更新日時
 }
