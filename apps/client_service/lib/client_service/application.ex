@@ -7,9 +7,21 @@ defmodule ClientService.Application do
 
   @impl true
   def start(_type, _args) do
+    # OpenTelemetryとTelemetryの初期化
+    Shared.Telemetry.Setup.setup_opentelemetry()
+    Shared.Telemetry.Setup.attach_telemetry_handlers()
+    
+    # OpenTelemetry Phoenix instrumentation
+    OpentelemetryPhoenix.setup()
+    OpentelemetryAbsinthe.setup()
+    
     children = [
       # Phoenix PubSub を最初に起動
       {Phoenix.PubSub, name: ClientService.PubSub},
+      # Telemetry監視
+      {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
+      # Prometheusエクスポーター
+      {TelemetryMetricsPrometheus, metrics: Shared.Telemetry.Metrics.prometheus_metrics()},
       # バッチキャッシュ
       ClientService.GraphQL.BatchCache,
       # HTTP エンドポイントを起動

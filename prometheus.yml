@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Client Service (GraphQL API)
+  - job_name: 'client-service'
+    static_configs:
+      - targets: ['host.docker.internal:4000']
+        labels:
+          service: 'client-service'
+          
+  # Command Service
+  - job_name: 'command-service'
+    static_configs:
+      - targets: ['host.docker.internal:50051']
+        labels:
+          service: 'command-service'
+          
+  # Query Service
+  - job_name: 'query-service'
+    static_configs:
+      - targets: ['host.docker.internal:50052']
+        labels:
+          service: 'query-service'

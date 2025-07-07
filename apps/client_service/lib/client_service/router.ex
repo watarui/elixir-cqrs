@@ -14,6 +14,9 @@ defmodule ClientService.Router do
     pipe_through(:api)
 
     get("/health", ClientService.HealthController, :check)
+    
+    # Prometheusメトリクスエンドポイント
+    get("/metrics", ClientService.MetricsController, :metrics)
   end
 
   # GraphQL API

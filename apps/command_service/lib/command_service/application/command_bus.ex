@@ -87,20 +87,42 @@ defmodule CommandService.Application.CommandBus do
   defp execute_command(command, registry) do
     command_type = command.__struct__
     
-    case Map.get(registry, command_type) do
-      nil ->
-        {:error, "No handler found for command: #{inspect(command_type)}"}
+    # Telemetryスパンとメトリクス
+    require Shared.Telemetry.Span, as: Span
+    
+    Span.with_span "command.execute", %{command_type: inspect(command_type)} do
+      start_time = System.monotonic_time()
       
-      handler ->
-        Logger.info("Executing command #{inspect(command_type)} with handler #{inspect(handler)}")
+      result = case Map.get(registry, command_type) do
+        nil ->
+          {:error, "No handler found for command: #{inspect(command_type)}"}
         
-        try do
-          handler.handle_command(command)
-        rescue
-          e ->
-            Logger.error("Error executing command: #{inspect(e)}")
-            {:error, Exception.message(e)}
-        end
+        handler ->
+          Logger.info("Executing command #{inspect(command_type)} with handler #{inspect(handler)}")
+          
+          try do
+            handler.handle_command(command)
+          rescue
+            e ->
+              Logger.error("Error executing command: #{inspect(e)}")
+              {:error, Exception.message(e)}
+          end
+      end
+      
+      # メトリクスを記録
+      duration = System.monotonic_time() - start_time
+      status = case result do
+        {:ok, _} -> :success
+        {:error, _} -> :error
+      end
+      
+      :telemetry.execute(
+        [:command, :execute, :stop],
+        %{duration: duration},
+        %{command_type: inspect(command_type), status: status}
+      )
+      
+      result
     end
   end
 end

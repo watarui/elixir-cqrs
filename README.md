@@ -189,6 +189,21 @@ curl -X POST http://localhost:4000/graphql \
 コマンドを実行後、3 秒程度待ってからクエリを実行してください。
 ProjectionManager がイベントを読み取って Read Model を更新します。
 
+## 監視インフラ
+
+1. 監視インフラの起動
+   docker compose -f docker-compose.monitoring.yml up -d
+
+2. 各 UI へのアクセス
+
+   - Jaeger: http://localhost:16686
+   - Prometheus: http://localhost:9090
+   - Grafana: http://localhost:3000
+
+3. アプリケーションの起動
+   mix deps.get
+   mix run --no-halt
+
 ## 解決された問題
 
 ### 主要な修正事項
@@ -603,10 +618,12 @@ elixir-cqrs/
 ### 完了した主要なリファクタリング
 
 1. **DataLoader/N+1 問題の解決**
+
    - BatchCache の実装による同一リクエスト内のデータ重複排除
    - GraphQL リゾルバーでの効率的なデータ取得
 
 2. **リポジトリパターンの完全実装**
+
    - Unit of Work パターンによるトランザクション管理
    - RepositoryContext による依存性注入
    - テスト時のモックリポジトリ使用可能

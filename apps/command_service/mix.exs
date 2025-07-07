@@ -38,6 +38,9 @@ defmodule CommandService.MixProject do
       # UUID
       {:uuid, "~> 1.1"},
 
+      # OpenTelemetry Ecto instrumentation
+      {:opentelemetry_ecto, "~> 1.1"},
+      
       # Development and test
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},

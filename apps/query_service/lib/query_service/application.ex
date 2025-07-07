@@ -9,9 +9,19 @@ defmodule QueryService.Application do
 
   @impl true
   def start(_type, _args) do
+    # OpenTelemetryとTelemetryの初期化
+    Shared.Telemetry.Setup.setup_opentelemetry()
+    Shared.Telemetry.Setup.attach_telemetry_handlers()
+    
+    # OpenTelemetry Ecto instrumentation
+    :opentelemetry_ecto.setup([:query_service, :repo])
+    
     children = [
       # データベース接続
       QueryService.Infrastructure.Database.Repo,
+      
+      # Telemetry監視
+      {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
       
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,

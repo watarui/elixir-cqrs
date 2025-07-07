@@ -22,9 +22,36 @@ config :query_service, QueryService.Infrastructure.Database.Repo,
 # gRPC サーバーの設定
 config :query_service, :grpc_port, 50052
 
-# Logger の設定
+# 構造化ログの設定
+config :logger, :console,
+  format: {LoggerJSON.Formatters.Basic, []}
+
 config :logger,
+  backends: [:console],
   level: :info
+
+# OpenTelemetryの設定
+config :opentelemetry,
+  resource: %{
+    service: %{
+      name: "elixir-cqrs",
+      version: "0.1.0"
+    }
+  },
+  span_processor: :batch,
+  traces_exporter: :otlp
+
+# Jaegerエクスポーターの設定
+config :opentelemetry_exporter,
+  otlp_protocol: :grpc,
+  otlp_endpoint: "http://localhost:4317",
+  otlp_compression: :gzip
+
+# サンプリング設定
+config :opentelemetry, :processors,
+  otel_batch_processor: %{
+    exporter: {:opentelemetry_exporter, %{}}
+  }
 
 # 環境別設定ファイルをインポート
 import_config "#{config_env()}.exs"
