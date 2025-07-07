@@ -12,7 +12,8 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
     CategoryByNameRequest,
     CategorySearchRequest,
     CategoryPaginationRequest,
-    CategoryExistsRequest
+    CategoryExistsRequest,
+    Empty
   }
 
   alias Proto.CategoryUpParam
@@ -36,7 +37,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          {:ok, response} <- Query.CategoryQuery.Stub.get_category_by_name(channel, request) do
       {:ok, format_category(response.category)}
     else
-      {:error, reason} -> {:error, "Failed to get category by name: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get category by name: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -46,13 +47,20 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   def list_categories(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         request <- %{},
+         request <- %Empty{},
          {:ok, response} <- Query.CategoryQuery.Stub.list_categories(channel, request) do
       categories = Enum.map(response.categories, &format_category/1)
       {:ok, categories}
     else
-      {:error, reason} -> {:error, "Failed to list categories: #{reason}"}
-      %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
+      {:error, reason} ->
+        {:error, "Failed to get categories: #{inspect(reason)}"}
+
+      %GRPC.RPCError{status: status, message: message} = error ->
+        {:error,
+         "gRPC error - Status: #{status}, Message: #{message}, Full Error: #{inspect(error)}"}
+
+      other ->
+        {:error, "Unexpected error: #{inspect(other)}"}
     end
   end
 
@@ -66,7 +74,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
       categories = Enum.map(response.categories, &format_category/1)
       {:ok, categories}
     else
-      {:error, reason} -> {:error, "Failed to search categories: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to search categories: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -81,7 +89,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
       categories = Enum.map(response.categories, &format_category/1)
       {:ok, categories}
     else
-      {:error, reason} -> {:error, "Failed to get paginated categories: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get paginated categories: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -91,7 +99,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   def get_statistics(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         request <- %{},
+         request <- %Empty{},
          {:ok, response} <- Query.CategoryQuery.Stub.get_category_statistics(channel, request) do
       statistics = %{
         total_count: response.total_count,
@@ -101,7 +109,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
 
       {:ok, statistics}
     else
-      {:error, reason} -> {:error, "Failed to get category statistics: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get category statistics: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -115,7 +123,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          {:ok, response} <- Query.CategoryQuery.Stub.category_exists(channel, request) do
       {:ok, response.exists}
     else
-      {:error, reason} -> {:error, "Failed to check category existence: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to check category existence: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -123,7 +131,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを作成
   """
-  def create_category(_parent, %{input: input}, context) do
+  def create_category(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
            crud: :INSERT,
@@ -131,11 +139,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          },
          {:ok, response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
       # 作成成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, response.category, category_created: "*")
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, response.category, category_created: "*")
 
       {:ok, format_category(response.category)}
     else
-      {:error, reason} -> {:error, "Failed to create category: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -143,7 +152,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを更新
   """
-  def update_category(_parent, %{input: input}, context) do
+  def update_category(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
            crud: :UPDATE,
@@ -152,12 +161,13 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          },
          {:ok, response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
       # 更新成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: "*")
-      Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: input.id)
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: "*")
+      # Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: input.id)
 
       {:ok, format_category(response.category)}
     else
-      {:error, reason} -> {:error, "Failed to update category: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to update category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -165,7 +175,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを削除
   """
-  def delete_category(_parent, %{id: id}, context) do
+  def delete_category(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
            crud: :DELETE,
@@ -173,11 +183,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          },
          {:ok, _response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
       # 削除成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, id, category_deleted: "*")
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, id, category_deleted: "*")
 
       {:ok, true}
     else
-      {:error, reason} -> {:error, "Failed to delete category: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to delete category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -205,7 +216,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
          {:ok, response} <- Query.CategoryQuery.Stub.get_category(channel, request) do
       {:ok, response}
     else
-      {:error, reason} -> {:error, "Failed to get category: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -229,11 +240,25 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
     }
   end
 
+  defp format_timestamp(nil), do: nil
   defp format_timestamp(0), do: nil
 
   defp format_timestamp(timestamp) when is_integer(timestamp) do
     DateTime.from_unix!(timestamp)
   end
 
-  defp format_timestamp(_), do: nil
+  # Google.Protobuf.Timestamp 構造体の場合
+  defp format_timestamp(%{seconds: seconds, nanos: _nanos}) when is_integer(seconds) do
+    DateTime.from_unix!(seconds)
+  end
+
+  defp format_timestamp(%{__struct__: _} = struct) do
+    # その他のstructは文字列表現を返す
+    to_string(struct)
+  end
+
+  defp format_timestamp(other) do
+    # その他の場合は文字列に変換
+    to_string(other)
+  end
 end

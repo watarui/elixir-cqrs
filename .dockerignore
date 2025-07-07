@@ -1,0 +1,41 @@
+# Git関連
+.git
+.gitignore
+
+# Elixir関連
+_build/
+deps/
+*.ez
+
+# ログファイル
+*.log
+
+# テスト関連
+test/
+priv/repo/migrations/
+
+# 開発環境関連
+.env
+.env.local
+
+# IDE関連
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS関連
+.DS_Store
+Thumbs.db
+
+# Docker関連
+docker-compose*
+.dockerignore
+
+# ドキュメント
+README.md
+DEVELOPMENT_GUIDE.md
+
+# その他
+node_modules/
+npm-debug.log*

@@ -14,7 +14,8 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
     ProductByCategoryRequest,
     ProductPriceRangeRequest,
     ProductPaginationRequest,
-    ProductExistsRequest
+    ProductExistsRequest,
+    Empty
   }
 
   alias Proto.ProductUpParam
@@ -28,7 +29,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          {:ok, response} <- Query.ProductQuery.Stub.get_product(channel, request) do
       {:ok, format_product(response.product)}
     else
-      {:error, reason} -> {:error, "Failed to get product: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -42,7 +43,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          {:ok, response} <- Query.ProductQuery.Stub.get_product_by_name(channel, request) do
       {:ok, format_product(response.product)}
     else
-      {:error, reason} -> {:error, "Failed to get product by name: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get product by name: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -52,12 +53,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def list_products(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         request <- %{},
+         request <- %Empty{},
          {:ok, response} <- Query.ProductQuery.Stub.list_products(channel, request) do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
-      {:error, reason} -> {:error, "Failed to list products: #{reason}"}
+      {:error, reason} -> {:error, "Failed to get products: #{inspect(reason)}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -72,7 +73,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
-      {:error, reason} -> {:error, "Failed to search products: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to search products: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -87,7 +88,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
-      {:error, reason} -> {:error, "Failed to get paginated products: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get paginated products: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -102,7 +103,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
-      {:error, reason} -> {:error, "Failed to get products by category: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get products by category: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -121,7 +122,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
-      {:error, reason} -> {:error, "Failed to get products by price range: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get products by price range: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -131,7 +132,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def get_statistics(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         request <- %{},
+         request <- %Empty{},
          {:ok, response} <- Query.ProductQuery.Stub.get_product_statistics(channel, request) do
       statistics = %{
         total_count: response.total_count,
@@ -143,7 +144,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
 
       {:ok, statistics}
     else
-      {:error, reason} -> {:error, "Failed to get product statistics: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get product statistics: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -157,7 +158,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          {:ok, response} <- Query.ProductQuery.Stub.product_exists(channel, request) do
       {:ok, response.exists}
     else
-      {:error, reason} -> {:error, "Failed to check product existence: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to check product existence: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -165,7 +166,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を作成
   """
-  def create_product(_parent, %{input: input}, context) do
+  def create_product(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
            crud: :INSERT,
@@ -175,11 +176,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          },
          {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 作成成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, response.product, product_created: "*")
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, response.product, product_created: "*")
 
       {:ok, format_product(response.product)}
     else
-      {:error, reason} -> {:error, "Failed to create product: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -187,7 +189,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を更新
   """
-  def update_product(_parent, %{input: input}, context) do
+  def update_product(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
            crud: :UPDATE,
@@ -198,12 +200,13 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          },
          {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 更新成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: "*")
-      Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: input.id)
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: "*")
+      # Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: input.id)
 
       {:ok, format_product(response.product)}
     else
-      {:error, reason} -> {:error, "Failed to update product: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to update product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -211,7 +214,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を削除
   """
-  def delete_product(_parent, %{id: id}, context) do
+  def delete_product(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
            crud: :DELETE,
@@ -219,11 +222,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          },
          {:ok, _response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 削除成功通知を送信
-      Absinthe.Subscription.publish(context.pubsub, id, product_deleted: "*")
+      # TODO: Add PubSub support
+      # Absinthe.Subscription.publish(context.pubsub, id, product_deleted: "*")
 
       {:ok, true}
     else
-      {:error, reason} -> {:error, "Failed to delete product: #{reason}"}
+      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to delete product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
   end
@@ -255,11 +259,25 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
     }
   end
 
+  defp format_timestamp(nil), do: nil
   defp format_timestamp(0), do: nil
 
   defp format_timestamp(timestamp) when is_integer(timestamp) do
     DateTime.from_unix!(timestamp)
   end
 
-  defp format_timestamp(_), do: nil
+  # Google.Protobuf.Timestamp 構造体の場合
+  defp format_timestamp(%{seconds: seconds, nanos: _nanos}) when is_integer(seconds) do
+    DateTime.from_unix!(seconds)
+  end
+
+  defp format_timestamp(%{__struct__: _} = struct) do
+    # その他のstructは文字列表現を返す
+    to_string(struct)
+  end
+
+  defp format_timestamp(other) do
+    # その他の場合は文字列に変換
+    to_string(other)
+  end
 end

@@ -6,7 +6,7 @@ defmodule ClientService.MixProject do
       app: :client_service,
       version: "0.1.0",
       build_path: "../../_build",
-      config_path: "../../config/config.exs",
+      config_path: "config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
@@ -37,6 +37,7 @@ defmodule ClientService.MixProject do
       # GraphQL
       {:absinthe, "~> 1.7"},
       {:absinthe_phoenix, "~> 2.0"},
+      {:absinthe_plug, "~> 1.5"},
 
       # gRPC クライアント
       {:grpc, "~> 0.10.0"},

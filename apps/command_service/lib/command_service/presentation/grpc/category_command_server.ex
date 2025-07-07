@@ -34,7 +34,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
@@ -46,7 +46,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -59,7 +59,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
@@ -71,7 +71,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -84,7 +84,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
@@ -96,14 +96,14 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
   defp format_category(category) do
     %Proto.Category{
-      id: category.id,
-      name: category.name
+      id: category.id.value,
+      name: category.name.value
     }
   end
 end

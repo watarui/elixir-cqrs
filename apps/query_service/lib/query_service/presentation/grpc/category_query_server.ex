@@ -33,7 +33,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           }
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -52,7 +52,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           }
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -71,7 +71,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
             end)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -93,7 +93,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
             end)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -118,7 +118,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
             end)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -134,7 +134,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           categories_with_timestamps: stats.categories_with_timestamps
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -148,6 +148,6 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
       exists: exists
     }
 
-    {:ok, response}
+    response
   end
 end

@@ -1,0 +1,121 @@
+services:
+  # PostgreSQL データベース（Command Service用）
+  postgres-command:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-command
+    environment:
+      POSTGRES_DB: command_service_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_command_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elixir-cqrs-network
+
+  # PostgreSQL データベース（Query Service用）
+  postgres-query:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-query
+    environment:
+      POSTGRES_DB: query_service_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_query_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elixir-cqrs-network
+
+  # Command Service
+  command-service:
+    build:
+      context: .
+      dockerfile: docker/command_service/Dockerfile
+    container_name: elixir-cqrs-command-service
+    ports:
+      - "50051:50051"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres-command:5432/command_service_dev
+      - MIX_ENV=dev
+    depends_on:
+      postgres-command:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - elixir-cqrs-network
+
+  # Query Service
+  query-service:
+    build:
+      context: .
+      dockerfile: docker/query_service/Dockerfile
+    container_name: elixir-cqrs-query-service
+    ports:
+      - "50052:50052"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres-query:5432/query_service_dev
+      - MIX_ENV=dev
+    depends_on:
+      postgres-query:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - elixir-cqrs-network
+
+  # Client Service
+  client-service:
+    build:
+      context: .
+      dockerfile: docker/client_service/Dockerfile
+    container_name: elixir-cqrs-client-service
+    ports:
+      - "4000:4000"
+    environment:
+      - COMMAND_SERVICE_HOST=command-service
+      - COMMAND_SERVICE_PORT=50051
+      - QUERY_SERVICE_HOST=query-service
+      - QUERY_SERVICE_PORT=50052
+      - MIX_ENV=dev
+    depends_on:
+      - command-service
+      - query-service
+    volumes:
+      - .:/app
+    networks:
+      - elixir-cqrs-network
+
+  # Nginx Load Balancer（将来の拡張用）
+  nginx:
+    image: nginx:alpine
+    container_name: elixir-cqrs-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - client-service
+    networks:
+      - elixir-cqrs-network
+
+volumes:
+  postgres_command_data:
+  postgres_query_data:
+
+networks:
+  elixir-cqrs-network:
+    driver: bridge 

@@ -8,10 +8,10 @@ defmodule ClientService.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # HTTP エンドポイント
+      # Phoenix PubSub を最初に起動
       {Phoenix.PubSub, name: ClientService.PubSub},
+      # HTTP エンドポイントを起動
       ClientService.Endpoint,
-
       # gRPC クライアント接続管理
       {ClientService.Infrastructure.GrpcConnections, []}
     ]

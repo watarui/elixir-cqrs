@@ -1,7 +1,7 @@
 import Config
 
 # 開発環境用データベース設定
-config :command_service, CommandService.Infrastructure.Database.Connection,
+config :command_service, CommandService.Infrastructure.Database.Repo,
   database: "command_service_dev",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

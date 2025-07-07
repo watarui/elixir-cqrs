@@ -183,28 +183,28 @@ defmodule ClientService.GraphQL.Schema do
   end
 
   # エラーハンドリング
-  def middleware(middleware, field, object) do
+  def middleware(middleware, _field, _object) do
+    # 一時的に無効化
     middleware
-    |> apply_middleware(:errors, [field, object])
-    |> apply_middleware(:auth, [field, object])
+    # |> apply_middleware(:errors, [field, object])
+    # |> apply_middleware(:auth, [field, object])
   end
 
   # カスタムミドルウェア
-  defp apply_middleware(middleware, :errors, [_field, %{identifier: :mutation}]) do
-    middleware ++ [ClientService.GraphQL.Middleware.ErrorHandler]
-  end
+  # defp apply_middleware(middleware, :errors, [_field, %{identifier: :mutation}]) do
+  #   # 一時的に無効化
+  #   middleware
+  #   # middleware ++ [ClientService.GraphQL.Middleware.ErrorHandler]
+  # end
 
-  defp apply_middleware(middleware, :errors, _) do
-    middleware ++ [ClientService.GraphQL.Middleware.ErrorHandler]
-  end
+  # defp apply_middleware(middleware, :errors, _) do
+  #   # 一時的に無効化
+  #   middleware
+  #   # middleware ++ [ClientService.GraphQL.Middleware.ErrorHandler]
+  # end
 
-  defp apply_middleware(middleware, :auth, [_field, %{identifier: :mutation}]) do
-    [ClientService.GraphQL.Middleware.AuthHandler] ++ middleware
-  end
-
-  defp apply_middleware(middleware, :auth, _) do
-    middleware
-  end
-
-  defp apply_middleware(middleware, _, _), do: middleware
+  # defp apply_middleware(middleware, :auth, [_field, _object]) do
+  #   # まだ実装していない
+  #   middleware
+  # end
 end

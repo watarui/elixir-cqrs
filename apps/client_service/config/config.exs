@@ -16,13 +16,10 @@ config :client_service, ClientService.Endpoint,
 
 # gRPC サービス接続設定
 config :client_service,
-  command_service_host: System.get_env("COMMAND_SERVICE_HOST", "localhost"),
-  command_service_port: String.to_integer(System.get_env("COMMAND_SERVICE_PORT", "50051")),
-  query_service_host: System.get_env("QUERY_SERVICE_HOST", "localhost"),
-  query_service_port: String.to_integer(System.get_env("QUERY_SERVICE_PORT", "50052"))
-
-# GraphQL 設定
-config :absinthe, Absinthe.Logger, filter: true
+  command_service_host: "localhost",
+  command_service_port: 50051,
+  query_service_host: "localhost",
+  query_service_port: 50052
 
 # Configures Elixir's Logger
 config :logger, :console,

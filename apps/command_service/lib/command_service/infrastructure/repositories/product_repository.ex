@@ -111,8 +111,18 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
   # プライベート関数 - スキーマからエンティティへの変換
   defp schema_to_entity(%ProductSchema{} = schema) do
     {:ok, product} = Product.new(schema.id, schema.name, schema.price, schema.category_id)
-    %{product | created_at: schema.inserted_at, updated_at: schema.updated_at}
+
+    %{
+      product
+      | created_at: to_datetime(schema.inserted_at),
+        updated_at: to_datetime(schema.updated_at)
+    }
   end
+
+  # タイムスタンプ変換ヘルパー関数
+  defp to_datetime(nil), do: nil
+  defp to_datetime(%NaiveDateTime{} = naive_dt), do: DateTime.from_naive!(naive_dt, "Etc/UTC")
+  defp to_datetime(%DateTime{} = dt), do: dt
 
   # プライベート関数 - エラーフォーマット
   defp format_error(changeset) do

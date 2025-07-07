@@ -38,7 +38,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.ProductUpResult{
@@ -50,7 +50,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -68,7 +68,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.ProductUpResult{
@@ -80,7 +80,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -93,7 +93,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         response = %Proto.ProductUpResult{
@@ -105,15 +105,15 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           timestamp: Google.Protobuf.Timestamp.new(DateTime.utc_now())
         }
 
-        {:ok, response}
+        response
     end
   end
 
   defp format_product(product) do
     %Proto.Product{
-      id: product.id,
-      name: product.name,
-      price: product.price |> Decimal.to_float() |> trunc(),
+      id: product.id.value,
+      name: product.name.value,
+      price: product.price.value |> Decimal.to_float() |> trunc(),
       category: nil
     }
   end

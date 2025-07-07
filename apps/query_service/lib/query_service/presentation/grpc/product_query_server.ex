@@ -28,7 +28,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           product: format_product(product)
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -42,7 +42,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           product: format_product(product)
         }
 
-        {:ok, response}
+        response
     end
   end
 
@@ -53,7 +53,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products: Enum.map(products, &format_product/1)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -67,7 +67,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products: Enum.map(products, &format_product/1)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -81,7 +81,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products: Enum.map(products, &format_product/1)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -98,7 +98,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products: Enum.map(products, &format_product/1)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -115,7 +115,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products: Enum.map(products, &format_product/1)
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -131,7 +131,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           products_with_timestamps: stats.products_with_timestamps
         }
 
-        {:ok, response}
+        response
 
       {:error, reason} ->
         {:error, reason}
@@ -145,7 +145,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
       exists: exists
     }
 
-    {:ok, response}
+    response
   end
 
   # プライベート関数
