@@ -114,7 +114,7 @@ defmodule Shared.Telemetry.Metrics do
       last_value("vm.total_run_queue_lengths.total"),
       last_value("vm.total_run_queue_lengths.cpu"),
       last_value("vm.system_counts.process_count")
-    ]
+    ] ++ Shared.Telemetry.SagaMetrics.metrics()
   end
   
   @doc """

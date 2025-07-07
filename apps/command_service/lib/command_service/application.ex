@@ -31,6 +31,13 @@ defmodule CommandService.Application do
 
       # コマンドバス
       {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
+      
+      # サガコーディネーター
+      {Shared.Infrastructure.Saga.SagaCoordinator, 
+       saga_modules: [CommandService.Domain.Sagas.OrderSaga]},
+      
+      # サガイベントハンドラー
+      {Shared.Infrastructure.Saga.SagaEventHandler, []},
 
       # gRPC サーバー
       {GRPC.Server.Supervisor,
