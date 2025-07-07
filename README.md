@@ -28,8 +28,35 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
 - [x] Command Service（ポート 50051）
 - [x] Query Service（ポート 50052）
 
+### 新機能（CQRS + イベントソーシング）
+
+- [x] **イベントソーシング基盤**
+  - イベント型定義（BaseEvent、ProductEvents、CategoryEvents）
+  - イベントストア（In-Memory実装）
+  - アグリゲート基底クラス
+  - イベントソース対応アグリゲート（ProductAggregate、CategoryAggregate）
+
+- [x] **コマンド側（書き込み）**
+  - コマンド定義（CreateProduct、UpdateProduct、DeleteProduct等）
+  - コマンドハンドラー
+  - コマンドバス（メディエーターパターン）
+  - コマンドバリデーション
+
+- [x] **クエリ側（読み取り）**
+  - クエリ定義（GetProduct、ListProducts、SearchProducts等）
+  - クエリハンドラー
+  - クエリバス
+  - 並列クエリ実行サポート
+
+- [x] **統一インターフェース**
+  - CQRSファサード
+  - コマンド/クエリの統一実行API
+  - 非同期コマンド実行
+  - トランザクションサポート（簡易版）
+
 ## アーキテクチャ
 
+### 基本構成
 ```
 [Client Service:4000]  ←→  HTTP/GraphQL  ←→  [Web Client]
          ↓
@@ -37,6 +64,32 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
          ↓
 [Command Service:50051] ←→ [Database]
 [Query Service:50052]  ←→ [Database]
+```
+
+### CQRS + イベントソーシング アーキテクチャ
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Client Service (GraphQL)                 │
+│                         CQRS Facade                          │
+└────────────────┬─────────────────────┬──────────────────────┘
+                 │                     │
+        ┌────────▼────────┐   ┌───────▼───────┐
+        │  Command Bus    │   │  Query Bus    │
+        └────────┬────────┘   └───────┬───────┘
+                 │                     │
+        ┌────────▼────────┐   ┌───────▼───────┐
+        │Command Handlers │   │Query Handlers │
+        └────────┬────────┘   └───────┬───────┘
+                 │                     │
+        ┌────────▼────────┐   ┌───────▼───────┐
+        │   Aggregates    │   │  Read Models  │
+        │ (Event Sourced) │   │  (Projections)│
+        └────────┬────────┘   └───────┬───────┘
+                 │                     │
+        ┌────────▼────────────────────▼───────┐
+        │           Event Store               │
+        │      (In-Memory / PostgreSQL)       │
+        └─────────────────────────────────────┘
 ```
 
 ## クイックスタート
@@ -166,6 +219,12 @@ curl -X POST http://localhost:4000/graphql \
 - **Database**: PostgreSQL + Ecto
 - **Build Tool**: Mix
 - **Serialization**: Protocol Buffers
+- **Architecture Patterns**:
+  - CQRS (Command Query Responsibility Segregation)
+  - Event Sourcing
+  - Domain-Driven Design (DDD)
+  - Mediator Pattern (Command/Query Bus)
+  - Repository Pattern
 
 ## プロジェクト構造
 
@@ -173,9 +232,33 @@ curl -X POST http://localhost:4000/graphql \
 elixir-cqrs/
 ├── apps/
 │   ├── client_service/     # GraphQL API サーバー
+│   │   ├── application/    # CQRSファサード
+│   │   └── graphql/        # GraphQLスキーマ・リゾルバー
 │   ├── command_service/    # 書き込み専用 gRPC サーバー
+│   │   ├── domain/         # ドメイン層
+│   │   │   ├── aggregates/ # イベントソーシング対応アグリゲート
+│   │   │   ├── entities/   # エンティティ
+│   │   │   └── value_objects/ # 値オブジェクト
+│   │   ├── application/    # アプリケーション層
+│   │   │   ├── commands/   # コマンド定義
+│   │   │   ├── handlers/   # コマンドハンドラー
+│   │   │   └── command_bus.ex # コマンドバス（メディエーター）
+│   │   └── infrastructure/ # インフラ層
 │   ├── query_service/      # 読み取り専用 gRPC サーバー
+│   │   ├── domain/         # ドメイン層（読み取りモデル）
+│   │   ├── application/    # アプリケーション層
+│   │   │   ├── queries/    # クエリ定義
+│   │   │   ├── handlers/   # クエリハンドラー
+│   │   │   └── query_bus.ex # クエリバス
+│   │   └── infrastructure/ # インフラ層（キャッシュ含む）
 │   └── shared/             # 共有ライブラリ
+│       ├── domain/         # 共有ドメイン層
+│       │   ├── events/     # イベント定義
+│       │   └── aggregate/  # アグリゲート基底クラス
+│       ├── infrastructure/ # 共有インフラ層
+│       │   └── event_store/ # イベントストア実装
+│       └── application/    # 共有アプリケーション層
+│           └── cqrs_facade.ex # CQRS統一インターフェース
 ├── proto/                  # Protocol Buffers定義
 └── README.md
 ```
@@ -381,16 +464,18 @@ elixir-cqrs/
 
 ### 4. CQRS パターンの完全実装
 
-- [ ] **イベントソーシングの導入**
+- [x] **イベントソーシングの導入**
 
-  - コマンド実行時のイベント発行
-  - イベントストアの実装
-  - プロジェクション（読み込みモデル）の自動更新
+  - イベント基盤の実装（BaseEvent、ドメインイベント定義）
+  - イベントストアの実装（EventStore、InMemoryAdapter）
+  - アグリゲート基底クラス（Aggregate.Base）
+  - ProductAggregate、CategoryAggregateの実装
 
-- [ ] **コマンド/クエリの明確な分離**
-  - コマンドハンドラーの抽出
-  - クエリハンドラーの抽出
-  - メディエーターパターンの検討
+- [x] **コマンド/クエリの明確な分離**
+  - コマンドハンドラーの抽出（ProductCommandHandler、CategoryCommandHandler）
+  - クエリハンドラーの抽出（ProductQueryHandler、CategoryQueryHandler）
+  - メディエーターパターンの実装（CommandBus、QueryBus）
+  - 統一インターフェース（CQRSFacade）
 
 ### 5. インフラストラクチャの改善
 
@@ -494,14 +579,27 @@ elixir-cqrs/
 
 ## 今後の課題
 
+### 短期（優先度高）
+- [ ] イベントストアのPostgreSQL実装
+- [ ] プロジェクション（読み取りモデル）の自動更新
+- [ ] サガパターンの実装（分散トランザクション）
+- [ ] gRPCリトライ戦略とサーキットブレーカー
+- [ ] Unit of Workパターンの実装
+
+### 中期
 - [ ] 認証・認可の実装
+- [ ] GraphQL Subscriptions（リアルタイム更新）
+- [ ] DataLoader実装（N+1問題解決）
+- [ ] イベントの永続化とリプレイ機能
+- [ ] スナップショット機能
+
+### 長期
 - [ ] ログ・モニタリングの改善
 - [ ] パフォーマンス最適化
 - [ ] テストカバレッジの向上
 - [ ] エラーレポート機能
-- [ ] GraphQL Subscriptions 実装
 - [ ] データベース接続プール調整
-- [ ] 上記リファクタリング項目の実施
+- [ ] イベントバージョニング戦略
 
 ## 開発・デバッグ
 
