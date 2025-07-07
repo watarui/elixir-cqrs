@@ -333,6 +333,54 @@ elixir-cqrs/
 └── README.md
 ```
 
+## デプロイメント
+
+### Docker
+
+本番環境用のマルチステージビルドDockerfileが用意されています：
+
+```bash
+# 本番環境用イメージのビルド
+docker compose -f docker-compose.prod.yml build
+
+# 本番環境の起動
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### Kubernetes
+
+Kubernetesへのデプロイメント：
+
+```bash
+# 開発環境
+kubectl apply -k k8s/overlays/development
+
+# ステージング環境
+kubectl apply -k k8s/overlays/staging
+
+# 本番環境
+kubectl apply -k k8s/overlays/production
+```
+
+### CI/CD
+
+GitHub Actionsを使用した自動化：
+- プルリクエスト時：テスト、フォーマットチェック、Credo、Dialyzer
+- mainブランチへのプッシュ時：Dockerイメージのビルドとプッシュ
+- タグ付け時：リリースの作成
+
+### GitOps (ArgoCD)
+
+ArgoCDを使用したGitOpsデプロイメント：
+
+```bash
+# ArgoCDアプリケーションの作成
+kubectl apply -f argocd/application.yaml
+
+# アプリケーションの同期
+argocd app sync elixir-cqrs
+```
+
 ## 🚀 マイクロサービス発展ロードマップ
 
 ### Phase 1: 統合開発・統合デプロイ（現在）

@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  # Client Service (GraphQL API)
+  client-service:
+    build:
+      context: .
+      dockerfile: docker/client_service/Dockerfile.multi
+    image: elixir-cqrs/client-service:${VERSION:-latest}
+    container_name: elixir-cqrs-client-service
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "ecto://postgres:postgres@postgres-query:5432/query_service"
+      COMMAND_SERVICE_HOST: command-service
+      COMMAND_SERVICE_PORT: "50051"
+      QUERY_SERVICE_HOST: query-service
+      QUERY_SERVICE_PORT: "50052"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-your-secret-key-base}
+    depends_on:
+      postgres-query:
+        condition: service_healthy
+      command-service:
+        condition: service_started
+      query-service:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Command Service
+  command-service:
+    build:
+      context: .
+      dockerfile: docker/command_service/Dockerfile.multi
+    image: elixir-cqrs/command-service:${VERSION:-latest}
+    container_name: elixir-cqrs-command-service
+    ports:
+      - "50051:50051"
+    environment:
+      DATABASE_URL: "ecto://postgres:postgres@postgres-command:5432/command_service"
+      EVENT_STORE_URL: "ecto://postgres:postgres@postgres-event:5432/event_store"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+    depends_on:
+      postgres-command:
+        condition: service_healthy
+      postgres-event:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Query Service
+  query-service:
+    build:
+      context: .
+      dockerfile: docker/query_service/Dockerfile.multi
+    image: elixir-cqrs/query-service:${VERSION:-latest}
+    container_name: elixir-cqrs-query-service
+    ports:
+      - "50052:50052"
+    environment:
+      DATABASE_URL: "ecto://postgres:postgres@postgres-query:5432/query_service"
+      EVENT_STORE_URL: "ecto://postgres:postgres@postgres-event:5432/event_store"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+    depends_on:
+      postgres-query:
+        condition: service_healthy
+      postgres-event:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # PostgreSQL for Command Service
+  postgres-command:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-command
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: command_service
+    volumes:
+      - postgres-command-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # PostgreSQL for Query Service
+  postgres-query:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-query
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: query_service
+    volumes:
+      - postgres-query-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # PostgreSQL for Event Store
+  postgres-event:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-event
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: event_store
+    volumes:
+      - postgres-event-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: elixir-cqrs-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - client-service
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+volumes:
+  postgres-command-data:
+  postgres-query-data:
+  postgres-event-data:
+
+networks:
+  default:
+    name: elixir-cqrs-network

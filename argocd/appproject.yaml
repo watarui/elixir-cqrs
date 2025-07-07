@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: elixir-cqrs-project
+  namespace: argocd
+spec:
+  description: Elixir CQRS Microservices Project
+  
+  # ソースリポジトリ
+  sourceRepos:
+  - https://github.com/your-username/elixir-cqrs
+  
+  # デプロイ先
+  destinations:
+  - namespace: 'elixir-cqrs-*'
+    server: https://kubernetes.default.svc
+  
+  # クラスターリソースのホワイトリスト
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: networking.k8s.io
+    kind: Ingress
+  
+  # ネームスペースリソースのホワイトリスト
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Secret
+  - group: ''
+    kind: Service
+  - group: apps
+    kind: Deployment
+  - group: apps
+    kind: StatefulSet
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: batch
+    kind: Job
+  - group: batch
+    kind: CronJob
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+  
+  # ロール設定
+  roles:
+  - name: admin
+    policies:
+    - p, proj:elixir-cqrs-project:admin, applications, *, elixir-cqrs-project/*, allow
+    - p, proj:elixir-cqrs-project:admin, repositories, *, *, allow
+    groups:
+    - your-organization:admin-team
+    
+  - name: developer
+    policies:
+    - p, proj:elixir-cqrs-project:developer, applications, get, elixir-cqrs-project/*, allow
+    - p, proj:elixir-cqrs-project:developer, applications, sync, elixir-cqrs-project/*, allow
+    groups:
+    - your-organization:dev-team

@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: query-service
+  namespace: elixir-cqrs
+  labels:
+    app: query-service
+    app.kubernetes.io/name: query-service
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: elixir-cqrs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: query-service
+  template:
+    metadata:
+      labels:
+        app: query-service
+        app.kubernetes.io/name: query-service
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50052"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: query-service
+        image: ghcr.io/elixir-cqrs/query-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 50052
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "50052"
+        - name: MIX_ENV
+          value: prod
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: query-db-url
+        - name: EVENT_STORE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: event-db-url
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://jaeger-collector:4317"
+        livenessProbe:
+          exec:
+            command:
+            - /app/bin/query_service
+            - rpc
+            - "System.halt(0)"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /app/bin/query_service
+            - rpc
+            - "System.halt(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: query-service
+  namespace: elixir-cqrs
+  labels:
+    app: query-service
+    app.kubernetes.io/name: query-service
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 50052
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  selector:
+    app: query-service
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: query-service-hpa
+  namespace: elixir-cqrs
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: query-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

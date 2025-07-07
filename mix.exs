@@ -8,6 +8,7 @@ defmodule ElixirCqrs.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
+      releases: releases(),
       # Umbrella project設定
       umbrella: true,
       elixir: "~> 1.14"
@@ -43,6 +44,26 @@ defmodule ElixirCqrs.MixProject do
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
+    ]
+  end
+
+  defp releases do
+    [
+      client_service: [
+        applications: [client_service: :permanent],
+        include_executables_for: [:unix],
+        steps: [:assemble, :tar]
+      ],
+      command_service: [
+        applications: [command_service: :permanent],
+        include_executables_for: [:unix],
+        steps: [:assemble, :tar]
+      ],
+      query_service: [
+        applications: [query_service: :permanent],
+        include_executables_for: [:unix],
+        steps: [:assemble, :tar]
+      ]
     ]
   end
 
