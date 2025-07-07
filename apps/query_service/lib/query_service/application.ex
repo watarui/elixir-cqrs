@@ -14,7 +14,10 @@ defmodule QueryService.Application do
     Shared.Telemetry.Setup.attach_telemetry_handlers()
     
     # OpenTelemetry Ecto instrumentation
-    :opentelemetry_ecto.setup([:query_service, :repo])
+    # Docker環境ではモジュールがロードされていない可能性があるため、エラーハンドリングを追加
+    if Code.ensure_loaded?(:opentelemetry_ecto) do
+      :opentelemetry_ecto.setup([:query_service, :repo])
+    end
     
     children = [
       # データベース接続
@@ -26,10 +29,10 @@ defmodule QueryService.Application do
       # Prometheusエクスポーター
       {TelemetryMetricsPrometheus, 
        metrics: Shared.Telemetry.Metrics.metrics(),
-       port: 9570},
-      
-      # HTTPサーバー for metrics endpoint
-      {Plug.Cowboy, scheme: :http, plug: QueryService.MetricsPlug, options: [port: 9570]},
+       port: 9570,
+       # Prometheusエクスポーターは内部でPlugを使用するため、
+       # 別のPlug.Cowboyは不要
+       plug_cowboy_opts: []},
       
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,

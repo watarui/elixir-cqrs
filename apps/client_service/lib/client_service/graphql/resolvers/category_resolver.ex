@@ -5,10 +5,11 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   Command Service と Query Service への gRPC 通信を行います
   """
 
+  alias ClientService.Application.CqrsFacade
   alias ClientService.Infrastructure.GrpcConnections
+  require Logger
 
   alias Query.{
-    CategoryQueryRequest,
     CategoryByNameRequest,
     CategorySearchRequest,
     CategoryPaginationRequest,
@@ -17,17 +18,20 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
     Empty
   }
 
-  alias Proto.CategoryUpParam
-
   @doc """
   IDでカテゴリを取得
   """
   @spec get_category(any(), %{id: String.t()}, any()) :: {:ok, map()} | {:error, String.t()}
   def get_category(_parent, %{id: id}, _context) do
-    id
-    |> build_category_query_request()
-    |> execute_category_query()
-    |> handle_category_response()
+    case CqrsFacade.query({:get_category, id}) do
+      {:ok, category} ->
+        {:ok, category}
+      {:error, :not_found} ->
+        {:error, "Category not found"}
+      {:error, reason} ->
+        Logger.error("Failed to get category: #{inspect(reason)}")
+        {:error, "Failed to get category"}
+    end
   end
 
   @doc """
@@ -50,21 +54,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   @spec list_categories(any(), any(), any()) :: {:ok, [map()]} | {:error, String.t()}
   def list_categories(_parent, _args, _context) do
-    with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         request <- %Empty{},
-         {:ok, response} <- Query.CategoryQuery.Stub.list_categories(channel, request) do
-      categories = Enum.map(response.categories, &format_category/1)
-      {:ok, categories}
-    else
+    case CqrsFacade.query({:list_categories}) do
+      {:ok, categories} ->
+        {:ok, categories}
       {:error, reason} ->
-        {:error, "Failed to get categories: #{inspect(reason)}"}
-
-      %GRPC.RPCError{status: status, message: message} = error ->
-        {:error,
-         "gRPC error - Status: #{status}, Message: #{message}, Full Error: #{inspect(error)}"}
-
-      other ->
-        {:error, "Unexpected error: #{inspect(other)}"}
+        Logger.error("Failed to list categories: #{inspect(reason)}")
+        {:error, "Failed to list categories"}
     end
   end
 
@@ -141,27 +136,19 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   @spec create_category(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def create_category(_parent, %{input: input}, _context) do
-    with {:ok, channel} <- GrpcConnections.get_command_channel(),
-         request <- %CategoryUpParam{
-           crud: :INSERT,
-           name: input.name
-         },
-         {:ok, response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
-      # 作成成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, response.category, category_created: "*")
-
-      case response do
-        %{category: nil, error: %{message: message}} ->
-          {:error, message}
-        %{category: category} when not is_nil(category) ->
-          {:ok, format_category(category)}
-        _ ->
-          {:error, "Unexpected response format"}
-      end
-    else
-      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create category: #{error.message}"}
-      %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
+    case CqrsFacade.command({:create_category, input.name}) do
+      {:ok, %{id: id}} ->
+        # 作成したカテゴリの情報を取得して返す
+        case CqrsFacade.query({:get_category, id}) do
+          {:ok, category} ->
+            {:ok, category}
+          {:error, _} ->
+            # カテゴリは作成されたが、取得に失敗した場合
+            {:ok, %{id: id, name: input.name}}
+        end
+      {:error, reason} ->
+        Logger.error("Failed to create category: #{inspect(reason)}")
+        {:error, "Failed to create category: #{inspect(reason)}"}
     end
   end
 
@@ -170,22 +157,19 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   @spec update_category(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def update_category(_parent, %{input: input}, _context) do
-    with {:ok, channel} <- GrpcConnections.get_command_channel(),
-         request <- %CategoryUpParam{
-           crud: :UPDATE,
-           id: input.id,
-           name: input.name
-         },
-         {:ok, response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
-      # 更新成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: "*")
-      # Absinthe.Subscription.publish(context.pubsub, response.category, category_updated: input.id)
-
-      {:ok, format_category(response.category)}
-    else
-      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to update category: #{error.message}"}
-      %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
+    case CqrsFacade.command({:update_category, input.id, input.name}) do
+      {:ok, _} ->
+        # 更新したカテゴリの情報を取得して返す
+        case CqrsFacade.query({:get_category, input.id}) do
+          {:ok, category} ->
+            {:ok, category}
+          {:error, _} ->
+            # カテゴリは更新されたが、取得に失敗した場合
+            {:ok, %{id: input.id, name: input.name}}
+        end
+      {:error, reason} ->
+        Logger.error("Failed to update category: #{inspect(reason)}")
+        {:error, "Failed to update category: #{inspect(reason)}"}
     end
   end
 
@@ -194,20 +178,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   """
   @spec delete_category(any(), %{id: String.t()}, any()) :: {:ok, boolean()} | {:error, String.t()}
   def delete_category(_parent, %{id: id}, _context) do
-    with {:ok, channel} <- GrpcConnections.get_command_channel(),
-         request <- %CategoryUpParam{
-           crud: :DELETE,
-           id: id
-         },
-         {:ok, _response} <- Proto.CategoryCommand.Stub.update_category(channel, request) do
-      # 削除成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, id, category_deleted: "*")
-
-      {:ok, true}
-    else
-      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to delete category: #{error.message}"}
-      %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
+    case CqrsFacade.command({:delete_category, id}) do
+      {:ok, _} ->
+        {:ok, true}
+      {:error, reason} ->
+        Logger.error("Failed to delete category: #{inspect(reason)}")
+        {:error, "Failed to delete category: #{inspect(reason)}"}
     end
   end
 
@@ -233,28 +209,6 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   end
 
   # プライベート関数
-
-  defp build_category_query_request(id) do
-    %CategoryQueryRequest{id: id}
-  end
-
-  defp execute_category_query(request) do
-    with {:ok, channel} <- GrpcConnections.get_query_channel(),
-         {:ok, response} <- Query.CategoryQuery.Stub.get_category(channel, request) do
-      {:ok, response}
-    else
-      {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get category: #{error.message}"}
-      %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
-    end
-  end
-
-  defp handle_category_response({:ok, response}) do
-    {:ok, format_category(response.category)}
-  end
-
-  defp handle_category_response({:error, reason}) do
-    {:error, reason}
-  end
 
   defp format_category(nil), do: nil
 

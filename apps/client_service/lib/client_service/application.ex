@@ -30,7 +30,9 @@ defmodule ClientService.Application do
       # HTTP エンドポイントを起動
       ClientService.Endpoint,
       # gRPC クライアント接続管理
-      {ClientService.Infrastructure.GrpcConnections, []}
+      {ClientService.Infrastructure.GrpcConnections, []},
+      # CQRSファサード
+      {ClientService.Application.CqrsFacade, []}
     ]
 
     # Supervisor オプション

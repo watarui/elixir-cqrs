@@ -250,9 +250,23 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   end
 
   defp get_env_or_default(key, default) do
-    case Application.get_env(:client_service, key) do
-      nil -> default
-      value -> value
+    # 環境変数から読み取る
+    env_key = key |> Atom.to_string() |> String.upcase()
+    
+    case System.get_env(env_key) do
+      nil ->
+        # 環境変数がない場合はアプリケーション設定を確認
+        case Application.get_env(:client_service, key) do
+          nil -> default
+          value -> value
+        end
+      value -> 
+        # ポート番号の場合は整数に変換
+        if String.ends_with?(env_key, "_PORT") do
+          String.to_integer(value)
+        else
+          value
+        end
     end
   end
   

@@ -14,7 +14,10 @@ defmodule CommandService.Application do
     Shared.Telemetry.Setup.attach_telemetry_handlers()
     
     # OpenTelemetry Ecto instrumentation
-    :opentelemetry_ecto.setup([:command_service, :repo])
+    # Docker環境ではモジュールがロードされていない可能性があるため、エラーハンドリングを追加
+    if Code.ensure_loaded?(:opentelemetry_ecto) do
+      :opentelemetry_ecto.setup([:command_service, :repo])
+    end
     
     children = [
       # データベース接続
@@ -26,10 +29,10 @@ defmodule CommandService.Application do
       # Prometheusエクスポーター
       {TelemetryMetricsPrometheus, 
        metrics: Shared.Telemetry.Metrics.metrics(),
-       port: 9569},
-      
-      # HTTPサーバー for metrics endpoint
-      {Plug.Cowboy, scheme: :http, plug: CommandService.MetricsPlug, options: [port: 9569]},
+       port: 9569,
+       # Prometheusエクスポーターは内部でPlugを使用するため、
+       # 別のPlug.Cowboyは不要
+       plug_cowboy_opts: []},
 
       # イベントストア (PostgreSQL)
       {Shared.Infrastructure.EventStore.PostgresAdapter, []},

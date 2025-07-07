@@ -29,7 +29,10 @@ defmodule Shared.Telemetry.Span do
       )
       
       # OpenTelemetryスパンを開始
-      Tracer.with_span span_name, %{attributes: span_attrs} do
+      Tracer.with_span span_name, fn ->
+        # スパンに属性を設定
+        Tracer.set_attributes(span_attrs)
+        
         try do
           result = unquote(block)
           
