@@ -1,769 +1,387 @@
-# Elixir CQRS マイクロサービス
+# Elixir CQRS Event-Driven Microservices
 
-Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation）パターンの実装例です。
+Elixir/Phoenix を使用した本格的な CQRS（Command Query Responsibility Segregation）+ イベントソーシング + サガパターンの実装例です。
 
-## プロジェクト概要
+## 🎯 プロジェクト概要
 
-このプロジェクトは、次の 3 つのマイクロサービスで構成されています：
+このプロジェクトは、モダンなマイクロサービスアーキテクチャのベストプラクティスを実装した、実践的な E コマースシステムのバックエンドです。
 
-- **Client Service** (GraphQL API) - ポート 4000
-- **Command Service** (gRPC) - ポート 50051
-- **Query Service** (gRPC) - ポート 50052
+### 主要コンポーネント
 
-## 現在の状況
+- **Client Service** (GraphQL API Gateway) - ポート 4000
+- **Command Service** (書き込み専用 gRPC) - ポート 50051
+- **Query Service** (読み取り専用 gRPC) - ポート 50052
+- **PostgreSQL** (Event Store + Read Models) - ポート 5432-5434
+- **監視スタック** (Prometheus, Grafana, Jaeger)
 
-✅ **すべてのサービスが正常に動作中**
+## 🏗️ アーキテクチャ
 
-### 動作確認済み機能
-
-- [x] Client Service HTTP サーバー起動（ポート 4000）
-- [x] Phoenix Endpoint 設定
-- [x] GraphQL API エンドポイント（`/graphql`）
-- [x] ヘルスチェック エンドポイント（`/health`）
-- [x] gRPC 接続（Client → Command/Query Services）
-- [x] GraphQL スキーマ定義
-- [x] Category データの取得・表示
-- [x] Product データの取得・表示（カテゴリ情報含む）
-- [x] 複合クエリの実行
-- [x] Command Service（ポート 50051）
-- [x] Query Service（ポート 50052）
-
-### 新機能（CQRS + イベントソーシング）
-
-- [x] **イベントソーシング基盤**
-
-  - イベント型定義（BaseEvent、ProductEvents、CategoryEvents）
-  - イベントストア（PostgreSQL 実装）
-  - アグリゲート基底クラス
-  - イベントソース対応アグリゲート（ProductAggregate、CategoryAggregate）
-
-- [x] **コマンド側（書き込み）**
-
-  - コマンド定義（CreateProduct、UpdateProduct、DeleteProduct 等）
-  - コマンドハンドラー
-  - コマンドバス（メディエーターパターン）
-  - コマンドバリデーション
-
-- [x] **クエリ側（読み取り）**
-
-  - クエリ定義（GetProduct、ListProducts、SearchProducts 等）
-  - クエリハンドラー
-  - クエリバス
-  - 並列クエリ実行サポート
-
-- [x] **統一インターフェース**
-  - CQRS ファサード
-  - コマンド/クエリの統一実行 API
-  - 非同期コマンド実行
-  - トランザクションサポート（簡易版）
-
-- [x] **レジリエンス機能**
-  - gRPC リトライ戦略（エクスポネンシャルバックオフ）
-  - サーキットブレーカーパターン
-  - タイムアウト管理
-  - 包括的なメトリクスとロギング
-
-- [x] **サガパターン**
-  - 分散トランザクション管理
-  - 補償トランザクション
-  - イベント駆動のワークフロー
-  - タイムアウト処理
-
-## アーキテクチャ
-
-### 基本構成
+### システム全体図
 
 ```
-[Client Service:4000]  ←→  HTTP/GraphQL  ←→  [Web Client]
-         ↓
-      gRPC calls
-         ↓
-[Command Service:50051] ←→ [Database]
-[Query Service:50052]  ←→ [Database]
+┌─────────────────────────────────────────────────────────────────┐
+│                         Frontend Applications                     │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │ GraphQL
+                    ┌────────▼────────┐
+                    │ Client Service  │
+                    │  (API Gateway)  │
+                    └───┬─────────┬───┘
+                        │         │ gRPC
+         ┌──────────────▼─┐   ┌───▼──────────────┐
+         │Command Service │   │ Query Service    │
+         │   (Write)      │   │   (Read)         │
+         └──────┬─────────┘   └────────┬─────────┘
+                │                      │
+     ┌──────────▼──────────┐  ┌────────▼────────┐
+     │   Event Store       │  │  Read Models    │
+     │   (PostgreSQL)      │  │  (PostgreSQL)   │
+     └─────────────────────┘  └─────────────────┘
 ```
 
-### CQRS + イベントソーシング アーキテクチャ
+### CQRS + Event Sourcing アーキテクチャ
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Service (GraphQL)                 │
-│                         CQRS Facade                          │
-└────────────────┬─────────────────────┬──────────────────────┘
-                 │                     │
-        ┌────────▼────────┐   ┌───────▼───────┐
-        │  Command Bus    │   │  Query Bus    │
-        └────────┬────────┘   └───────┬───────┘
-                 │                     │
-        ┌────────▼────────┐   ┌───────▼───────┐
-        │Command Handlers │   │Query Handlers │
-        └────────┬────────┘   └───────┬───────┘
-                 │                     │
-        ┌────────▼────────┐   ┌───────▼───────┐
-        │   Aggregates    │   │  Read Models  │
-        │ (Event Sourced) │   │  (Projections)│
-        └────────┬────────┘   └───────┬───────┘
-                 │                     │
-        ┌────────▼────────────────────▼───────┐
-        │           Event Store               │
-        │      (In-Memory / PostgreSQL)       │
-        └─────────────────────────────────────┘
+Write Side (Command)                    Read Side (Query)
+┌─────────────────────┐                ┌─────────────────────┐
+│   GraphQL Mutation  │                │   GraphQL Query     │
+└──────────┬──────────┘                └──────────┬──────────┘
+           │                                      │
+    ┌──────▼──────┐                        ┌──────▼──────┐
+    │   Command   │                        │    Query    │
+    └──────┬──────┘                        └──────┬──────┘
+           │                                      │
+    ┌──────▼──────┐                        ┌──────▼──────┐
+    │  Aggregate  │                        │ Read Model  │
+    └──────┬──────┘                        └──────▲──────┘
+           │                                      │
+    ┌──────▼──────┐         ┌──────────┐  ┌──────┴──────┐
+    │   Domain    │────────▶│  Event   │─▶│ Projection  │
+    │   Event     │         │  Store   │  │  Manager    │
+    └─────────────┘         └──────────┘  └─────────────┘
 ```
 
-## クイックスタート
+### サガパターン（分散トランザクション）
 
-### 前提条件
+```
+Order Saga Flow:
+┌─────────────┐
+│Create Order │
+└──────┬──────┘
+       │
+   ┌───▼───┐     Success      ┌──────────────┐
+   │Reserve├─────────────────▶│Process       │
+   │Stock  │                  │Payment       │
+   └───┬───┘                  └──────┬───────┘
+       │ Fail                        │ Success
+       │                             │
+   ┌───▼───────┐              ┌──────▼───────┐
+   │Compensate │              │Arrange       │
+   │(Cancel)   │              │Shipping      │
+   └───────────┘              └──────┬───────┘
+                                     │
+                              ┌──────▼───────┐
+                              │Confirm Order │
+                              └──────────────┘
+```
 
-- Elixir 1.14+
-- PostgreSQL
-- 依存関係: `mix deps.get`
+## 🚀 Quick Start
 
-### データベース設定
+### Docker Compose による起動（推奨）
 
 ```bash
-# Command Service用データベース
-cd apps/command_service
-mix ecto.create
-mix ecto.migrate
-mix run priv/repo/seeds.exs
+# 開発環境の起動
+docker compose up -d
 
-# Query Service用データベース
-cd ../query_service
-mix ecto.create
-mix ecto.migrate
-mix run priv/repo/seeds.exs
+# 監視スタックも含めて起動
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+
+# ログの確認
+docker compose logs -f
 ```
 
-### サービス起動
+### 手動セットアップ
 
-**ターミナル 1: Query Service**
+#### 前提条件
+
+- Elixir 1.18+
+- PostgreSQL 14+
+- protoc (Protocol Buffers コンパイラ)
+- protoc-gen-elixir
+
+#### データベースセットアップ
 
 ```bash
-cd apps/query_service
-mix run --no-halt
+# データベース作成
+createdb command_service_dev
+createdb query_service_dev
+createdb event_store_dev
+
+# マイグレーション実行
+cd apps/command_service && mix ecto.migrate
+cd apps/query_service && mix ecto.migrate
+cd apps/shared && MIX_ENV=dev mix ecto.migrate -r Shared.Infrastructure.EventStore.Repo
 ```
 
-**ターミナル 2: Command Service**
+#### サービス起動
 
 ```bash
-cd apps/command_service
-mix run --no-halt
+# 依存関係のインストール
+mix deps.get
+
+# 各サービスを個別のターミナルで起動
+# Terminal 1: Query Service
+cd apps/query_service && mix run --no-halt
+
+# Terminal 2: Command Service
+cd apps/command_service && mix run --no-halt
+
+# Terminal 3: Client Service
+cd apps/client_service && mix phx.server
 ```
 
-**ターミナル 3: Client Service**
-
-```bash
-cd apps/client_service
-mix phx.server
-```
-
-### 動作確認
-
-#### 1. ヘルスチェック
-
-```bash
-curl http://localhost:4000/health
-```
-
-#### 2. カテゴリ作成（Mutation）
-
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query": "mutation { createCategory(input: {name: \"Electronics\"}) { id name } }"}'
-```
-
-#### 3. 商品作成（Mutation）
-
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query": "mutation { createProduct(input: {name: \"Laptop\", price: 1500.0, categoryId: \"<category-id>\"}) { id name price } }"}'
-```
-
-#### 4. カテゴリ一覧取得
-
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query": "{ categories { id name } }"}'
-```
-
-#### 5. 商品一覧取得（カテゴリ情報含む）
-
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query": "{ products { id name price category { id name } } }"}'
-```
-
-#### 6. イベントソーシングの動作確認
-
-コマンドを実行後、3 秒程度待ってからクエリを実行してください。
-ProjectionManager がイベントを読み取って Read Model を更新します。
-
-## 監視インフラ
-
-1. 監視インフラの起動
-   ```bash
-   docker compose -f docker-compose.monitoring.yml up -d
-   ```
-
-2. 各 UI へのアクセス
-   - Jaeger: http://localhost:16686
-   - Prometheus: http://localhost:9090
-   - Grafana: http://localhost:3000 (admin/admin)
-
-3. アプリケーションの起動
-   ```bash
-   mix deps.get
-   mix run --no-halt
-   ```
-
-## API ドキュメント
+## 📡 API 使用例
 
 ### GraphQL Playground
 
-開発環境では GraphQL Playground が利用可能です：
+開発環境では、GraphQL Playground が利用可能です：
+
 - URL: http://localhost:4000/graphiql
-- 対話的なクエリ実行
-- スキーマの探索
-- ドキュメントの参照
-- リアルタイムの自動補完
 
-### 利用可能な操作
+### 基本的な CRUD 操作
 
-#### GraphQL エンドポイント
-- **メインエンドポイント**: `POST /graphql`
-- **Playground**: `GET /graphiql` (開発環境のみ)
+#### カテゴリ作成
 
-### ドキュメント
+```graphql
+mutation {
+  createCategory(input: { name: "Electronics" }) {
+    id
+    name
+  }
+}
+```
 
-- [GraphQL API 詳細仕様](docs/graphql-api.md)
-- [API 利用ガイド](docs/api-usage-guide.md)
+#### 商品作成
 
-## 解決された問題
+```graphql
+mutation {
+  createProduct(
+    input: { name: "MacBook Pro", price: 299000, categoryId: "1" }
+  ) {
+    id
+    name
+    price
+    category {
+      name
+    }
+  }
+}
+```
 
-### 主要な修正事項
+#### 商品一覧取得
 
-1. **Client Service 起動問題**
+```graphql
+query {
+  products {
+    id
+    name
+    price
+    category {
+      id
+      name
+    }
+  }
+}
+```
 
-   - `mix.exs`の`config_path`設定修正
-   - Phoenix 設定の最適化
-   - Application 起動順序の調整
+### 注文処理（サガパターン）
 
-2. **gRPC 通信問題**
+```graphql
+mutation {
+  createOrder(
+    input: { userId: "user-123", items: [{ productId: "1", quantity: 1 }] }
+  ) {
+    id
+    status
+    totalAmount
+    sagaState {
+      state
+      status
+      currentStep
+      startedAt
+      completedAt
+    }
+    items {
+      productId
+      productName
+      quantity
+      price
+      subtotal
+    }
+  }
+}
+```
 
-   - Query/Command Service の gRPC サーバー実装
-   - protobuf エンコーディングエラー修正
-   - Client Service の gRPC 接続管理
+## 🔍 主要機能
 
-3. **GraphQL API 問題**
-   - リゾルバーの実装
-   - エラーハンドリング改善
-   - レスポンス形式の統一
+### ✅ 実装済み
 
-### 修正されたファイル
+#### コアアーキテクチャ
 
-**Client Service:**
+- **CQRS（Command Query Responsibility Segregation）**
 
-- `apps/client_service/mix.exs` - config_path 修正
-- `apps/client_service/config/dev.exs` - ポート設定
-- `apps/client_service/lib/client_service/endpoint.ex` - 最小限設定
-- `apps/client_service/lib/client_service/application.ex` - 起動順序
-- `apps/client_service/lib/client_service/router.ex` - GraphQL エンドポイント
-- `apps/client_service/lib/client_service/error_json.ex` - エラーハンドリング
-- `apps/client_service/lib/client_service/health_controller.ex` - ヘルスチェック
-- `apps/client_service/lib/client_service/graphql/resolvers/*.ex` - リゾルバー修正
+  - コマンドバス（メディエーターパターン）
+  - クエリバス（並列実行サポート）
+  - 統一 CQRS ファサード
 
-**Query Service:**
+- **イベントソーシング**
 
-- `apps/query_service/lib/query_service/presentation/grpc/category_query_server.ex`
-- `apps/query_service/lib/query_service/presentation/grpc/product_query_server.ex`
+  - イベントストア（PostgreSQL 実装）
+  - アグリゲート基底クラス
+  - イベント駆動アーキテクチャ
+  - プロジェクション自動更新
 
-## 技術スタック
+- **サガパターン**
+  - 分散トランザクション管理
+  - 補償トランザクション（設計済み）
+  - ステート管理
+  - タイムアウト処理
 
-- **Language**: Elixir 1.18+
-- **Web Framework**: Phoenix 1.7
-- **GraphQL**: Absinthe
-- **gRPC**: grpc-elixir
-- **Database**: PostgreSQL + Ecto
-- **Build Tool**: Mix
-- **Serialization**: Protocol Buffers
-- **Architecture Patterns**:
-  - CQRS (Command Query Responsibility Segregation)
-  - Event Sourcing
-  - Domain-Driven Design (DDD)
-  - Mediator Pattern (Command/Query Bus)
-  - Repository Pattern
+#### インフラストラクチャ
 
-## プロジェクト構造
+- **マイクロサービス間通信**
+
+  - gRPC（Protocol Buffers）
+  - GraphQL API Gateway
+  - 非同期メッセージング
+
+- **レジリエンス**
+
+  - サーキットブレーカー
+  - リトライ機構（エクスポネンシャルバックオフ）
+  - タイムアウト管理
+  - エラーハンドリング統一
+
+- **監視・可観測性**
+  - OpenTelemetry 統合
+  - 分散トレーシング（Jaeger）
+  - メトリクス収集（Prometheus）
+  - ダッシュボード（Grafana）
+  - 構造化ログ
+
+#### データ管理
+
+- **リポジトリパターン**
+
+  - Unit of Work
+  - トランザクション管理
+  - キャッシング戦略
+
+- **パフォーマンス最適化**
+  - BatchCache（N+1 問題解決）
+  - ETS インメモリキャッシュ
+  - GraphQL DataLoader 統合
+
+### 🚧 実装予定
+
+- 認証・認可（JWT/OAuth2）
+- GraphQL Subscriptions（リアルタイム更新）
+- イベントバージョニング
+- スナップショット機能
+- マルチテナント対応
+
+## 📁 プロジェクト構造
 
 ```
 elixir-cqrs/
 ├── apps/
-│   ├── client_service/     # GraphQL API サーバー
-│   │   ├── application/    # CQRSファサード
-│   │   └── graphql/        # GraphQLスキーマ・リゾルバー
-│   ├── command_service/    # 書き込み専用 gRPC サーバー
-│   │   ├── domain/         # ドメイン層
-│   │   │   ├── aggregates/ # イベントソーシング対応アグリゲート
-│   │   │   ├── entities/   # エンティティ
-│   │   │   └── value_objects/ # 値オブジェクト
-│   │   ├── application/    # アプリケーション層
-│   │   │   ├── commands/   # コマンド定義
-│   │   │   ├── handlers/   # コマンドハンドラー
-│   │   │   └── command_bus.ex # コマンドバス（メディエーター）
-│   │   └── infrastructure/ # インフラ層
-│   ├── query_service/      # 読み取り専用 gRPC サーバー
-│   │   ├── domain/         # ドメイン層（読み取りモデル）
-│   │   ├── application/    # アプリケーション層
-│   │   │   ├── queries/    # クエリ定義
-│   │   │   ├── handlers/   # クエリハンドラー
-│   │   │   └── query_bus.ex # クエリバス
-│   │   └── infrastructure/ # インフラ層（キャッシュ含む）
-│   └── shared/             # 共有ライブラリ
-│       ├── domain/         # 共有ドメイン層
-│       │   ├── events/     # イベント定義
-│       │   └── aggregate/  # アグリゲート基底クラス
-│       ├── infrastructure/ # 共有インフラ層
-│       │   └── event_store/ # イベントストア実装
-│       └── application/    # 共有アプリケーション層
-│           └── cqrs_facade.ex # CQRS統一インターフェース
-├── proto/                  # Protocol Buffers定義
-└── README.md
+│   ├── client_service/         # GraphQL API Gateway
+│   │   ├── graphql/           # GraphQLスキーマ・リゾルバー
+│   │   ├── application/       # CQRSファサード
+│   │   └── infrastructure/    # gRPC接続管理
+│   │
+│   ├── command_service/        # 書き込み専用サービス
+│   │   ├── domain/            # ドメイン層
+│   │   │   ├── aggregates/    # イベントソーシングアグリゲート
+│   │   │   ├── commands/      # コマンド定義
+│   │   │   └── events/        # ドメインイベント
+│   │   ├── application/       # アプリケーション層
+│   │   │   ├── handlers/      # コマンドハンドラー
+│   │   │   └── command_bus.ex # コマンドバス
+│   │   └── infrastructure/    # インフラ層
+│   │
+│   ├── query_service/          # 読み取り専用サービス
+│   │   ├── domain/            # 読み取りモデル
+│   │   ├── application/       # クエリハンドラー
+│   │   └── infrastructure/    # キャッシュ・リポジトリ
+│   │
+│   └── shared/                 # 共有ライブラリ
+│       ├── domain/            # 共通ドメイン定義
+│       ├── infrastructure/    # 共通インフラ
+│       │   ├── event_store/   # イベントストア
+│       │   ├── saga/          # サガパターン実装
+│       │   └── telemetry/     # 監視・メトリクス
+│       └── proto/             # Protocol Buffers定義
+│
+├── docker/                     # Docker設定
+├── k8s/                       # Kubernetes マニフェスト
+└── docs/                      # ドキュメント
 ```
 
-## デプロイメント
+## 🛠️ 技術スタック
 
-### Docker
+### 言語・フレームワーク
 
-本番環境用のマルチステージビルドDockerfileが用意されています：
+- **Elixir** 1.18 - 高い並行性と耐障害性
+- **Phoenix** 1.7 - Web フレームワーク
+- **Absinthe** - GraphQL 実装
+- **grpc-elixir** - gRPC 通信
+
+### データストア
+
+- **PostgreSQL** 14 - イベントストア、読み取りモデル
+- **ETS** - インメモリキャッシュ
+
+### インフラ・監視
+
+- **Docker** & **Docker Compose** - コンテナ化
+- **Kubernetes** - オーケストレーション（マニフェスト準備済み）
+- **OpenTelemetry** - 分散トレーシング
+- **Prometheus** - メトリクス収集
+- **Grafana** - ダッシュボード
+- **Jaeger** - 分散トレース可視化
+
+## 📊 監視・運用
+
+### メトリクスエンドポイント
+
+- Client Service: http://localhost:4000/metrics
+- Command Service: http://localhost:9569/metrics
+- Query Service: http://localhost:9570/metrics
+
+### 監視ダッシュボード
+
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (admin/admin)
+- Jaeger: http://localhost:16686
+
+## 🧪 テスト
 
 ```bash
-# 本番環境用イメージのビルド
-docker compose -f docker-compose.prod.yml build
+# 全テストの実行
+mix test
 
-# 本番環境の起動
-docker compose -f docker-compose.prod.yml up -d
+# カバレッジレポート付き
+mix test --cover
+
+# 特定のサービスのテスト
+cd apps/command_service && mix test
 ```
 
-### Kubernetes
-
-Kubernetesへのデプロイメント：
-
-```bash
-# 開発環境
-kubectl apply -k k8s/overlays/development
-
-# ステージング環境
-kubectl apply -k k8s/overlays/staging
-
-# 本番環境
-kubectl apply -k k8s/overlays/production
-```
-
-### CI/CD
-
-GitHub Actionsを使用した自動化：
-- プルリクエスト時：テスト、フォーマットチェック、Credo、Dialyzer
-- mainブランチへのプッシュ時：Dockerイメージのビルドとプッシュ
-- タグ付け時：リリースの作成
-
-### GitOps (ArgoCD)
-
-ArgoCDを使用したGitOpsデプロイメント：
-
-```bash
-# ArgoCDアプリケーションの作成
-kubectl apply -f argocd/application.yaml
-
-# アプリケーションの同期
-argocd app sync elixir-cqrs
-```
-
-## 🚀 マイクロサービス発展ロードマップ
-
-### Phase 1: 統合開発・統合デプロイ（現在）
-
-```
-🎯 目標: 開発効率の最大化、迅速なプロトタイプ開発
-
-✅ 完了した機能:
-• Umbrella Project による統合管理
-• 共有ライブラリ（Protocol Buffers）
-• gRPC サービス間通信
-• GraphQL API Gateway
-• PostgreSQL データベース分離
-• 自動テスト環境
-
-🔧 開発方法:
-• Monorepo 単一リポジトリ管理
-• 統合的な依存関係管理
-• 共通設定の一元化
-• 統一されたCI/CD
-```
-
-### Phase 2: Docker 化・個別デプロイ（計画中）
-
-```
-🎯 目標: 独立デプロイ、スケーラビリティ向上
-
-🔨 実装予定:
-• Docker コンテナ化
-• 個別サービスのリリース
-• 負荷分散の実装
-• 監視・ログ収集
-• 環境別設定管理
-
-🔧 技術スタック:
-• Docker & Docker Compose
-• Nginx (Load Balancer)
-• Prometheus & Grafana
-• ELK Stack (Logging)
-• GitHub Actions (CI/CD)
-```
-
-### Phase 3: 本格マイクロサービス運用（将来）
-
-```
-🎯 目標: 企業レベルのスケーラビリティ、高可用性
-
-🔮 実装予定:
-• Kubernetes オーケストレーション
-• サービスメッシュ（Istio）
-• 分散トレーシング
-• 自動スケーリング
-• 障害回復（Circuit Breaker）
-• API Gateway（Kong/Envoy）
-
-🔧 技術スタック:
-• Kubernetes (Container Orchestration)
-• Istio (Service Mesh)
-• Jaeger (Distributed Tracing)
-• Prometheus (Metrics)
-• Grafana (Dashboards)
-• ArgoCD (GitOps)
-```
-
-## 📋 開発ロードマップ
-
-### 短期目標（1-2 ヶ月）
-
-- [x] **Docker 化の実装**
-
-  - 各サービスの Dockerfile 作成
-  - docker-compose.yml 設定
-  - 開発環境のコンテナ化
-  - CI/CD パイプライン構築
-
-- [x] **監視・ログ収集の実装**
-
-  - Prometheus メトリクス収集
-  - Grafana ダッシュボード作成
-  - 構造化ログの実装
-  - アラート設定
-
-- [ ] **負荷テストの実施**
-
-  - パフォーマンスベンチマーク
-  - スケーラビリティテスト
-  - ボトルネック特定
-  - 最適化実施
-
-- [x] **API ドキュメントの充実**
-  - GraphQL Playground 設定
-  - コード例の追加
-  - 開発者向けガイド
-
-### 中期目標（3-6 ヶ月）
-
-- [ ] **Kubernetes 対応**
-
-  - マニフェストファイル作成
-  - サービスディスカバリ設定
-  - 設定管理（ConfigMap/Secret）
-  - 永続化ストレージ設定
-
-- [ ] **自動スケーリング**
-
-  - HPA（Horizontal Pod Autoscaler）設定
-  - メトリクスベーススケーリング
-  - 負荷予測による事前スケーリング
-  - コスト最適化
-
-- [ ] **分散トレーシング**
-
-  - Jaeger 統合
-  - トレースコンテキスト伝播
-  - パフォーマンス分析
-  - 障害調査支援
-
-- [x] **障害回復機能**
-  - Circuit Breaker 実装
-  - Retry メカニズム
-  - Fallback 戦略
-  - 障害検知・通知
-
-### 長期目標（6-12 ヶ月）
-
-- [ ] **サービスメッシュ導入**
-
-  - Istio デプロイ
-  - トラフィック管理
-  - セキュリティポリシー
-  - 可観測性向上
-
-- [ ] **企業レベルのスケーラビリティ**
-  - マルチリージョン展開
-  - グローバルロードバランシング
-  - 災害復旧戦略
-  - コンプライアンス対応
-
-## リファクタリング推奨事項
-
-### 1. コアドメインロジックの改善
-
-- [x] **Product 更新ロジックのリファクタリング**
-
-  - やっつけ実装を改善済み（`ProductService.apply_updates`）
-  - データ駆動型アプローチで拡張性を向上
-
-- [x] **エンティティの`update`メソッド統一**
-  - 現在: 個別フィールドごとの更新メソッド（`update_name`, `update_price`等）→ 完了
-  - 推奨: 統一された`update/2`メソッドで複数フィールドを一度に更新 → 実装済み
-  ```elixir
-  def update(entity, params) do
-    # バリデーションとアトミックな更新
-  end
-  ```
-
-### 2. 型安全性とインターフェースの強化
-
-- [x] **型定義の徹底**
-
-  - すべての関数に`@spec`を必須化（主要モジュールに追加完了）
-    - GraphQL リゾルバー（ProductResolver、CategoryResolver）
-    - gRPC サーバー（一部実装）
-    - 値オブジェクト（実装済み）
-  - カスタム型（`@type`）の積極的活用（実装済み）
-  - Dialyzer の警告をゼロに（今後の課題）
-
-- [x] **ビヘイビアの活用**
-
-  - リポジトリインターフェースの定義（完了）
-  - サービス層のコントラクト明確化（完了）
-  - CommandService.Domain.Repositories.ProductRepository（実装済み）
-  - CommandService.Domain.Repositories.CategoryRepository（実装済み）
-  - QueryService.Domain.Repositories.ProductRepository（実装済み）
-  - QueryService.Domain.Repositories.CategoryRepository（実装済み）
-
-- [x] **値オブジェクトの型安全性向上**
-  - opaque タイプの使用検討（実装済み）
-    - ProductId、CategoryId、ProductName、CategoryName、ProductPrice
-  - ファクトリー関数でのみ生成可能に（new/1 関数で実装済み）
-
-### 3. エラーハンドリングの統一
-
-- [x] **エラー型の標準化**
-
-  - 統一されたエラー構造体の定義（AppError 実装済み）
-  - エラーカテゴリの明確化（ドメインエラー、インフラエラー等）
-
-  ```elixir
-  defmodule AppError do
-    @type t :: %__MODULE__{
-      type: atom(),
-      message: String.t(),
-      details: map()
-    }
-  end
-  ```
-
-### 4. CQRS パターンの完全実装
-
-- [x] **イベントソーシングの導入**
-
-  - イベント基盤の実装（BaseEvent、ドメインイベント定義）
-  - イベントストアの実装（EventStore、InMemoryAdapter）
-  - アグリゲート基底クラス（Aggregate.Base）
-  - ProductAggregate、CategoryAggregate の実装
-
-- [x] **コマンド/クエリの明確な分離**
-  - コマンドハンドラーの抽出（ProductCommandHandler、CategoryCommandHandler）
-  - クエリハンドラーの抽出（ProductQueryHandler、CategoryQueryHandler）
-  - メディエーターパターンの実装（CommandBus、QueryBus）
-  - 統一インターフェース（CQRSFacade）
-
-### 5. インフラストラクチャの改善
-
-- [x] **gRPC エラーハンドリング**
-
-  - カスタムエラーステータスの定義（GrpcErrorConverter 実装済み）
-  - AppError から Proto.Error への統一変換（完了）
-  - gRPC ステータスコードのマッピング（完了）
-  - リトライ戦略の実装（完了）
-  - サーキットブレーカーの追加（完了）
-
-- [x] **データベース層の抽象化**
-  - リポジトリパターンの完全実装（完了）
-  - Unit of Work パターンの実装（完了）
-  - トランザクション管理の改善（完了）
-  - 依存性注入による柔軟なリポジトリ選択（RepositoryContext）
-
-### 6. テスタビリティの向上
-
-- [x] **依存性注入の改善**
-
-  - ハードコードされた依存を排除（完了）
-  - モックしやすい設計に（完了）
-
-  ```elixir
-  # 現在
-  @repo ProductRepo
-
-  # 推奨
-  def create_product(params, repo \\ ProductRepo) do
-    # テスト時にモックリポジトリを注入可能
-  end
-  ```
-
-- [x] **純粋な関数の増加**
-  - 副作用を持つ関数の分離（完了）
-  - ProductLogic、CategoryLogic、AggregateLogic モジュールの作成
-  - ビジネスロジックのテスト容易性向上（テスト実装済み）
-
-### 7. パフォーマンス最適化
-
-- [x] **N+1 クエリの解決**
-
-  - BatchCache の実装（同一リクエスト内でのデータ重複排除）
-  - GraphQL リゾルバーでの活用
-  - プリロード戦略の最適化（完了）
-
-- [x] **キャッシング戦略**
-  - クエリサービスでのキャッシュ実装（完了）
-  - ETS を使用したインメモリキャッシュ（完了）
-  - TTL ベースの自動期限切れ処理（完了）
-  - CategoryRepository と ProductRepository にキャッシング適用（完了）
-
-## コーディング規約
-
-### 言語
-
-- コードコメントは日本語
-- コードドキュメントは日本語
-- ログ出力は英語
-- エラー文言は英語
-- テストケース名は英語
-
-### 型とインターフェースの重視
-
-1. **すべての公開関数に`@spec`を記述する**
-
-   ```elixir
-   @spec create_product(params :: map()) :: {:ok, Product.t()} | {:error, String.t()}
-   def create_product(params) do
-     # 実装
-   end
-   ```
-
-2. **カスタム型の積極的な定義**
-
-   ```elixir
-   @type product_id :: String.t()
-   @type price :: Decimal.t()
-   @type result(success) :: {:ok, success} | {:error, String.t()}
-   ```
-
-3. **ビヘイビアを使用してインターフェースを明確化**
-
-   ```elixir
-   defmodule CommandHandler do
-     @callback handle(command :: struct()) :: {:ok, any()} | {:error, any()}
-   end
-   ```
-
-4. **Dialyzer を活用した型チェック**
-
-   - すべての Dialyzer 警告を解決する
-   - CI/CD パイプラインで Dialyzer を実行
-
-5. **値オブジェクトによる型安全性の確保**
-
-   - プリミティブ型の直接使用を避ける
-   - ドメイン固有の型を定義して使用
-
-6. **エラー型の明確な定義**
-   - タプルではなく構造体でエラーを表現
-   - エラーの種類と詳細を型で表現
-
-## 最近の進捗
-
-### 完了した主要なリファクタリング
-
-1. **DataLoader/N+1 問題の解決**
-
-   - BatchCache の実装による同一リクエスト内のデータ重複排除
-   - GraphQL リゾルバーでの効率的なデータ取得
-
-2. **リポジトリパターンの完全実装**
-
-   - Unit of Work パターンによるトランザクション管理
-   - RepositoryContext による依存性注入
-   - テスト時のモックリポジトリ使用可能
-
-3. **ピュアな関数への分離**
-   - ProductLogic: 商品ビジネスロジック（価格検証、割引計算等）
-   - CategoryLogic: カテゴリビジネスロジック（階層管理、検証等）
-   - AggregateLogic: イベントソーシング関連ロジック
-   - 包括的なテストスイートの実装
-
-## 今後の課題
-
-### 短期（優先度高）
-
-- [x] イベントストアの PostgreSQL 実装（完了）
-- [x] プロジェクション（読み取りモデル）の自動更新（ProjectionManager 実装済み）
-- [x] サガパターンの実装（分散トランザクション）
-- [x] gRPC リトライ戦略とサーキットブレーカー
-- [x] Unit of Work パターンの実装（完了）
-
-### 中期
-
-- [ ] 認証・認可の実装
-- [ ] GraphQL Subscriptions（リアルタイム更新）
-- [x] N+1 問題解決（BatchCache 実装済み）
-- [x] イベントの永続化とリプレイ機能（PostgreSQL EventStore 実装済み）
-- [ ] スナップショット機能
-- [x] Dialyzer 警告の解消（主要な警告は対応済み）
-
-### 長期
-
-- [x] ログ・モニタリングの改善（OpenTelemetry、Jaeger、Prometheus 実装済み）
-- [ ] パフォーマンス最適化
-- [ ] テストカバレッジの向上
-- [ ] エラーレポート機能
-- [ ] データベース接続プール調整
-- [ ] イベントバージョニング戦略
-
-## 開発・デバッグ
-
-### ログの確認
-
-各サービスは起動時に詳細なログを出力します。問題が発生した場合は、ログを確認してください。
-
-### ポート確認
-
-```bash
-netstat -an | grep -E "4000|50051|50052" | grep LISTEN
-```
-
-### プロセス確認
-
-```bash
-ps aux | grep mix
-```
-
-## ライセンス
-
-MIT License
+## 📚 ドキュメント
+
+- [アーキテクチャ設計書](docs/architecture.md)
+- [API 仕様書](docs/api-specification.md)
+- [サガパターン実装ガイド](docs/saga-pattern.md)
+- [イベントソーシングガイド](docs/event-sourcing.md)
+- [運用マニュアル](docs/operations.md)
