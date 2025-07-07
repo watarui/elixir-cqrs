@@ -1,91 +1,22 @@
-# Elixir CQRS Event-Driven Microservices
+# Elixir CQRS Study Project
 
-Elixir/Phoenix を使用した本格的な CQRS（Command Query Responsibility Segregation）+ イベントソーシング + サガパターンの実装例です。
+Elixir/Phoenix を使用した CQRS + イベントソーシング + サガパターンの学習用実装です。
 
-## 🎯 プロジェクト概要
+## プロジェクト概要
 
-このプロジェクトは、モダンなマイクロサービスアーキテクチャのベストプラクティスを実装した、実践的な E コマースシステムのバックエンドです。
+個人的なアーキテクチャ勉強のために、マイクロサービスパターンを実装したサンプルプロジェクトです。
 
-### 主要コンポーネント
+## アーキテクチャ概要
 
-- **Client Service** (GraphQL API Gateway) - ポート 4000
-- **Command Service** (書き込み専用 gRPC) - ポート 50051
-- **Query Service** (読み取り専用 gRPC) - ポート 50052
-- **PostgreSQL** (Event Store + Read Models) - ポート 5432-5434
-- **監視スタック** (Prometheus, Grafana, Jaeger)
+- Client Service (GraphQL) - ポート 4000
+- Command Service (gRPC) - ポート 50051  
+- Query Service (gRPC) - ポート 50052
+- PostgreSQL - ポート 5432-5434
 
-## 🏗️ アーキテクチャ
+詳細な設計については [アーキテクチャ設計書](docs/architecture.md) を参照してください。
 
-### システム全体図
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend Applications                     │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │ GraphQL
-                    ┌────────▼────────┐
-                    │ Client Service  │
-                    │  (API Gateway)  │
-                    └───┬─────────┬───┘
-                        │         │ gRPC
-         ┌──────────────▼─┐   ┌───▼──────────────┐
-         │Command Service │   │ Query Service    │
-         │   (Write)      │   │   (Read)         │
-         └──────┬─────────┘   └────────┬─────────┘
-                │                      │
-     ┌──────────▼──────────┐  ┌────────▼────────┐
-     │   Event Store       │  │  Read Models    │
-     │   (PostgreSQL)      │  │  (PostgreSQL)   │
-     └─────────────────────┘  └─────────────────┘
-```
-
-### CQRS + Event Sourcing アーキテクチャ
-
-```
-Write Side (Command)                    Read Side (Query)
-┌─────────────────────┐                ┌─────────────────────┐
-│   GraphQL Mutation  │                │   GraphQL Query     │
-└──────────┬──────────┘                └──────────┬──────────┘
-           │                                      │
-    ┌──────▼──────┐                        ┌──────▼──────┐
-    │   Command   │                        │    Query    │
-    └──────┬──────┘                        └──────┬──────┘
-           │                                      │
-    ┌──────▼──────┐                        ┌──────▼──────┐
-    │  Aggregate  │                        │ Read Model  │
-    └──────┬──────┘                        └──────▲──────┘
-           │                                      │
-    ┌──────▼──────┐         ┌──────────┐  ┌──────┴──────┐
-    │   Domain    │────────▶│  Event   │─▶│ Projection  │
-    │   Event     │         │  Store   │  │  Manager    │
-    └─────────────┘         └──────────┘  └─────────────┘
-```
-
-### サガパターン（分散トランザクション）
-
-```
-Order Saga Flow:
-┌─────────────┐
-│Create Order │
-└──────┬──────┘
-       │
-   ┌───▼───┐     Success      ┌──────────────┐
-   │Reserve├─────────────────▶│Process       │
-   │Stock  │                  │Payment       │
-   └───┬───┘                  └──────┬───────┘
-       │ Fail                        │ Success
-       │                             │
-   ┌───▼───────┐              ┌──────▼───────┐
-   │Compensate │              │Arrange       │
-   │(Cancel)   │              │Shipping      │
-   └───────────┘              └──────┬───────┘
-                                     │
-                              ┌──────▼───────┐
-                              │Confirm Order │
-                              └──────────────┘
-```
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Docker Compose による起動（推奨）
 
@@ -140,157 +71,25 @@ cd apps/command_service && mix run --no-halt
 cd apps/client_service && mix phx.server
 ```
 
-## 📡 API 使用例
+## API アクセス
 
-### GraphQL Playground
+GraphQL Playground: http://localhost:4000/graphiql
 
-開発環境では、GraphQL Playground が利用可能です：
+使用例やAPI仕様については [API仕様書](docs/api-specification.md) を参照してください。
 
-- URL: http://localhost:4000/graphiql
+## 実装内容
 
-### 基本的な CRUD 操作
+- CQRS パターン
+- イベントソーシング  
+- サガパターン
+- gRPC/GraphQL 通信
+- 監視・可観測性
 
-#### カテゴリ作成
+詳細については以下のドキュメントを参照：
+- [イベントソーシングガイド](docs/event-sourcing.md)
+- [サガパターン実装ガイド](docs/saga-pattern.md)
 
-```graphql
-mutation {
-  createCategory(input: { name: "Electronics" }) {
-    id
-    name
-  }
-}
-```
-
-#### 商品作成
-
-```graphql
-mutation {
-  createProduct(
-    input: { name: "MacBook Pro", price: 299000, categoryId: "1" }
-  ) {
-    id
-    name
-    price
-    category {
-      name
-    }
-  }
-}
-```
-
-#### 商品一覧取得
-
-```graphql
-query {
-  products {
-    id
-    name
-    price
-    category {
-      id
-      name
-    }
-  }
-}
-```
-
-### 注文処理（サガパターン）
-
-```graphql
-mutation {
-  createOrder(
-    input: { userId: "user-123", items: [{ productId: "1", quantity: 1 }] }
-  ) {
-    id
-    status
-    totalAmount
-    sagaState {
-      state
-      status
-      currentStep
-      startedAt
-      completedAt
-    }
-    items {
-      productId
-      productName
-      quantity
-      price
-      subtotal
-    }
-  }
-}
-```
-
-## 🔍 主要機能
-
-### ✅ 実装済み
-
-#### コアアーキテクチャ
-
-- **CQRS（Command Query Responsibility Segregation）**
-
-  - コマンドバス（メディエーターパターン）
-  - クエリバス（並列実行サポート）
-  - 統一 CQRS ファサード
-
-- **イベントソーシング**
-
-  - イベントストア（PostgreSQL 実装）
-  - アグリゲート基底クラス
-  - イベント駆動アーキテクチャ
-  - プロジェクション自動更新
-
-- **サガパターン**
-  - 分散トランザクション管理
-  - 補償トランザクション（設計済み）
-  - ステート管理
-  - タイムアウト処理
-
-#### インフラストラクチャ
-
-- **マイクロサービス間通信**
-
-  - gRPC（Protocol Buffers）
-  - GraphQL API Gateway
-  - 非同期メッセージング
-
-- **レジリエンス**
-
-  - サーキットブレーカー
-  - リトライ機構（エクスポネンシャルバックオフ）
-  - タイムアウト管理
-  - エラーハンドリング統一
-
-- **監視・可観測性**
-  - OpenTelemetry 統合
-  - 分散トレーシング（Jaeger）
-  - メトリクス収集（Prometheus）
-  - ダッシュボード（Grafana）
-  - 構造化ログ
-
-#### データ管理
-
-- **リポジトリパターン**
-
-  - Unit of Work
-  - トランザクション管理
-  - キャッシング戦略
-
-- **パフォーマンス最適化**
-  - BatchCache（N+1 問題解決）
-  - ETS インメモリキャッシュ
-  - GraphQL DataLoader 統合
-
-### 🚧 実装予定
-
-- 認証・認可（JWT/OAuth2）
-- GraphQL Subscriptions（リアルタイム更新）
-- イベントバージョニング
-- スナップショット機能
-- マルチテナント対応
-
-## 📁 プロジェクト構造
+## プロジェクト構造
 
 ```
 elixir-cqrs/
@@ -328,44 +127,22 @@ elixir-cqrs/
 └── docs/                      # ドキュメント
 ```
 
-## 🛠️ 技術スタック
+## 技術スタック
 
-### 言語・フレームワーク
+- Elixir 1.18 / Phoenix 1.7
+- PostgreSQL 14
+- Docker / Kubernetes
+- Prometheus / Grafana / Jaeger
 
-- **Elixir** 1.18 - 高い並行性と耐障害性
-- **Phoenix** 1.7 - Web フレームワーク
-- **Absinthe** - GraphQL 実装
-- **grpc-elixir** - gRPC 通信
-
-### データストア
-
-- **PostgreSQL** 14 - イベントストア、読み取りモデル
-- **ETS** - インメモリキャッシュ
-
-### インフラ・監視
-
-- **Docker** & **Docker Compose** - コンテナ化
-- **Kubernetes** - オーケストレーション（マニフェスト準備済み）
-- **OpenTelemetry** - 分散トレーシング
-- **Prometheus** - メトリクス収集
-- **Grafana** - ダッシュボード
-- **Jaeger** - 分散トレース可視化
-
-## 📊 監視・運用
-
-### メトリクスエンドポイント
-
-- Client Service: http://localhost:4000/metrics
-- Command Service: http://localhost:9569/metrics
-- Query Service: http://localhost:9570/metrics
-
-### 監視ダッシュボード
+## 監視
 
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (admin/admin)
 - Jaeger: http://localhost:16686
 
-## 🧪 テスト
+詳細は [運用マニュアル](docs/operations.md) を参照してください。
+
+## テスト
 
 ```bash
 # 全テストの実行
@@ -378,7 +155,7 @@ mix test --cover
 cd apps/command_service && mix test
 ```
 
-## 📚 ドキュメント
+## ドキュメント
 
 - [アーキテクチャ設計書](docs/architecture.md)
 - [API 仕様書](docs/api-specification.md)
