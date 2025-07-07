@@ -1,9 +1,8 @@
 defmodule Shared.Telemetry.Span do
   @moduledoc """
-  OpenTelemetryのスパンを簡単に使用するためのヘルパー
+  Telemetryメトリクスのためのスパンヘルパー
+  （OpenTelemetryの直接使用を避け、Telemetryメトリクスのみを使用）
   """
-  
-  require OpenTelemetry.Tracer, as: Tracer
   
   @doc """
   スパンを開始して、関数を実行し、スパンを終了する
@@ -29,59 +28,55 @@ defmodule Shared.Telemetry.Span do
       )
       
       # OpenTelemetryスパンを開始
-      Tracer.with_span span_name, fn ->
-        # スパンに属性を設定
-        Tracer.set_attributes(span_attrs)
+      try do
+        result = unquote(block)
         
-        try do
-          result = unquote(block)
-          
-          # 成功時のTelemetryイベント
+        # 成功時のTelemetryイベント
+        duration = System.monotonic_time() - start_time
+        :telemetry.execute(
+          [:elixir_cqrs, :span, :stop],
+          %{duration: duration},
+          Map.put(metadata, :status, :ok)
+        )
+        
+        result
+      rescue
+        error ->
+          # エラー時のTelemetryイベント
           duration = System.monotonic_time() - start_time
           :telemetry.execute(
             [:elixir_cqrs, :span, :stop],
             %{duration: duration},
-            Map.put(metadata, :status, :ok)
+            Map.merge(metadata, %{status: :error, error: inspect(error)})
           )
           
-          result
-        rescue
-          error ->
-            # エラー時のTelemetryイベント
-            duration = System.monotonic_time() - start_time
-            :telemetry.execute(
-              [:elixir_cqrs, :span, :stop],
-              %{duration: duration},
-              Map.merge(metadata, %{status: :error, error: inspect(error)})
-            )
-            
-            # OpenTelemetryにエラーを記録
-            Tracer.set_status(:error, inspect(error))
-            reraise error, __STACKTRACE__
-        end
+          reraise error, __STACKTRACE__
       end
     end
   end
   
   @doc """
-  現在のスパンに属性を追加
+  現在のスパンに属性を追加（現在は何もしない）
   """
   def set_attributes(attributes) when is_map(attributes) do
-    Tracer.set_attributes(attributes)
+    # OpenTelemetryの直接使用を避けるため、現在は何もしない
+    :ok
   end
   
   @doc """
-  現在のスパンにイベントを追加
+  現在のスパンにイベントを追加（現在は何もしない）
   """
-  def add_event(name, attributes \\ %{}) do
-    Tracer.add_event(name, attributes)
+  def add_event(_name, _attributes \\ %{}) do
+    # OpenTelemetryの直接使用を避けるため、現在は何もしない
+    :ok
   end
   
   @doc """
-  現在のスパンのステータスを設定
+  現在のスパンのステータスを設定（現在は何もしない）
   """
-  def set_status(:ok), do: Tracer.set_status(:ok)
-  def set_status(:error, message) do
-    Tracer.set_status(:error, message)
+  def set_status(:ok), do: :ok
+  def set_status(:error, _message) do
+    # OpenTelemetryの直接使用を避けるため、現在は何もしない
+    :ok
   end
 end

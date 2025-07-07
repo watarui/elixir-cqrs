@@ -1,7 +1,7 @@
 defmodule Query.Category do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
   field :name, 2, type: :string
@@ -12,7 +12,7 @@ end
 defmodule Query.Product do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
   field :name, 2, type: :string
@@ -26,7 +26,7 @@ end
 defmodule Query.CategoryQueryRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
 end
@@ -34,7 +34,7 @@ end
 defmodule Query.CategoryByNameRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :name, 1, type: :string
 end
@@ -42,7 +42,7 @@ end
 defmodule Query.CategorySearchRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :search_term, 1, type: :string, json_name: "searchTerm"
 end
@@ -50,7 +50,7 @@ end
 defmodule Query.CategoryPaginationRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :page, 1, type: :int32
   field :per_page, 2, type: :int32, json_name: "perPage"
@@ -59,7 +59,7 @@ end
 defmodule Query.CategoryIdsRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :ids, 1, repeated: true, type: :string
 end
@@ -67,7 +67,7 @@ end
 defmodule Query.CategoryExistsRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
 end
@@ -75,7 +75,7 @@ end
 defmodule Query.ProductQueryRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
 end
@@ -83,7 +83,7 @@ end
 defmodule Query.ProductByNameRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :name, 1, type: :string
 end
@@ -91,7 +91,7 @@ end
 defmodule Query.ProductSearchRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :search_term, 1, type: :string, json_name: "searchTerm"
 end
@@ -99,7 +99,7 @@ end
 defmodule Query.ProductByCategoryRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :category_id, 1, type: :string, json_name: "categoryId"
 end
@@ -107,7 +107,7 @@ end
 defmodule Query.ProductPriceRangeRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :min_price, 1, type: :double, json_name: "minPrice"
   field :max_price, 2, type: :double, json_name: "maxPrice"
@@ -116,7 +116,7 @@ end
 defmodule Query.ProductSortRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :sort_order, 1, type: :string, json_name: "sortOrder"
 end
@@ -124,7 +124,7 @@ end
 defmodule Query.ProductPaginationRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :page, 1, type: :int32
   field :per_page, 2, type: :int32, json_name: "perPage"
@@ -133,7 +133,7 @@ end
 defmodule Query.ProductIdsRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :ids, 1, repeated: true, type: :string
 end
@@ -141,7 +141,7 @@ end
 defmodule Query.ProductExistsRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :id, 1, type: :string
 end
@@ -149,7 +149,7 @@ end
 defmodule Query.ProductAdvancedSearchRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :name, 1, type: :string
   field :category_id, 2, type: :string, json_name: "categoryId"
@@ -164,7 +164,7 @@ end
 defmodule Query.CategoryProductStatisticsRequest do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :category_id, 1, type: :string, json_name: "categoryId"
 end
@@ -172,7 +172,7 @@ end
 defmodule Query.CategoryQueryResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :category, 1, type: Query.Category
 end
@@ -180,7 +180,7 @@ end
 defmodule Query.CategoryListResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :categories, 1, repeated: true, type: Query.Category
 end
@@ -188,7 +188,7 @@ end
 defmodule Query.CategoryStatisticsResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :total_count, 1, type: :int32, json_name: "totalCount"
   field :has_categories, 2, type: :bool, json_name: "hasCategories"
@@ -198,7 +198,7 @@ end
 defmodule Query.CategoryExistsResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :exists, 1, type: :bool
 end
@@ -206,7 +206,7 @@ end
 defmodule Query.ProductQueryResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :product, 1, type: Query.Product
 end
@@ -214,7 +214,7 @@ end
 defmodule Query.ProductListResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :products, 1, repeated: true, type: Query.Product
 end
@@ -222,7 +222,7 @@ end
 defmodule Query.ProductStatisticsResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :total_count, 1, type: :int32, json_name: "totalCount"
   field :has_products, 2, type: :bool, json_name: "hasProducts"
@@ -235,7 +235,7 @@ end
 defmodule Query.ProductExistsResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :exists, 1, type: :bool
 end
@@ -243,7 +243,7 @@ end
 defmodule Query.CategoryProductStatisticsResponse do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
   field :category_id, 1, type: :string, json_name: "categoryId"
   field :total_count, 2, type: :int32, json_name: "totalCount"
@@ -256,5 +256,77 @@ end
 defmodule Query.Empty do
   @moduledoc false
 
-  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
+end
+
+defmodule Query.CategoryQuery.Service do
+  @moduledoc false
+
+  use GRPC.Service, name: "query.CategoryQuery", protoc_gen_elixir_version: "0.14.0"
+
+  rpc :GetCategory, Query.CategoryQueryRequest, Query.CategoryQueryResponse
+
+  rpc :GetCategoryByName, Query.CategoryByNameRequest, Query.CategoryQueryResponse
+
+  rpc :ListCategories, Query.Empty, Query.CategoryListResponse
+
+  rpc :SearchCategories, Query.CategorySearchRequest, Query.CategoryListResponse
+
+  rpc :ListCategoriesPaginated, Query.CategoryPaginationRequest, Query.CategoryListResponse
+
+  rpc :GetCategoryStatistics, Query.Empty, Query.CategoryStatisticsResponse
+
+  rpc :CategoryExists, Query.CategoryExistsRequest, Query.CategoryExistsResponse
+
+  rpc :GetCategoriesByIds, Query.CategoryIdsRequest, Query.CategoryListResponse
+end
+
+defmodule Query.CategoryQuery.Stub do
+  @moduledoc false
+
+  use GRPC.Stub, service: Query.CategoryQuery.Service
+end
+
+defmodule Query.ProductQuery.Service do
+  @moduledoc false
+
+  use GRPC.Service, name: "query.ProductQuery", protoc_gen_elixir_version: "0.14.0"
+
+  rpc :GetProduct, Query.ProductQueryRequest, Query.ProductQueryResponse
+
+  rpc :GetProductWithCategory, Query.ProductQueryRequest, Query.ProductQueryResponse
+
+  rpc :GetProductByName, Query.ProductByNameRequest, Query.ProductQueryResponse
+
+  rpc :ListProducts, Query.Empty, Query.ProductListResponse
+
+  rpc :ListProductsWithCategories, Query.Empty, Query.ProductListResponse
+
+  rpc :GetProductsByCategory, Query.ProductByCategoryRequest, Query.ProductListResponse
+
+  rpc :SearchProducts, Query.ProductSearchRequest, Query.ProductListResponse
+
+  rpc :GetProductsByPriceRange, Query.ProductPriceRangeRequest, Query.ProductListResponse
+
+  rpc :ListProductsSortedByPrice, Query.ProductSortRequest, Query.ProductListResponse
+
+  rpc :ListProductsPaginated, Query.ProductPaginationRequest, Query.ProductListResponse
+
+  rpc :GetProductsByIds, Query.ProductIdsRequest, Query.ProductListResponse
+
+  rpc :SearchProductsAdvanced, Query.ProductAdvancedSearchRequest, Query.ProductListResponse
+
+  rpc :GetProductStatistics, Query.Empty, Query.ProductStatisticsResponse
+
+  rpc :GetCategoryProductStatistics,
+      Query.CategoryProductStatisticsRequest,
+      Query.CategoryProductStatisticsResponse
+
+  rpc :ProductExists, Query.ProductExistsRequest, Query.ProductExistsResponse
+end
+
+defmodule Query.ProductQuery.Stub do
+  @moduledoc false
+
+  use GRPC.Stub, service: Query.ProductQuery.Service
 end

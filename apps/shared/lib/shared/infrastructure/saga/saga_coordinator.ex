@@ -306,9 +306,23 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   end
   
   defp dispatch_command(command) do
-    # TODO: 実際のコマンドバスへの送信実装
-    # 現在は単純化のため、直接イベントを発行
-    {:ok, command}
+    # CommandBusを使用してコマンドを実行
+    # SagaCoordinatorはsharedアプリにあるため、CommandBusを直接参照できない
+    # そのため、プロセス登録名を使用して動的に呼び出す
+    case Process.whereis(CommandService.Application.CommandBus) do
+      nil ->
+        Logger.error("CommandBus not found")
+        {:error, :command_bus_not_found}
+      
+      pid ->
+        try do
+          CommandService.Application.CommandBus.execute(command)
+        rescue
+          error ->
+            Logger.error("Failed to dispatch command: #{inspect(error)}")
+            {:error, error}
+        end
+    end
   end
   
   defp record_step_completion(saga_id, step_name) do

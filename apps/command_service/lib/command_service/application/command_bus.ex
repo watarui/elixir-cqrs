@@ -10,7 +10,8 @@ defmodule CommandService.Application.CommandBus do
 
   alias CommandService.Application.Handlers.{
     ProductCommandHandler,
-    CategoryCommandHandler
+    CategoryCommandHandler,
+    OrderCommandHandler
   }
 
   # Client API
@@ -25,6 +26,14 @@ defmodule CommandService.Application.CommandBus do
   @spec execute(command :: struct()) :: {:ok, any()} | {:error, term()}
   def execute(command) do
     GenServer.call(get_server(), {:execute, command})
+  end
+  
+  @doc """
+  コマンドをディスパッチする（executeのエイリアス）
+  """
+  @spec dispatch(command :: struct()) :: {:ok, any()} | {:error, term()}
+  def dispatch(command) do
+    execute(command)
   end
 
   @doc """
@@ -74,7 +83,8 @@ defmodule CommandService.Application.CommandBus do
   defp build_handler_registry do
     handlers = [
       ProductCommandHandler,
-      CategoryCommandHandler
+      CategoryCommandHandler,
+      OrderCommandHandler
     ]
 
     Enum.reduce(handlers, %{}, fn handler, acc ->

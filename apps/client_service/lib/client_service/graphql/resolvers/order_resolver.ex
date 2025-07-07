@@ -45,7 +45,15 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
             total_amount: total_amount,
             items: Enum.map(items_with_details, &format_order_item/1),
             created_at: DateTime.utc_now(),
-            updated_at: DateTime.utc_now()
+            updated_at: DateTime.utc_now(),
+            saga_state: %{
+              state: "started",
+              status: :started,
+              started_at: DateTime.utc_now(),
+              completed_at: nil,
+              current_step: "order_initiated",
+              failure_reason: nil
+            }
           }
           
           {:ok, order}
@@ -146,7 +154,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
 
   defp get_product_info(product_id) do
     # CqrsFacadeを使用して商品情報を取得
-    case CqrsFacade.query(CqrsFacade, {:get_product, product_id}) do
+    case CqrsFacade.query({:get_product, product_id}) do
       {:ok, product} -> 
         {:ok, %{
           id: product.id,
@@ -158,9 +166,11 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
   end
 
   defp start_order_saga(saga_context) do
-    # TODO: 実際にはgRPC経由でcommand-serviceに
-    # サガ開始コマンドを送信する必要がある
-    {:ok, "saga-#{saga_context.order_id}"}
+    # gRPC経由でcommand-serviceにサガ開始コマンドを送信
+    case CqrsFacade.start_order_saga(saga_context) do
+      {:ok, saga_id} -> {:ok, saga_id}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp validate_items(items) do
@@ -180,7 +190,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
       product_id: item.product_id,
       product_name: item.product_name,
       quantity: item.quantity,
-      unit_price: item.unit_price,
+      price: item.unit_price,
       subtotal: item.subtotal
     }
   end

@@ -2,7 +2,14 @@
 FROM elixir:1.18-alpine
 
 # 必要なパッケージをインストール
-RUN apk add --no-cache build-base git postgresql-client
+RUN apk add --no-cache build-base git postgresql-client protoc curl
+
+# grpcurlをインストール
+RUN curl -sSL https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz \
+    -o grpcurl.tar.gz && \
+    tar -xzf grpcurl.tar.gz && \
+    mv grpcurl /usr/local/bin/ && \
+    rm grpcurl.tar.gz
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -16,6 +23,9 @@ COPY apps/shared/mix.exs ./apps/shared/
 RUN mix local.hex --force && \
     mix local.rebar --force && \
     mix deps.get
+
+# protoc-gen-elixirをインストール
+RUN mix escript.install hex protobuf --force
 
 # アプリケーションコードをコピー
 COPY . .

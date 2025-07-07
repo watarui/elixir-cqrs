@@ -14,6 +14,7 @@ defmodule ClientService.GraphQL.Types.Order do
     field :items, non_null(list_of(:order_item))
     field :created_at, non_null(:datetime)
     field :updated_at, non_null(:datetime)
+    field :saga_state, :saga_state
   end
 
   # 注文アイテム型
@@ -21,7 +22,7 @@ defmodule ClientService.GraphQL.Types.Order do
     field :product_id, non_null(:string)
     field :product_name, non_null(:string)
     field :quantity, non_null(:integer)
-    field :unit_price, non_null(:float)
+    field :price, non_null(:float)
     field :subtotal, non_null(:float)
   end
 
@@ -38,12 +39,12 @@ defmodule ClientService.GraphQL.Types.Order do
 
   # サガ状態型
   object :saga_state do
-    field :saga_id, non_null(:string)
-    field :state, non_null(:saga_status)
-    field :completed_steps, list_of(:string)
-    field :error, :string
-    field :started_at, non_null(:datetime)
+    field :state, non_null(:string)
+    field :status, non_null(:saga_status)
+    field :started_at, :datetime
     field :completed_at, :datetime
+    field :current_step, :string
+    field :failure_reason, :string
   end
 
   # サガステータス列挙型

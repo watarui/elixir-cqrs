@@ -13,7 +13,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   
   use Shared.Domain.Saga.SagaBase
   
-  alias CommandService.Application.Commands.{
+  alias CommandService.Application.Commands.OrderCommands.{
     ReserveInventoryCommand,
     ReleaseInventoryCommand,
     ProcessPaymentCommand,

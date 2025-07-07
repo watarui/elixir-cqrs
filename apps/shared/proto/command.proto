@@ -64,3 +64,61 @@ service ProductCommand {
   // 商品を削除した結果を返す
   rpc Delete(ProductUpParam) returns (ProductUpResult);
 }
+
+// 注文サガ開始パラメータ
+message StartOrderSagaParam {
+  string orderId = 1; // 注文ID
+  string customerId = 2; // 顧客ID
+  repeated OrderItem items = 3; // 注文アイテム
+  double totalAmount = 4; // 合計金額
+  ShippingAddress shippingAddress = 5; // 配送先住所
+}
+
+// 注文アイテム
+message OrderItem {
+  string productId = 1; // 商品ID
+  string productName = 2; // 商品名
+  int32 quantity = 3; // 数量
+  double unitPrice = 4; // 単価
+  double subtotal = 5; // 小計
+}
+
+// 配送先住所
+message ShippingAddress {
+  string street = 1; // 番地
+  string city = 2; // 市区町村
+  string postalCode = 3; // 郵便番号
+}
+
+// サガ開始結果
+message StartSagaResult {
+  string sagaId = 1; // サガID
+  string status = 2; // ステータス
+  Error error = 3; // エラー情報
+  google.protobuf.Timestamp startedAt = 4; // 開始日時
+}
+
+// サガステータス取得パラメータ
+message GetSagaStatusParam {
+  string sagaId = 1; // サガID
+}
+
+// サガステータス結果
+message SagaStatusResult {
+  string sagaId = 1; // サガID
+  string state = 2; // 状態
+  repeated string completedSteps = 3; // 完了したステップ
+  string currentStep = 4; // 現在のステップ
+  string failureReason = 5; // 失敗理由
+  google.protobuf.Timestamp startedAt = 6; // 開始日時
+  google.protobuf.Timestamp completedAt = 7; // 完了日時
+  Error error = 8; // エラー情報
+}
+
+// サガ管理サービス
+service SagaCommand {
+  // 注文サガを開始する
+  rpc StartOrderSaga(StartOrderSagaParam) returns (StartSagaResult);
+  // サガのステータスを取得する
+  rpc GetSagaStatus(GetSagaStatusParam) returns (SagaStatusResult);
+}
