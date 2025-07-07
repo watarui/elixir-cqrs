@@ -2,20 +2,20 @@ defmodule Shared.Domain.Saga.SagaEvents do
   @moduledoc """
   サガ関連のイベント定義
   """
-  
+
   alias Shared.Domain.Events.BaseEvent
-  
+
   defmodule SagaStarted do
     @moduledoc """
     サガが開始されたイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -27,7 +27,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :saga_type,
       :initial_data
     ]
-    
+
     def new(saga_id, saga_type, initial_data, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),
@@ -45,18 +45,18 @@ defmodule Shared.Domain.Saga.SagaEvents do
       }
     end
   end
-  
+
   defmodule SagaStepCompleted do
     @moduledoc """
     サガのステップが完了したイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -68,7 +68,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :step_name,
       :result
     ]
-    
+
     def new(saga_id, step_name, result, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),
@@ -86,18 +86,18 @@ defmodule Shared.Domain.Saga.SagaEvents do
       }
     end
   end
-  
+
   defmodule SagaFailed do
     @moduledoc """
     サガが失敗したイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -109,7 +109,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :failed_step,
       :reason
     ]
-    
+
     def new(saga_id, failed_step, reason, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),
@@ -127,18 +127,18 @@ defmodule Shared.Domain.Saga.SagaEvents do
       }
     end
   end
-  
+
   defmodule SagaCompensationStarted do
     @moduledoc """
     サガの補償処理が開始されたイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -148,7 +148,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :payload,
       :metadata
     ]
-    
+
     def new(saga_id, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),
@@ -161,18 +161,18 @@ defmodule Shared.Domain.Saga.SagaEvents do
       }
     end
   end
-  
+
   defmodule SagaCompensated do
     @moduledoc """
     サガの補償処理が完了したイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -182,7 +182,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :payload,
       :metadata
     ]
-    
+
     def new(saga_id, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),
@@ -195,18 +195,18 @@ defmodule Shared.Domain.Saga.SagaEvents do
       }
     end
   end
-  
+
   defmodule SagaCompleted do
     @moduledoc """
     サガが正常に完了したイベント
     """
     use BaseEvent
-    
+
     @impl true
     def payload do
       %{}
     end
-    
+
     defstruct [
       :event_id,
       :aggregate_id,
@@ -217,7 +217,7 @@ defmodule Shared.Domain.Saga.SagaEvents do
       :metadata,
       :final_result
     ]
-    
+
     def new(saga_id, final_result, metadata \\ %{}) do
       %__MODULE__{
         event_id: UUID.uuid4(),

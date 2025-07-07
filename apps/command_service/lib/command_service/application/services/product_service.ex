@@ -33,7 +33,8 @@ defmodule CommandService.Application.Services.ProductService do
     end
   end
 
-  @spec get_product(String.t()) :: {:ok, Product.t()} | {:error, :not_found | String.t() | AppError.t()}
+  @spec get_product(String.t()) ::
+          {:ok, Product.t()} | {:error, :not_found | String.t() | AppError.t()}
   def get_product(id) do
     repo().find_by_id(id)
   end
@@ -55,7 +56,8 @@ defmodule CommandService.Application.Services.ProductService do
   ## Notes
     Only non-nil and non-empty values will be updated. Price cannot be set to zero.
   """
-  @spec update_product(String.t(), map()) :: {:ok, Product.t()} | {:error, String.t() | AppError.t()}
+  @spec update_product(String.t(), map()) ::
+          {:ok, Product.t()} | {:error, String.t() | AppError.t()}
   def update_product(id, params) do
     with {:ok, product} <- repo().find_by_id(id),
          # 純粋な関数でパラメータをフィルタリング
@@ -77,6 +79,7 @@ defmodule CommandService.Application.Services.ProductService do
     # ログ記録の実装（将来的に追加）
     :ok
   end
+
   defp log_product_changes(_id, _), do: :ok
 
   @spec delete_product(String.t()) :: :ok | {:error, String.t() | AppError.t()}

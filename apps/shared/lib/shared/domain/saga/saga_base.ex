@@ -1,25 +1,26 @@
 defmodule Shared.Domain.Saga.SagaBase do
   @moduledoc """
   サガの基底モジュール
-  
+
   サガは長時間実行されるトランザクションを管理し、
   複数のサービスにまたがる処理を調整します。
   """
-  
+
   @type saga_id :: String.t()
   @type saga_state :: :started | :processing | :compensating | :completed | :failed | :compensated
-  
-  @callback handle_event(event :: map(), state :: map()) :: {:ok, commands :: [map()]} | {:error, reason :: any()}
+
+  @callback handle_event(event :: map(), state :: map()) ::
+              {:ok, commands :: [map()]} | {:error, reason :: any()}
   @callback get_compensation_commands(state :: map()) :: [map()]
   @callback is_completed?(state :: map()) :: boolean()
   @callback is_failed?(state :: map()) :: boolean()
-  
+
   defmacro __using__(_opts) do
     quote do
       @behaviour Shared.Domain.Saga.SagaBase
-      
+
       require Logger
-      
+
       @doc """
       サガを開始する
       """
@@ -37,14 +38,14 @@ defmodule Shared.Domain.Saga.SagaBase do
           updated_at: DateTime.utc_now()
         }
       end
-      
+
       @doc """
       サガの状態を更新する
       """
       def update_state(saga, updates) do
         Map.merge(saga, Map.put(updates, :updated_at, DateTime.utc_now()))
       end
-      
+
       @doc """
       イベントを処理済みとして記録する
       """
@@ -52,7 +53,7 @@ defmodule Shared.Domain.Saga.SagaBase do
         processed_events = [{event.event_id, DateTime.utc_now()} | saga.processed_events]
         update_state(saga, %{processed_events: processed_events})
       end
-      
+
       @doc """
       ステップを完了済みとして記録する
       """
@@ -62,10 +63,11 @@ defmodule Shared.Domain.Saga.SagaBase do
           result: result,
           completed_at: DateTime.utc_now()
         }
+
         completed_steps = [completed_step | saga.completed_steps]
         update_state(saga, %{completed_steps: completed_steps})
       end
-      
+
       @doc """
       サガを失敗状態にする
       """
@@ -79,28 +81,28 @@ defmodule Shared.Domain.Saga.SagaBase do
           }
         })
       end
-      
+
       @doc """
       補償処理を開始する
       """
       def start_compensation(saga) do
         update_state(saga, %{state: :compensating})
       end
-      
+
       @doc """
       補償処理を完了する
       """
       def mark_compensated(saga) do
         update_state(saga, %{state: :compensated})
       end
-      
+
       @doc """
       サガを完了する
       """
       def mark_completed(saga) do
         update_state(saga, %{state: :completed})
       end
-      
+
       @doc """
       タイムアウトをチェックする
       """
@@ -108,8 +110,8 @@ defmodule Shared.Domain.Saga.SagaBase do
         elapsed = DateTime.diff(DateTime.utc_now(), saga.started_at, :millisecond)
         elapsed > timeout_ms
       end
-      
-      defoverridable [start: 2]
+
+      defoverridable start: 2
     end
   end
 end

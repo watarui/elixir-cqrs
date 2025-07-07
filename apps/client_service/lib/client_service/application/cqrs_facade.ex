@@ -1,7 +1,7 @@
 defmodule ClientService.Application.CqrsFacade do
   @moduledoc """
   CQRSパターンのファサード
-  
+
   コマンドとクエリの操作を統一的に扱い、
   内部的にgRPC接続を使用してcommand-serviceとquery-serviceと通信します。
   """
@@ -10,13 +10,14 @@ defmodule ClientService.Application.CqrsFacade do
   require Logger
 
   alias ClientService.Infrastructure.GrpcConnections
+
   alias Proto.{
     CategoryCommand,
     ProductCommand,
     CategoryUpParam,
     ProductUpParam
   }
-  
+
   alias Query.{
     CategoryQuery,
     ProductQuery,
@@ -54,7 +55,7 @@ defmodule ClientService.Application.CqrsFacade do
   def query(server \\ __MODULE__, query) do
     GenServer.call(server, {:query, query})
   end
-  
+
   @doc """
   注文サガを開始する
   """
@@ -62,7 +63,7 @@ defmodule ClientService.Application.CqrsFacade do
   def start_order_saga(saga_context) do
     GenServer.call(__MODULE__, {:start_order_saga, saga_context})
   end
-  
+
   @doc """
   サガのステータスを取得する
   """
@@ -89,13 +90,13 @@ defmodule ClientService.Application.CqrsFacade do
     result = execute_query(query)
     {:reply, result, state}
   end
-  
+
   @impl true
   def handle_call({:start_order_saga, saga_context}, _from, state) do
     result = start_saga(saga_context)
     {:reply, result, state}
   end
-  
+
   @impl true
   def handle_call({:get_saga_status, saga_id}, _from, state) do
     result = get_saga_status_impl(saga_id)
@@ -112,6 +113,7 @@ defmodule ClientService.Application.CqrsFacade do
             crud: :INSERT,
             name: name
           }
+
           call_command_service(channel, :category, request)
 
         {:update_category, id, name} ->
@@ -120,6 +122,7 @@ defmodule ClientService.Application.CqrsFacade do
             id: id,
             name: name
           }
+
           call_command_service(channel, :category, request)
 
         {:delete_category, id} ->
@@ -127,6 +130,7 @@ defmodule ClientService.Application.CqrsFacade do
             crud: :DELETE,
             id: id
           }
+
           call_command_service(channel, :category, request)
 
         {:create_product, params} ->
@@ -136,6 +140,7 @@ defmodule ClientService.Application.CqrsFacade do
             price: params.price,
             categoryId: params[:category_id] || ""
           }
+
           call_command_service(channel, :product, request)
 
         {:update_product, id, params} ->
@@ -146,6 +151,7 @@ defmodule ClientService.Application.CqrsFacade do
             price: params[:price],
             categoryId: params[:category_id]
           }
+
           call_command_service(channel, :product, request)
 
         {:delete_product, id} ->
@@ -153,6 +159,7 @@ defmodule ClientService.Application.CqrsFacade do
             crud: :DELETE,
             id: id
           }
+
           call_command_service(channel, :product, request)
 
         _ ->
@@ -203,11 +210,14 @@ defmodule ClientService.Application.CqrsFacade do
               case response do
                 %{category: nil, error: %{message: message}} ->
                   {:error, message}
+
                 %{category: category} when not is_nil(category) ->
                   {:ok, %{id: category.id}}
+
                 _ ->
                   {:error, "Unexpected response format"}
               end
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -219,11 +229,14 @@ defmodule ClientService.Application.CqrsFacade do
               case response do
                 %{product: nil, error: %{message: message}} ->
                   {:error, message}
+
                 %{product: product} when not is_nil(product) ->
                   {:ok, %{id: product.id}}
+
                 _ ->
                   {:error, "Unexpected response format"}
               end
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -243,8 +256,10 @@ defmodule ClientService.Application.CqrsFacade do
           case CategoryQuery.Stub.get_category(channel, request) do
             {:ok, response} ->
               {:ok, category_to_map(response.category)}
+
             {:error, %GRPC.RPCError{status: 5}} ->
               {:error, :not_found}
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -254,6 +269,7 @@ defmodule ClientService.Application.CqrsFacade do
           case CategoryQuery.Stub.list_categories(channel, request) do
             {:ok, response} ->
               {:ok, Enum.map(response.categories, &category_to_map/1)}
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -263,8 +279,10 @@ defmodule ClientService.Application.CqrsFacade do
           case ProductQuery.Stub.get_product(channel, request) do
             {:ok, response} ->
               {:ok, product_to_map(response.product)}
+
             {:error, %GRPC.RPCError{status: 5}} ->
               {:error, :not_found}
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -274,6 +292,7 @@ defmodule ClientService.Application.CqrsFacade do
           case ProductQuery.Stub.list_products(channel, request) do
             {:ok, response} ->
               {:ok, Enum.map(response.products, &product_to_map/1)}
+
             {:error, reason} ->
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
@@ -287,7 +306,7 @@ defmodule ClientService.Application.CqrsFacade do
   end
 
   defp category_to_map(nil), do: nil
-  
+
   defp category_to_map(category) do
     %{
       id: category.id,
@@ -298,7 +317,7 @@ defmodule ClientService.Application.CqrsFacade do
   end
 
   defp product_to_map(nil), do: nil
-  
+
   defp product_to_map(product) do
     %{
       id: product.id,
@@ -311,38 +330,41 @@ defmodule ClientService.Application.CqrsFacade do
       updated_at: Map.get(product, :updated_at)
     }
   end
-  
+
   defp start_saga(saga_context) do
     Logger.info("Starting saga with context: #{inspect(saga_context)}")
-    
+
     with {:ok, channel} <- GrpcConnections.get_command_channel() do
       try do
         request = %Proto.StartOrderSagaParam{
           orderId: saga_context.order_id,
           customerId: Map.get(saga_context, :customer_id) || Map.get(saga_context, :user_id),
-          items: Enum.map(saga_context.items, fn item ->
-            %Proto.OrderItem{
-              productId: Map.get(item, :product_id, ""),
-              productName: Map.get(item, :product_name, ""),
-              quantity: Map.get(item, :quantity, 0),
-              unitPrice: Map.get(item, :unit_price, 0.0),
-              subtotal: Map.get(item, :subtotal, 0.0)
-            }
-          end),
+          items:
+            Enum.map(saga_context.items, fn item ->
+              %Proto.OrderItem{
+                productId: Map.get(item, :product_id, ""),
+                productName: Map.get(item, :product_name, ""),
+                quantity: Map.get(item, :quantity, 0),
+                unitPrice: Map.get(item, :unit_price, 0.0),
+                subtotal: Map.get(item, :subtotal, 0.0)
+              }
+            end),
           totalAmount: saga_context.total_amount,
           shippingAddress: build_shipping_address(saga_context)
         }
-        
+
         Logger.info("Sending saga request: #{inspect(request)}")
-        
+
         case Proto.SagaCommand.Stub.start_order_saga(channel, request) do
           {:ok, response} ->
             Logger.info("Saga response: #{inspect(response)}")
+
             if response.error do
               {:error, response.error.message}
             else
               {:ok, response.sagaId}
             end
+
           {:error, reason} ->
             Logger.error("Failed to start saga: #{inspect(reason)}")
             {:error, :saga_start_failed}
@@ -358,19 +380,25 @@ defmodule ClientService.Application.CqrsFacade do
         {:error, :service_unavailable}
     end
   end
-  
+
   defp get_saga_status_impl(saga_id) do
     # 一時的にモックステータスを返す
-    {:ok, %{
-      saga_id: saga_id,
-      state: "completed",
-      completed_steps: ["inventory_reserved", "payment_processed", "shipping_arranged", "order_confirmed"],
-      current_step: "completed",
-      failure_reason: nil,
-      started_at: DateTime.utc_now() |> DateTime.add(-60, :second),
-      completed_at: DateTime.utc_now()
-    }}
-    
+    {:ok,
+     %{
+       saga_id: saga_id,
+       state: "completed",
+       completed_steps: [
+         "inventory_reserved",
+         "payment_processed",
+         "shipping_arranged",
+         "order_confirmed"
+       ],
+       current_step: "completed",
+       failure_reason: nil,
+       started_at: DateTime.utc_now() |> DateTime.add(-60, :second),
+       completed_at: DateTime.utc_now()
+     }}
+
     # TODO: gRPCが正しく動作するようになったら以下のコードを有効化
     # with {:ok, channel} <- GrpcConnections.get_command_channel() do
     #   request = struct(Proto.GetSagaStatusParam, %{sagaId: saga_id})
@@ -400,7 +428,7 @@ defmodule ClientService.Application.CqrsFacade do
     #     {:error, :service_unavailable}
     # end
   end
-  
+
   defp saga_item_to_proto(item) do
     %{
       productId: Map.get(item, :product_id, ""),
@@ -410,12 +438,13 @@ defmodule ClientService.Application.CqrsFacade do
       subtotal: Map.get(item, :subtotal, 0.0)
     }
   end
-  
+
   defp timestamp_to_datetime(nil), do: nil
+
   defp timestamp_to_datetime(timestamp) do
     DateTime.from_unix!(timestamp.seconds)
   end
-  
+
   defp build_shipping_address(saga_context) do
     case Map.get(saga_context, :shipping_address) do
       nil ->
@@ -424,6 +453,7 @@ defmodule ClientService.Application.CqrsFacade do
           city: "Default City",
           postalCode: "00000"
         }
+
       address ->
         %Proto.ShippingAddress{
           street: Map.get(address, :street, "Default Street"),

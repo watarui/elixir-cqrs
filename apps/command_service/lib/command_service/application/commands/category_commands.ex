@@ -33,7 +33,8 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :create_category}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :create_category}
   end
 
   defmodule UpdateCategory do
@@ -64,7 +65,8 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :update_category}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :update_category}
   end
 
   defmodule DeleteCategory do
@@ -87,13 +89,13 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     @impl true
     def validate(%__MODULE__{} = cmd) do
       cond do
-        is_nil(cmd.id) || cmd.id == "" -> 
+        is_nil(cmd.id) || cmd.id == "" ->
           {:error, "Category ID is required"}
-        
+
         not is_nil(cmd.reassign_products_to) && (is_nil(cmd.product_ids) || cmd.product_ids == []) ->
           {:error, "Product IDs must be provided when reassigning to another category"}
-        
-        true -> 
+
+        true ->
           :ok
       end
     end
@@ -102,6 +104,7 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :delete_category}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :delete_category}
   end
 end

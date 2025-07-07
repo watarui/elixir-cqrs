@@ -2,9 +2,9 @@ defmodule Shared.Telemetry.Metrics do
   @moduledoc """
   アプリケーション全体のメトリクス定義
   """
-  
+
   import Telemetry.Metrics
-  
+
   @doc """
   監視すべきメトリクスのリストを返す
   """
@@ -18,7 +18,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("phoenix.endpoint.stop.count",
         tags: [:method, :route, :status]
       ),
-      
+
       # GraphQL メトリクス
       summary("absinthe.execute.operation.stop.duration",
         unit: {:native, :millisecond},
@@ -27,7 +27,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("absinthe.execute.operation.stop.count",
         tags: [:operation_type]
       ),
-      
+
       # Ecto メトリクス
       summary("command_service.repo.query.total_time",
         unit: {:native, :millisecond},
@@ -43,7 +43,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("query_service.repo.query.count",
         tags: [:query]
       ),
-      
+
       # gRPC メトリクス
       summary("grpc.server.rpc.duration",
         unit: {:native, :millisecond},
@@ -59,7 +59,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("grpc.client.rpc.count",
         tags: [:service, :method, :status]
       ),
-      
+
       # レジリエンスメトリクス
       counter("grpc.retry.count",
         tags: [:status]
@@ -81,7 +81,7 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:circuit_breaker, :status]
       ),
-      
+
       # ビジネスメトリクス
       counter("command.execute.count",
         tags: [:command_type, :status]
@@ -100,7 +100,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("event.publish.count",
         tags: [:event_type]
       ),
-      
+
       # カスタムメトリクス
       counter("product.created.count"),
       counter("product.updated.count"),
@@ -108,7 +108,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("category.created.count"),
       counter("category.updated.count"),
       counter("category.deleted.count"),
-      
+
       # システムメトリクス
       last_value("vm.memory.total", unit: :byte),
       last_value("vm.total_run_queue_lengths.total"),
@@ -116,7 +116,7 @@ defmodule Shared.Telemetry.Metrics do
       last_value("vm.system_counts.process_count")
     ] ++ Shared.Telemetry.SagaMetrics.metrics()
   end
-  
+
   @doc """
   Prometheusエクスポート用のメトリクス
   """
@@ -128,14 +128,14 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:method, :route, :status]
       ),
-      
+
       # gRPCレスポンスタイム
       distribution("grpc.request.duration",
         reporter_options: [buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000]],
         unit: {:native, :millisecond},
         tags: [:service, :method, :status]
       ),
-      
+
       # データベースクエリタイム
       distribution("db.query.duration",
         reporter_options: [buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000]],

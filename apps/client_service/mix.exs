@@ -50,11 +50,11 @@ defmodule ClientService.MixProject do
 
       # ユーティリティ
       {:uuid, "~> 1.1"},
-      
+
       # OpenTelemetry Phoenix instrumentation
       {:opentelemetry_phoenix, "~> 1.1"},
       {:opentelemetry_absinthe, "~> 1.0"},
-      
+
       # Prometheus メトリクス
       {:telemetry_metrics_prometheus, "~> 1.1"},
 

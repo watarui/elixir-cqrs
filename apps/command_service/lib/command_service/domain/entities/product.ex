@@ -40,17 +40,17 @@ defmodule CommandService.Domain.Entities.Product do
 
   @doc """
   商品情報を更新します
-  
+
   与えられたパラメータマップに基づいて、商品の各フィールドを更新します。
   nilまたは空文字列のフィールドはスキップされます。
-  
+
   ## パラメータ
     - product: 更新対象の商品エンティティ
     - params: 更新するフィールドを含むマップ
       - :name - 商品名（オプション）
       - :price - 価格（オプション）
       - :category_id - カテゴリID（オプション）
-  
+
   ## 戻り値
     - {:ok, updated_product} - 更新成功
     - {:error, reason} - バリデーションエラー
@@ -62,8 +62,9 @@ defmodule CommandService.Domain.Entities.Product do
       {:price, params[:price], &update_price/2},
       {:category_id, params[:category_id], &update_category/2}
     ]
-    
-    Enum.reduce_while(update_fields, {:ok, product}, fn {_field, value, update_fn}, {:ok, current_product} ->
+
+    Enum.reduce_while(update_fields, {:ok, product}, fn {_field, value, update_fn},
+                                                        {:ok, current_product} ->
       case maybe_apply_field_update(current_product, value, update_fn) do
         {:ok, updated_product} -> {:cont, {:ok, updated_product}}
         {:error, _} = error -> {:halt, error}
@@ -104,7 +105,7 @@ defmodule CommandService.Domain.Entities.Product do
         error
     end
   end
-  
+
   # フィールド更新のヘルパー関数
   @spec maybe_apply_field_update(t(), any(), (t(), any() -> {:ok, t()} | {:error, String.t()})) ::
           {:ok, t()} | {:error, String.t()}

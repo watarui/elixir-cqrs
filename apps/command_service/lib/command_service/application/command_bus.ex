@@ -1,7 +1,7 @@
 defmodule CommandService.Application.CommandBus do
   @moduledoc """
   コマンドバス（メディエーターパターンの実装）
-  
+
   コマンドを適切なハンドラーにルーティングし、実行結果を返します
   """
 
@@ -28,7 +28,7 @@ defmodule CommandService.Application.CommandBus do
   def execute(command) do
     GenServer.call(get_server(), {:execute, command})
   end
-  
+
   @doc """
   コマンドをディスパッチする（executeのエイリアス）
   """
@@ -66,6 +66,7 @@ defmodule CommandService.Application.CommandBus do
     spawn(fn ->
       execute_command(command, state.registry)
     end)
+
     {:noreply, state}
   end
 
@@ -73,10 +74,11 @@ defmodule CommandService.Application.CommandBus do
 
   defp get_server do
     case Process.whereis(__MODULE__) do
-      nil -> 
+      nil ->
         {:ok, pid} = start_link(name: __MODULE__)
         pid
-      pid -> 
+
+      pid ->
         pid
     end
   end
@@ -97,42 +99,47 @@ defmodule CommandService.Application.CommandBus do
 
   defp execute_command(command, registry) do
     command_type = command.__struct__
-    
+
     # Telemetryスパンとメトリクス
     require Shared.Telemetry.Span, as: Span
-    
+
     Span.with_span "command.execute", %{command_type: inspect(command_type)} do
       start_time = System.monotonic_time()
-      
-      result = case Map.get(registry, command_type) do
-        nil ->
-          {:error, "No handler found for command: #{inspect(command_type)}"}
-        
-        handler ->
-          Logger.info("Executing command #{inspect(command_type)} with handler #{inspect(handler)}")
-          
-          try do
-            handler.handle_command(command)
-          rescue
-            e ->
-              Logger.error("Error executing command: #{inspect(e)}")
-              {:error, Exception.message(e)}
-          end
-      end
-      
+
+      result =
+        case Map.get(registry, command_type) do
+          nil ->
+            {:error, "No handler found for command: #{inspect(command_type)}"}
+
+          handler ->
+            Logger.info(
+              "Executing command #{inspect(command_type)} with handler #{inspect(handler)}"
+            )
+
+            try do
+              handler.handle_command(command)
+            rescue
+              e ->
+                Logger.error("Error executing command: #{inspect(e)}")
+                {:error, Exception.message(e)}
+            end
+        end
+
       # メトリクスを記録
       duration = System.monotonic_time() - start_time
-      status = case result do
-        {:ok, _} -> :success
-        {:error, _} -> :error
-      end
-      
+
+      status =
+        case result do
+          {:ok, _} -> :success
+          {:error, _} -> :error
+        end
+
       :telemetry.execute(
         [:command, :execute, :stop],
         %{duration: duration},
         %{command_type: inspect(command_type), status: status}
       )
-      
+
       result
     end
   end

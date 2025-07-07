@@ -1,13 +1,13 @@
 defmodule CommandService.Infrastructure.RepositoryContext do
   @moduledoc """
   リポジトリの依存性注入コンテキスト
-  
+
   テスト時にモックリポジトリを注入できるようにします。
   """
-  
+
   @doc """
   商品リポジトリを取得
-  
+
   環境変数やアプリケーション設定に基づいて適切な実装を返します。
   """
   @spec product_repository() :: module()
@@ -15,7 +15,7 @@ defmodule CommandService.Infrastructure.RepositoryContext do
     Application.get_env(:command_service, :product_repository) ||
       CommandService.Infrastructure.Repositories.ProductRepository
   end
-  
+
   @doc """
   カテゴリリポジトリを取得
   """
@@ -24,7 +24,7 @@ defmodule CommandService.Infrastructure.RepositoryContext do
     Application.get_env(:command_service, :category_repository) ||
       CommandService.Infrastructure.Repositories.CategoryRepository
   end
-  
+
   @doc """
   Unit of Work実装を取得
   """
@@ -33,10 +33,10 @@ defmodule CommandService.Infrastructure.RepositoryContext do
     Application.get_env(:command_service, :unit_of_work) ||
       CommandService.Infrastructure.UnitOfWork
   end
-  
+
   @doc """
   テスト用にリポジトリを設定
-  
+
   ## 例
       setup do
         RepositoryContext.configure_for_test(
@@ -53,7 +53,7 @@ defmodule CommandService.Infrastructure.RepositoryContext do
       Application.put_env(:command_service, key, value)
     end)
   end
-  
+
   @doc """
   設定をリセット
   """

@@ -84,7 +84,8 @@ defmodule CommandService.Domain.Logic.ProductLogic do
   """
   @spec calculate_discounted_price(Product.t(), number()) :: Decimal.t()
   def calculate_discounted_price(%Product{} = product, discount_percentage)
-      when is_number(discount_percentage) and discount_percentage >= 0 and discount_percentage <= 100 do
+      when is_number(discount_percentage) and discount_percentage >= 0 and
+             discount_percentage <= 100 do
     price_value = Product.price(product)
     discount_rate = Decimal.div(Decimal.new(discount_percentage), Decimal.new(100))
     discount_amount = Decimal.mult(price_value, discount_rate)
@@ -97,20 +98,36 @@ defmodule CommandService.Domain.Logic.ProductLogic do
   変更前後の商品を比較し、変更内容を返します。
   """
   @spec detect_changes(Product.t(), Product.t()) :: %{
-    name_changed: boolean(),
-    price_changed: boolean(),
-    category_changed: boolean(),
-    changes: map()
-  }
+          name_changed: boolean(),
+          price_changed: boolean(),
+          category_changed: boolean(),
+          changes: map()
+        }
   def detect_changes(%Product{} = old_product, %Product{} = new_product) do
     name_changed = Product.name(old_product) != Product.name(new_product)
     price_changed = Product.price(old_product) != Product.price(new_product)
     category_changed = Product.category_id(old_product) != Product.category_id(new_product)
 
-    changes = %{}
-    |> maybe_add_change(:name, name_changed, Product.name(old_product), Product.name(new_product))
-    |> maybe_add_change(:price, price_changed, Product.price(old_product), Product.price(new_product))
-    |> maybe_add_change(:category_id, category_changed, Product.category_id(old_product), Product.category_id(new_product))
+    changes =
+      %{}
+      |> maybe_add_change(
+        :name,
+        name_changed,
+        Product.name(old_product),
+        Product.name(new_product)
+      )
+      |> maybe_add_change(
+        :price,
+        price_changed,
+        Product.price(old_product),
+        Product.price(new_product)
+      )
+      |> maybe_add_change(
+        :category_id,
+        category_changed,
+        Product.category_id(old_product),
+        Product.category_id(new_product)
+      )
 
     %{
       name_changed: name_changed,
@@ -121,6 +138,7 @@ defmodule CommandService.Domain.Logic.ProductLogic do
   end
 
   defp maybe_add_change(changes, _key, false, _old, _new), do: changes
+
   defp maybe_add_change(changes, key, true, old, new) do
     Map.put(changes, key, %{from: old, to: new})
   end

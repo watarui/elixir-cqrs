@@ -1,11 +1,12 @@
 defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   @moduledoc """
   カテゴリアグリゲート（イベントソーシング対応）
-  
+
   カテゴリに関するすべてのビジネスロジックとイベント処理を管理します
   """
 
   alias CommandService.Domain.ValueObjects.{CategoryId, CategoryName}
+
   alias Shared.Domain.Events.CategoryEvents.{
     CategoryCreated,
     CategoryUpdated,
@@ -23,7 +24,7 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
         }
 
   use Shared.Domain.Aggregate.Base
-  
+
   @impl true
   def aggregate_id(%__MODULE__{id: nil}), do: nil
   def aggregate_id(%__MODULE__{id: id}), do: CategoryId.value(id)
@@ -34,13 +35,13 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   def execute(%__MODULE__{id: nil}, {:create_category, params}) do
     with {:ok, category_id} <- CategoryId.new(params.id),
          {:ok, category_name} <- CategoryName.new(params.name) do
-      
-      event = CategoryCreated.new(
-        CategoryId.value(category_id),
-        CategoryName.value(category_name),
-        %{user_id: params[:user_id]}
-      )
-      
+      event =
+        CategoryCreated.new(
+          CategoryId.value(category_id),
+          CategoryName.value(category_name),
+          %{user_id: params[:user_id]}
+        )
+
       {:ok, [event]}
     end
   end
@@ -51,26 +52,33 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   def execute(%__MODULE__{id: id} = aggregate, {:update_category, params}) when not is_nil(id) do
     case params[:name] do
-      nil -> {:ok, []}
-      "" -> {:ok, []}
+      nil ->
+        {:ok, []}
+
+      "" ->
+        {:ok, []}
+
       new_name ->
         case CategoryName.new(new_name) do
           {:ok, name} ->
             # 現在の名前と比較
             current_name = if aggregate.name, do: CategoryName.value(aggregate.name), else: ""
             new_name_value = CategoryName.value(name)
-            
+
             if current_name != new_name_value do
-              event = CategoryUpdated.new(
-                CategoryId.value(id),
-                current_name,
-                new_name_value,
-                %{user_id: params[:user_id]}
-              )
+              event =
+                CategoryUpdated.new(
+                  CategoryId.value(id),
+                  current_name,
+                  new_name_value,
+                  %{user_id: params[:user_id]}
+                )
+
               {:ok, [event]}
             else
               {:ok, []}
             end
+
           _ ->
             {:ok, []}
         end
@@ -78,12 +86,13 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   end
 
   def execute(%__MODULE__{id: id}, {:delete_category, params}) when not is_nil(id) do
-    event = CategoryDeleted.new(
-      CategoryId.value(id),
-      params[:reason],
-      %{user_id: params[:user_id]}
-    )
-    
+    event =
+      CategoryDeleted.new(
+        CategoryId.value(id),
+        params[:reason],
+        %{user_id: params[:user_id]}
+      )
+
     {:ok, [event]}
   end
 
@@ -98,10 +107,10 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
     with {:ok, category_id} <- CategoryId.new(event.aggregate_id),
          {:ok, category_name} <- CategoryName.new(event.name) do
       %__MODULE__{
-        aggregate |
-        id: category_id,
-        name: category_name,
-        deleted: false
+        aggregate
+        | id: category_id,
+          name: category_name,
+          deleted: false
       }
     else
       _ -> aggregate
@@ -154,5 +163,4 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
       _ -> new()
     end
   end
-  
 end

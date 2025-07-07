@@ -13,7 +13,8 @@ defmodule CommandService.Application.Services.CategoryService do
   # デフォルトのリポジトリ実装
   @default_repo CategoryRepo
 
-  @spec create_category(map(), module()) :: {:ok, Category.t()} | {:error, String.t() | AppError.t()}
+  @spec create_category(map(), module()) ::
+          {:ok, Category.t()} | {:error, String.t() | AppError.t()}
   def create_category(params, repo \\ @default_repo) do
     id = UUID.uuid4()
     name = params[:name]
@@ -36,12 +37,14 @@ defmodule CommandService.Application.Services.CategoryService do
     end
   end
 
-  @spec get_category(String.t(), module()) :: {:ok, Category.t()} | {:error, :not_found | String.t() | AppError.t()}
+  @spec get_category(String.t(), module()) ::
+          {:ok, Category.t()} | {:error, :not_found | String.t() | AppError.t()}
   def get_category(id, repo \\ @default_repo) do
     repo.find_by_id(id)
   end
 
-  @spec update_category(String.t(), map(), module()) :: {:ok, Category.t()} | {:error, String.t() | AppError.t()}
+  @spec update_category(String.t(), map(), module()) ::
+          {:ok, Category.t()} | {:error, String.t() | AppError.t()}
   def update_category(id, params, repo \\ @default_repo) do
     with {:ok, category} <- repo.find_by_id(id),
          # 純粋な関数でパラメータを検証
@@ -70,6 +73,7 @@ defmodule CommandService.Application.Services.CategoryService do
     # ログ記録の実装（将来的に追加）
     :ok
   end
+
   defp log_category_changes(_id, _), do: :ok
 
   @spec delete_category(String.t(), module()) :: :ok | {:error, String.t() | AppError.t()}

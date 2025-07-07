@@ -96,12 +96,13 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
   @impl true
   def has_products?(category_id) when is_binary(category_id) do
     alias CommandService.Infrastructure.Database.Schemas.ProductSchema
-    
-    query = from(p in ProductSchema,
-      where: p.category_id == ^category_id,
-      select: count(p.id)
-    )
-    
+
+    query =
+      from(p in ProductSchema,
+        where: p.category_id == ^category_id,
+        select: count(p.id)
+      )
+
     Repo.one(query) > 0
   end
 

@@ -1,7 +1,7 @@
 defmodule Shared.Infrastructure.EventBus do
   @moduledoc """
   イベントバス
-  
+
   イベントの発行と購読を管理します
   """
 
@@ -46,6 +46,7 @@ defmodule Shared.Infrastructure.EventBus do
       subscribers: [],
       typed_subscribers: %{}
     }
+
     {:ok, state}
   end
 
@@ -63,32 +64,35 @@ defmodule Shared.Infrastructure.EventBus do
   @impl GenServer
   def handle_cast({:publish, event}, state) do
     # イベントタイプを取得（構造体またはマップのevent_typeフィールド）
-    event_type = cond do
-      is_struct(event) -> event.__struct__
-      is_map(event) and Map.has_key?(event, :event_type) -> event.event_type
-      true -> :unknown_event
-    end
-    
+    event_type =
+      cond do
+        is_struct(event) -> event.__struct__
+        is_map(event) and Map.has_key?(event, :event_type) -> event.event_type
+        true -> :unknown_event
+      end
+
     # 全体購読者に通知
     Enum.each(state.subscribers, fn
       pid when is_pid(pid) ->
         send(pid, {:event, event})
-      
+
       module when is_atom(module) ->
         Task.start(fn -> module.handle_event(event) end)
     end)
-    
+
     # タイプ別購読者に通知
     case Map.get(state.typed_subscribers, event_type) do
-      nil -> :ok
+      nil ->
+        :ok
+
       handlers ->
         Enum.each(handlers, fn handler ->
           Task.start(fn -> handler.(event) end)
         end)
     end
-    
+
     Logger.debug("Published event: #{inspect(event_type)}")
-    
+
     {:noreply, state}
   end
 
@@ -96,10 +100,11 @@ defmodule Shared.Infrastructure.EventBus do
 
   defp get_server do
     case Process.whereis(__MODULE__) do
-      nil -> 
+      nil ->
         {:ok, pid} = start_link(name: __MODULE__)
         pid
-      pid -> 
+
+      pid ->
         pid
     end
   end

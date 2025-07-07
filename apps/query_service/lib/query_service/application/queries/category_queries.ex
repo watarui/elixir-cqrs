@@ -52,13 +52,13 @@ defmodule QueryService.Application.Queries.CategoryQueries do
       cond do
         not is_nil(query.limit) && query.limit < 1 ->
           {:error, "Limit must be positive"}
-        
+
         not is_nil(query.offset) && query.offset < 0 ->
           {:error, "Offset must be non-negative"}
-        
+
         not is_nil(query.sort_order) && query.sort_order not in [:asc, :desc] ->
           {:error, "Sort order must be :asc or :desc"}
-        
+
         true ->
           :ok
       end
@@ -88,13 +88,13 @@ defmodule QueryService.Application.Queries.CategoryQueries do
       cond do
         is_nil(query.id) || query.id == "" ->
           {:error, "Category ID is required"}
-        
+
         not is_nil(query.product_limit) && query.product_limit < 1 ->
           {:error, "Product limit must be positive"}
-        
+
         not is_nil(query.product_offset) && query.product_offset < 0 ->
           {:error, "Product offset must be non-negative"}
-        
+
         true ->
           :ok
       end

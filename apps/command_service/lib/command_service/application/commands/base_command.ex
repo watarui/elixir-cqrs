@@ -1,7 +1,7 @@
 defmodule CommandService.Application.Commands.BaseCommand do
   @moduledoc """
   コマンドの基本ビヘイビア
-  
+
   すべてのコマンドはこのビヘイビアを実装する必要があります
   """
 
@@ -40,7 +40,7 @@ defmodule CommandService.Application.Commands.BaseCommand do
       @impl true
       def metadata(_command), do: %{}
 
-      defoverridable [validate: 1, aggregate_id: 1, metadata: 1]
+      defoverridable validate: 1, aggregate_id: 1, metadata: 1
     end
   end
 end

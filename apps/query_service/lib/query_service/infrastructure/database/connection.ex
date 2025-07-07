@@ -13,7 +13,7 @@ defmodule QueryService.Infrastructure.Database.Repo do
   def init(_type, config) do
     # 環境変数からDATABASE_URLを取得
     database_url = System.get_env("DATABASE_URL")
-    
+
     if database_url do
       # DATABASE_URLが設定されている場合は、それを使用
       {:ok, Keyword.put(config, :url, database_url)}

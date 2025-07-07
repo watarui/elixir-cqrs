@@ -1,7 +1,7 @@
 defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   @moduledoc """
   PostgreSQL ベースのイベントストアアダプター
-  
+
   イベントストアのビヘイビアを実装し、
   PostgreSQL データベースにイベントを永続化します
   """
@@ -64,14 +64,16 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       port: opts[:port] || System.get_env("EVENT_STORE_PORT", "5432") |> String.to_integer()
     ]
 
-    Logger.info("Connecting to event store with config: #{inspect(Map.new(db_config) |> Map.delete(:password))}")
+    Logger.info(
+      "Connecting to event store with config: #{inspect(Map.new(db_config) |> Map.delete(:password))}"
+    )
 
     case Postgrex.start_link(db_config) do
       {:ok, conn} ->
         Logger.info("Successfully connected to event store")
         create_tables(conn)
         {:ok, %{conn: conn}}
-      
+
       {:error, reason} ->
         Logger.error("Failed to connect to event store: #{inspect(reason)}")
         {:stop, reason}
@@ -80,41 +82,51 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl GenServer
   def handle_call({:append_to_stream, stream_name, events, expected_version}, _from, state) do
-    Logger.info("Appending #{length(events)} events to stream: #{stream_name}, expected version: #{expected_version}")
-    
-    result = Postgrex.transaction(state.conn, fn conn ->
-      # 現在のバージョンを確認
-      current_version = get_stream_version(conn, stream_name)
-      Logger.debug("Current version for stream #{stream_name}: #{current_version}")
-      
-      if expected_version == :any_version || current_version == expected_version do
-        # イベントを挿入
-        version = Enum.reduce(events, current_version, fn event, version ->
-          new_version = version + 1
-          case insert_event(conn, stream_name, event, new_version) do
-            {:ok, _} ->
-              Logger.debug("Event inserted: #{event.__struct__} at version #{new_version}")
-            {:error, reason} ->
-              Logger.error("Failed to insert event: #{inspect(reason)}")
-              raise "Event insertion failed: #{inspect(reason)}"
-          end
-          new_version
-        end)
-        {:ok, version}
-      else
-        Logger.error("Version mismatch: expected #{expected_version}, got #{current_version}")
-        {:error, :version_mismatch}
-      end
-    end)
+    Logger.info(
+      "Appending #{length(events)} events to stream: #{stream_name}, expected version: #{expected_version}"
+    )
+
+    result =
+      Postgrex.transaction(state.conn, fn conn ->
+        # 現在のバージョンを確認
+        current_version = get_stream_version(conn, stream_name)
+        Logger.debug("Current version for stream #{stream_name}: #{current_version}")
+
+        if expected_version == :any_version || current_version == expected_version do
+          # イベントを挿入
+          version =
+            Enum.reduce(events, current_version, fn event, version ->
+              new_version = version + 1
+
+              case insert_event(conn, stream_name, event, new_version) do
+                {:ok, _} ->
+                  Logger.debug("Event inserted: #{event.__struct__} at version #{new_version}")
+
+                {:error, reason} ->
+                  Logger.error("Failed to insert event: #{inspect(reason)}")
+                  raise "Event insertion failed: #{inspect(reason)}"
+              end
+
+              new_version
+            end)
+
+          {:ok, version}
+        else
+          Logger.error("Version mismatch: expected #{expected_version}, got #{current_version}")
+          {:error, :version_mismatch}
+        end
+      end)
 
     case result do
-      {:ok, {:ok, version}} -> 
+      {:ok, {:ok, version}} ->
         Logger.info("Successfully appended events, new version: #{version}")
         {:reply, {:ok, version}, state}
-      {:ok, error} -> 
+
+      {:ok, error} ->
         Logger.error("Transaction failed: #{inspect(error)}")
         {:reply, error, state}
-      {:error, reason} -> 
+
+      {:error, reason} ->
         Logger.error("Database error: #{inspect(reason)}")
         {:reply, {:error, reason}, state}
     end
@@ -122,12 +134,13 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl GenServer
   def handle_call({:read_stream_forward, stream_name, from_version, count}, _from, state) do
-    limit_clause = if count != :all do
-      "LIMIT #{count}"
-    else
-      ""
-    end
-    
+    limit_clause =
+      if count != :all do
+        "LIMIT #{count}"
+      else
+        ""
+      end
+
     query = """
     SELECT event_type, event_data, version, occurred_at
     FROM #{@table_name}
@@ -140,7 +153,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       {:ok, %{rows: rows}} ->
         events = Enum.map(rows, &deserialize_event/1)
         {:reply, {:ok, events}, state}
-      
+
       {:error, reason} ->
         Logger.error("Failed to read stream: #{inspect(reason)}")
         {:reply, {:error, reason}, state}
@@ -161,7 +174,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       {:ok, %{rows: rows}} ->
         events = Enum.map(rows, &deserialize_event_with_metadata/1)
         {:reply, {:ok, events}, state}
-      
+
       {:error, reason} ->
         Logger.error("Failed to read all events: #{inspect(reason)}")
         {:reply, {:error, reason}, state}
@@ -178,12 +191,12 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     """
 
     type_name = event_type |> to_string() |> String.split(".") |> List.last()
-    
+
     case Postgrex.query(state.conn, query, [type_name, from_position]) do
       {:ok, %{rows: rows}} ->
         events = Enum.map(rows, &deserialize_event_with_metadata/1)
         {:reply, {:ok, events}, state}
-      
+
       {:error, reason} ->
         Logger.error("Failed to read events by type: #{inspect(reason)}")
         {:reply, {:error, reason}, state}
@@ -200,13 +213,19 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     """
 
     # snapshotが既にマップの場合はそのまま使用
-    snapshot_data = if is_map(snapshot) and not is_struct(snapshot) do
-      Jason.encode!(snapshot)
-    else
-      Jason.encode!(Map.from_struct(snapshot))
-    end
-    
-    case Postgrex.query(state.conn, query, [aggregate_id, snapshot_data, version, DateTime.utc_now()]) do
+    snapshot_data =
+      if is_map(snapshot) and not is_struct(snapshot) do
+        Jason.encode!(snapshot)
+      else
+        Jason.encode!(Map.from_struct(snapshot))
+      end
+
+    case Postgrex.query(state.conn, query, [
+           aggregate_id,
+           snapshot_data,
+           version,
+           DateTime.utc_now()
+         ]) do
       {:ok, _} -> {:reply, :ok, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -224,10 +243,10 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       {:ok, %{rows: [[snapshot_data, version]]}} ->
         snapshot = Jason.decode!(snapshot_data, keys: :atoms)
         {:reply, {:ok, {snapshot, version}}, state}
-      
+
       {:ok, %{rows: []}} ->
         {:reply, {:error, :not_found}, state}
-      
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -269,12 +288,13 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
     # 各SQL文を個別に実行
     with {:ok, _} <- Postgrex.query(conn, events_table, []),
-         :ok <- Enum.each(indices, fn index_sql ->
-           case Postgrex.query(conn, index_sql, []) do
-             {:ok, _} -> :ok
-             {:error, reason} -> Logger.warning("Index creation warning: #{inspect(reason)}")
-           end
-         end),
+         :ok <-
+           Enum.each(indices, fn index_sql ->
+             case Postgrex.query(conn, index_sql, []) do
+               {:ok, _} -> :ok
+               {:error, reason} -> Logger.warning("Index creation warning: #{inspect(reason)}")
+             end
+           end),
          {:ok, _} <- Postgrex.query(conn, snapshots_table, []) do
       Logger.info("Event store tables created/verified")
     else
@@ -305,22 +325,24 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     event_type = event.__struct__ |> Module.split() |> List.last()
     event_data = Jason.encode!(Map.from_struct(event))
     occurred_at = event.occurred_at || DateTime.utc_now()
-    
+
     Logger.debug("Inserting event: type=#{event_type}, stream=#{stream_name}, version=#{version}")
-    
-    result = Postgrex.query(conn, query, [
-      stream_name,
-      version,
-      event_type,
-      event_data,
-      occurred_at
-    ])
-    
+
+    result =
+      Postgrex.query(conn, query, [
+        stream_name,
+        version,
+        event_type,
+        event_data,
+        occurred_at
+      ])
+
     case result do
-      {:ok, _} -> 
+      {:ok, _} ->
         Logger.debug("Event successfully inserted")
         {:ok, nil}
-      {:error, reason} -> 
+
+      {:error, reason} ->
         Logger.error("Event insertion failed: #{inspect(reason)}")
         {:error, reason}
     end
@@ -328,22 +350,30 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   defp deserialize_event([event_type, event_data, _version, occurred_at]) do
     module = resolve_event_module(event_type)
-    
-    data = Jason.decode!(event_data, keys: :atoms)
-    |> Map.put(:occurred_at, occurred_at)
-    
+
+    data =
+      Jason.decode!(event_data, keys: :atoms)
+      |> Map.put(:occurred_at, occurred_at)
+
     struct(module, data)
   end
 
-  defp deserialize_event_with_metadata([event_type, event_data, _version, occurred_at, stream_name]) do
+  defp deserialize_event_with_metadata([
+         event_type,
+         event_data,
+         _version,
+         occurred_at,
+         stream_name
+       ]) do
     event = deserialize_event([event_type, event_data, nil, occurred_at])
-    
+
     # stream_nameから aggregate_id を抽出
-    aggregate_id = case String.split(stream_name, "-", parts: 2) do
-      ["aggregate", id] -> id
-      _ -> nil
-    end
-    
+    aggregate_id =
+      case String.split(stream_name, "-", parts: 2) do
+        ["aggregate", id] -> id
+        _ -> nil
+      end
+
     if aggregate_id && is_map(event) do
       Map.put(event, :aggregate_id, aggregate_id)
     else

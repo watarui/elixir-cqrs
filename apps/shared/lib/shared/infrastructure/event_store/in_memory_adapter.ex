@@ -52,38 +52,40 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
       snapshots: %{},
       global_position: 0
     }
+
     {:ok, state}
   end
 
   @impl GenServer
   def handle_call({:append_to_stream, stream_name, events, expected_version}, _from, state) do
     stream = Map.get(state.streams, stream_name, %{events: [], version: 0})
-    
+
     if stream.version != expected_version do
       {:reply, {:error, :wrong_expected_version}, state}
     else
-      new_events = Enum.map(events, fn event ->
-        %{
-          event: event,
-          stream_name: stream_name,
-          stream_version: stream.version + 1,
-          global_position: state.global_position + 1,
-          timestamp: DateTime.utc_now()
-        }
-      end)
-      
+      new_events =
+        Enum.map(events, fn event ->
+          %{
+            event: event,
+            stream_name: stream_name,
+            stream_version: stream.version + 1,
+            global_position: state.global_position + 1,
+            timestamp: DateTime.utc_now()
+          }
+        end)
+
       new_stream = %{
         events: stream.events ++ new_events,
         version: stream.version + length(events)
       }
-      
+
       new_state = %{
-        state |
-        streams: Map.put(state.streams, stream_name, new_stream),
-        global_events: state.global_events ++ new_events,
-        global_position: state.global_position + length(events)
+        state
+        | streams: Map.put(state.streams, stream_name, new_stream),
+          global_events: state.global_events ++ new_events,
+          global_position: state.global_position + length(events)
       }
-      
+
       {:reply, {:ok, new_stream.version}, new_state}
     end
   end
@@ -91,33 +93,36 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   @impl GenServer
   def handle_call({:read_stream_forward, stream_name, from_version, count}, _from, state) do
     stream = Map.get(state.streams, stream_name, %{events: [], version: 0})
-    
-    events = stream.events
-    |> Enum.filter(fn e -> e.stream_version > from_version end)
-    |> maybe_take(count)
-    |> Enum.map(& &1.event)
-    
+
+    events =
+      stream.events
+      |> Enum.filter(fn e -> e.stream_version > from_version end)
+      |> maybe_take(count)
+      |> Enum.map(& &1.event)
+
     {:reply, {:ok, events}, state}
   end
 
   @impl GenServer
   def handle_call({:read_all_events, from_position}, _from, state) do
-    events = state.global_events
-    |> Enum.filter(fn e -> e.global_position > from_position end)
-    |> Enum.map(& &1.event)
-    
+    events =
+      state.global_events
+      |> Enum.filter(fn e -> e.global_position > from_position end)
+      |> Enum.map(& &1.event)
+
     {:reply, {:ok, events}, state}
   end
 
   @impl GenServer
   def handle_call({:read_events_by_type, event_type, from_position}, _from, state) do
-    events = state.global_events
-    |> Enum.filter(fn e -> 
-      e.global_position > from_position && 
-      event_type_matches?(e.event, event_type)
-    end)
-    |> Enum.map(& &1.event)
-    
+    events =
+      state.global_events
+      |> Enum.filter(fn e ->
+        e.global_position > from_position &&
+          event_type_matches?(e.event, event_type)
+      end)
+      |> Enum.map(& &1.event)
+
     {:reply, {:ok, events}, state}
   end
 
@@ -139,10 +144,11 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
 
   defp get_server do
     case Process.whereis(__MODULE__) do
-      nil -> 
+      nil ->
         {:ok, pid} = start_link(name: __MODULE__)
         pid
-      pid -> 
+
+      pid ->
         pid
     end
   end
@@ -151,9 +157,9 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   defp maybe_take(events, count), do: Enum.take(events, count)
 
   defp event_type_matches?(event, event_type) do
-    event.__struct__ 
-    |> Module.split() 
-    |> List.last() 
+    event.__struct__
+    |> Module.split()
+    |> List.last()
     |> String.to_atom() == event_type
   end
 end

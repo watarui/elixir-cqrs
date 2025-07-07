@@ -83,23 +83,26 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   @impl true
   def init([]) do
     # サーキットブレーカーを起動
-    {:ok, _} = CircuitBreaker.start_link(
-      name: :command_service_cb,
-      options: %{
-        failure_threshold: 5,
-        success_threshold: 2,
-        timeout: 30_000
-      }
-    )
-    
-    {:ok, _} = CircuitBreaker.start_link(
-      name: :query_service_cb,
-      options: %{
-        failure_threshold: 5,
-        success_threshold: 2,
-        timeout: 30_000
-      }
-    )
+    {:ok, _} =
+      CircuitBreaker.start_link(
+        name: :command_service_cb,
+        options: %{
+          failure_threshold: 5,
+          success_threshold: 2,
+          timeout: 30_000
+        }
+      )
+
+    {:ok, _} =
+      CircuitBreaker.start_link(
+        name: :query_service_cb,
+        options: %{
+          failure_threshold: 5,
+          success_threshold: 2,
+          timeout: 30_000
+        }
+      )
+
     state = %State{
       command_host: get_env_or_default(:command_service_host, @default_host),
       command_port: get_env_or_default(:command_service_port, @default_command_port),
@@ -252,7 +255,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   defp get_env_or_default(key, default) do
     # 環境変数から読み取る
     env_key = key |> Atom.to_string() |> String.upcase()
-    
+
     case System.get_env(env_key) do
       nil ->
         # 環境変数がない場合はアプリケーション設定を確認
@@ -260,7 +263,8 @@ defmodule ClientService.Infrastructure.GrpcConnections do
           nil -> default
           value -> value
         end
-      value -> 
+
+      value ->
         # ポート番号の場合は整数に変換
         if String.ends_with?(env_key, "_PORT") do
           String.to_integer(value)
@@ -269,7 +273,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
         end
     end
   end
-  
+
   @doc """
   サーキットブレーカーの状態を取得する
   """
@@ -280,7 +284,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
       query: CircuitBreaker.get_state(:query_service_cb)
     }
   end
-  
+
   @doc """
   サーキットブレーカーをリセットする
   """

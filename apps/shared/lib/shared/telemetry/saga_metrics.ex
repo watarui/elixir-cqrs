@@ -2,9 +2,9 @@ defmodule Shared.Telemetry.SagaMetrics do
   @moduledoc """
   サガ関連のメトリクス定義とヘルパー関数
   """
-  
+
   import Telemetry.Metrics
-  
+
   @doc """
   サガ関連のメトリクス定義
   """
@@ -14,46 +14,46 @@ defmodule Shared.Telemetry.SagaMetrics do
       counter("saga.started.count",
         tags: [:saga_type]
       ),
-      
+
       # サガの完了数
       counter("saga.completed.count",
         tags: [:saga_type]
       ),
-      
+
       # サガの失敗数
       counter("saga.failed.count",
         tags: [:saga_type, :failed_step]
       ),
-      
+
       # サガの補償実行数
       counter("saga.compensation.count",
         tags: [:saga_type]
       ),
-      
+
       # サガの実行時間
       summary("saga.duration",
         unit: {:native, :millisecond},
         tags: [:saga_type, :status]
       ),
-      
+
       # ステップの実行時間
       summary("saga.step.duration",
         unit: {:native, :millisecond},
         tags: [:saga_type, :step_name]
       ),
-      
+
       # アクティブなサガ数
       last_value("saga.active.count",
         tags: [:saga_type]
       ),
-      
+
       # タイムアウトしたサガ数
       counter("saga.timeout.count",
         tags: [:saga_type]
       )
     ]
   end
-  
+
   @doc """
   サガ開始を記録
   """
@@ -64,7 +64,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       %{saga_type: saga_type}
     )
   end
-  
+
   @doc """
   サガ完了を記録
   """
@@ -75,7 +75,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       %{saga_type: saga_type, status: :completed}
     )
   end
-  
+
   @doc """
   サガ失敗を記録
   """
@@ -86,7 +86,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       %{saga_type: saga_type, failed_step: failed_step, status: :failed}
     )
   end
-  
+
   @doc """
   サガ補償開始を記録
   """
@@ -97,7 +97,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       %{saga_type: saga_type}
     )
   end
-  
+
   @doc """
   ステップ実行を記録
   """
@@ -108,7 +108,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       %{saga_type: saga_type, step_name: step_name}
     )
   end
-  
+
   @doc """
   アクティブなサガ数を更新
   """
@@ -121,7 +121,7 @@ defmodule Shared.Telemetry.SagaMetrics do
       )
     end)
   end
-  
+
   @doc """
   サガタイムアウトを記録
   """

@@ -2,19 +2,19 @@ defmodule Shared.Telemetry.Setup do
   @moduledoc """
   OpenTelemetryとTelemetryの共通設定
   """
-  
+
   require Logger
-  
+
   @doc """
   OpenTelemetryの初期化
   """
   def setup_opentelemetry do
     # OpenTelemetry設定
     :opentelemetry.set_default_tracer(:elixir_cqrs)
-    
+
     Logger.info("OpenTelemetry initialized")
   end
-  
+
   @doc """
   共通のTelemetryイベントハンドラーを設定
   """
@@ -31,7 +31,7 @@ defmodule Shared.Telemetry.Setup do
       &handle_db_event/4,
       nil
     )
-    
+
     # HTTPリクエストのトレース
     :telemetry.attach_many(
       "elixir-cqrs-http-handler",
@@ -44,7 +44,7 @@ defmodule Shared.Telemetry.Setup do
       &handle_http_event/4,
       nil
     )
-    
+
     # gRPCリクエストのトレース
     :telemetry.attach_many(
       "elixir-cqrs-grpc-handler",
@@ -57,7 +57,7 @@ defmodule Shared.Telemetry.Setup do
       &handle_grpc_event/4,
       nil
     )
-    
+
     # ビジネスイベントのトレース
     :telemetry.attach_many(
       "elixir-cqrs-business-handler",
@@ -72,7 +72,7 @@ defmodule Shared.Telemetry.Setup do
       &handle_business_event/4,
       nil
     )
-    
+
     # gRPCリトライとサーキットブレーカーのトレース
     :telemetry.attach_many(
       "elixir-cqrs-resilience-handler",
@@ -84,10 +84,10 @@ defmodule Shared.Telemetry.Setup do
       &handle_resilience_event/4,
       nil
     )
-    
+
     Logger.info("Telemetry handlers attached")
   end
-  
+
   # データベースイベントハンドラー
   defp handle_db_event(event_name, measurements, metadata, _config) do
     Logger.debug("Database event",
@@ -95,10 +95,12 @@ defmodule Shared.Telemetry.Setup do
       measurements: measurements,
       query: metadata[:query],
       source: metadata[:source],
-      duration_ms: measurements[:query_time] && System.convert_time_unit(measurements[:query_time], :native, :millisecond)
+      duration_ms:
+        measurements[:query_time] &&
+          System.convert_time_unit(measurements[:query_time], :native, :millisecond)
     )
   end
-  
+
   # HTTPイベントハンドラー
   defp handle_http_event(event_name, measurements, metadata, _config) do
     Logger.debug("HTTP event",
@@ -107,10 +109,12 @@ defmodule Shared.Telemetry.Setup do
       method: metadata[:conn] && metadata[:conn].method,
       path: metadata[:conn] && metadata[:conn].request_path,
       status: metadata[:conn] && metadata[:conn].status,
-      duration_ms: measurements[:duration] && System.convert_time_unit(measurements[:duration], :native, :millisecond)
+      duration_ms:
+        measurements[:duration] &&
+          System.convert_time_unit(measurements[:duration], :native, :millisecond)
     )
   end
-  
+
   # gRPCイベントハンドラー
   defp handle_grpc_event(event_name, measurements, metadata, _config) do
     Logger.debug("gRPC event",
@@ -119,10 +123,12 @@ defmodule Shared.Telemetry.Setup do
       service: metadata[:service],
       method: metadata[:method],
       status: metadata[:status],
-      duration_ms: measurements[:duration] && System.convert_time_unit(measurements[:duration], :native, :millisecond)
+      duration_ms:
+        measurements[:duration] &&
+          System.convert_time_unit(measurements[:duration], :native, :millisecond)
     )
   end
-  
+
   # ビジネスイベントハンドラー
   defp handle_business_event(event_name, measurements, metadata, _config) do
     Logger.info("Business event",
@@ -131,10 +137,12 @@ defmodule Shared.Telemetry.Setup do
       type: metadata[:type],
       aggregate_id: metadata[:aggregate_id],
       user_id: metadata[:user_id],
-      duration_ms: measurements[:duration] && System.convert_time_unit(measurements[:duration], :native, :millisecond)
+      duration_ms:
+        measurements[:duration] &&
+          System.convert_time_unit(measurements[:duration], :native, :millisecond)
     )
   end
-  
+
   # レジリエンスイベントハンドラー
   defp handle_resilience_event(event_name, measurements, metadata, _config) do
     case event_name do
@@ -144,7 +152,7 @@ defmodule Shared.Telemetry.Setup do
           attempt: measurements[:attempt_count],
           duration_ms: measurements[:duration]
         )
-        
+
       [:grpc, :client, :call] ->
         if metadata[:error] do
           Logger.error("gRPC client call failed",
@@ -158,7 +166,7 @@ defmodule Shared.Telemetry.Setup do
             duration_ms: measurements[:duration]
           )
         end
-        
+
       [:circuit_breaker, :call] ->
         Logger.info("Circuit breaker event",
           circuit: metadata[:circuit_breaker],
@@ -167,7 +175,7 @@ defmodule Shared.Telemetry.Setup do
         )
     end
   end
-  
+
   @doc """
   カスタムメトリクスを記録
   """
@@ -178,7 +186,7 @@ defmodule Shared.Telemetry.Setup do
       tags
     )
   end
-  
+
   @doc """
   ビジネスイベントを記録
   """

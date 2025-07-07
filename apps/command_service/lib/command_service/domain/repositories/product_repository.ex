@@ -28,11 +28,11 @@ defmodule CommandService.Domain.Repositories.ProductRepository do
   # 商品特有の操作
   @callback find_by_name(String.t()) :: {:ok, Product.t()} | {:error, AppError.t()}
   @callback find_by_category_id(String.t()) :: {:ok, [Product.t()]} | {:error, AppError.t()}
-  @callback find_by_price_range(min_price :: Decimal.t(), max_price :: Decimal.t()) :: 
-    {:ok, [Product.t()]} | {:error, AppError.t()}
+  @callback find_by_price_range(min_price :: Decimal.t(), max_price :: Decimal.t()) ::
+              {:ok, [Product.t()]} | {:error, AppError.t()}
   @callback search(keyword :: String.t()) :: {:ok, [Product.t()]} | {:error, AppError.t()}
-  @callback paginate(page :: pos_integer(), per_page :: pos_integer()) :: 
-    {:ok, {[Product.t()], non_neg_integer()}} | {:error, AppError.t()}
+  @callback paginate(page :: pos_integer(), per_page :: pos_integer()) ::
+              {:ok, {[Product.t()], non_neg_integer()}} | {:error, AppError.t()}
 
   # オプショナルコールバック
   @optional_callbacks [search: 1, paginate: 2, count: 1, transaction: 1]

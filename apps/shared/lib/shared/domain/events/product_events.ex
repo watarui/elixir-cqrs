@@ -46,11 +46,12 @@ defmodule Shared.Domain.Events.ProductEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        name: map["name"] || map[:name],
-        price: parse_price(map["price"] || map[:price]),
-        category_id: map["category_id"] || map[:category_id]
-      }}
+      {:ok,
+       %{
+         name: map["name"] || map[:name],
+         price: parse_price(map["price"] || map[:price]),
+         category_id: map["category_id"] || map[:category_id]
+       }}
     end
 
     defp parse_price(price) when is_binary(price), do: Decimal.new(price)
@@ -95,9 +96,10 @@ defmodule Shared.Domain.Events.ProductEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        changes: deserialize_changes(map["changes"] || map[:changes])
-      }}
+      {:ok,
+       %{
+         changes: deserialize_changes(map["changes"] || map[:changes])
+       }}
     end
 
     defp serialize_changes(changes) do
@@ -151,9 +153,10 @@ defmodule Shared.Domain.Events.ProductEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        reason: map["reason"] || map[:reason]
-      }}
+      {:ok,
+       %{
+         reason: map["reason"] || map[:reason]
+       }}
     end
   end
 
@@ -173,7 +176,15 @@ defmodule Shared.Domain.Events.ProductEvents do
             metadata: map()
           }
 
-    defstruct [:event_id, :aggregate_id, :old_price, :new_price, :change_reason, :occurred_at, :metadata]
+    defstruct [
+      :event_id,
+      :aggregate_id,
+      :old_price,
+      :new_price,
+      :change_reason,
+      :occurred_at,
+      :metadata
+    ]
 
     @spec new(String.t(), Decimal.t(), Decimal.t(), String.t() | nil, map()) :: t()
     def new(product_id, old_price, new_price, change_reason \\ nil, metadata \\ %{}) do
@@ -200,11 +211,12 @@ defmodule Shared.Domain.Events.ProductEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        old_price: parse_price(map["old_price"] || map[:old_price]),
-        new_price: parse_price(map["new_price"] || map[:new_price]),
-        change_reason: map["change_reason"] || map[:change_reason]
-      }}
+      {:ok,
+       %{
+         old_price: parse_price(map["old_price"] || map[:old_price]),
+         new_price: parse_price(map["new_price"] || map[:new_price]),
+         change_reason: map["change_reason"] || map[:change_reason]
+       }}
     end
 
     defp parse_price(price) when is_binary(price), do: Decimal.new(price)

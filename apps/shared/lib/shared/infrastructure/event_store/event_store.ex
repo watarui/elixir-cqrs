@@ -25,7 +25,8 @@ defmodule Shared.Infrastructure.EventStore do
   @doc """
   ストリームからイベントを読み取る
   """
-  @spec read_stream_forward(stream_name(), version(), non_neg_integer() | :all) :: {:ok, list(event())} | error()
+  @spec read_stream_forward(stream_name(), version(), non_neg_integer() | :all) ::
+          {:ok, list(event())} | error()
   def read_stream_forward(stream_name, from_version \\ 0, count \\ :all) do
     adapter().read_stream_forward(stream_name, from_version, count)
   end
@@ -42,7 +43,8 @@ defmodule Shared.Infrastructure.EventStore do
   @doc """
   集約のイベントを保存する
   """
-  @spec save_aggregate_events(aggregate_id(), list(event()), version()) :: {:ok, version()} | error()
+  @spec save_aggregate_events(aggregate_id(), list(event()), version()) ::
+          {:ok, version()} | error()
   def save_aggregate_events(aggregate_id, events, expected_version) do
     stream_name = aggregate_stream_name(aggregate_id)
     append_to_stream(stream_name, events, expected_version)
@@ -75,7 +77,8 @@ defmodule Shared.Infrastructure.EventStore do
   @doc """
   スナップショットを取得する
   """
-  @spec get_snapshot(aggregate_id()) :: {:ok, {struct(), version()}} | {:error, :not_found} | error()
+  @spec get_snapshot(aggregate_id()) ::
+          {:ok, {struct(), version()}} | {:error, :not_found} | error()
   def get_snapshot(aggregate_id) do
     adapter().get_snapshot(aggregate_id)
   end
@@ -85,7 +88,7 @@ defmodule Shared.Infrastructure.EventStore do
   defp aggregate_stream_name(aggregate_id) do
     "aggregate-#{aggregate_id}"
   end
-  
+
   defp adapter do
     # 実行時に設定を取得
     Application.get_env(:shared, :event_store_adapter, PostgresAdapter)
@@ -97,10 +100,18 @@ defmodule Shared.Infrastructure.EventStore.EventStoreBehaviour do
   イベントストアのビヘイビア定義
   """
 
-  @callback append_to_stream(stream_name :: String.t(), events :: list(struct()), expected_version :: non_neg_integer()) ::
+  @callback append_to_stream(
+              stream_name :: String.t(),
+              events :: list(struct()),
+              expected_version :: non_neg_integer()
+            ) ::
               {:ok, non_neg_integer()} | {:error, term()}
 
-  @callback read_stream_forward(stream_name :: String.t(), from_version :: non_neg_integer(), count :: non_neg_integer() | :all) ::
+  @callback read_stream_forward(
+              stream_name :: String.t(),
+              from_version :: non_neg_integer(),
+              count :: non_neg_integer() | :all
+            ) ::
               {:ok, list(struct())} | {:error, term()}
 
   @callback read_all_events(from_position :: non_neg_integer()) ::
@@ -109,7 +120,11 @@ defmodule Shared.Infrastructure.EventStore.EventStoreBehaviour do
   @callback read_events_by_type(event_type :: atom(), from_position :: non_neg_integer()) ::
               {:ok, list(struct())} | {:error, term()}
 
-  @callback create_snapshot(aggregate_id :: String.t(), snapshot :: struct(), version :: non_neg_integer()) ::
+  @callback create_snapshot(
+              aggregate_id :: String.t(),
+              snapshot :: struct(),
+              version :: non_neg_integer()
+            ) ::
               :ok | {:error, term()}
 
   @callback get_snapshot(aggregate_id :: String.t()) ::

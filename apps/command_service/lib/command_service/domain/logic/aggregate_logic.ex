@@ -5,7 +5,6 @@ defmodule CommandService.Domain.Logic.AggregateLogic do
   イベントソーシングにおける副作用のない純粋な関数を提供します。
   """
 
-
   @doc """
   価格変更が重要な変更かを判定
 
@@ -16,12 +15,15 @@ defmodule CommandService.Domain.Logic.AggregateLogic do
       iex> AggregateLogic.is_significant_price_change?("100.00", "101.00", 5)
       false
   """
-  @spec is_significant_price_change?(String.t() | Decimal.t(), String.t() | Decimal.t(), number()) :: boolean()
+  @spec is_significant_price_change?(String.t() | Decimal.t(), String.t() | Decimal.t(), number()) ::
+          boolean()
   def is_significant_price_change?(old_price, new_price, threshold_percent \\ 10) do
     with {:ok, old_decimal} <- to_decimal(old_price),
          {:ok, new_decimal} <- to_decimal(new_price) do
       diff = Decimal.abs(Decimal.sub(new_decimal, old_decimal))
-      threshold = Decimal.mult(old_decimal, Decimal.div(Decimal.new(threshold_percent), Decimal.new(100)))
+
+      threshold =
+        Decimal.mult(old_decimal, Decimal.div(Decimal.new(threshold_percent), Decimal.new(100)))
 
       Decimal.compare(diff, threshold) == :gt
     else
@@ -30,12 +32,14 @@ defmodule CommandService.Domain.Logic.AggregateLogic do
   end
 
   defp to_decimal(%Decimal{} = d), do: {:ok, d}
+
   defp to_decimal(value) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, _} -> {:ok, decimal}
       :error -> {:error, "Invalid decimal"}
     end
   end
+
   defp to_decimal(value) when is_number(value), do: {:ok, Decimal.new(value)}
 
   @doc """
@@ -86,9 +90,14 @@ defmodule CommandService.Domain.Logic.AggregateLogic do
   @doc """
   アグリゲートのバージョンが期待値と一致するかを検証
   """
-  @spec validate_expected_version(non_neg_integer(), non_neg_integer() | :any) :: :ok | {:error, String.t()}
+  @spec validate_expected_version(non_neg_integer(), non_neg_integer() | :any) ::
+          :ok | {:error, String.t()}
   def validate_expected_version(_current_version, :any), do: :ok
-  def validate_expected_version(current_version, expected_version) when current_version == expected_version, do: :ok
+
+  def validate_expected_version(current_version, expected_version)
+      when current_version == expected_version,
+      do: :ok
+
   def validate_expected_version(current_version, expected_version) do
     {:error, "Version mismatch: expected #{expected_version}, but current is #{current_version}"}
   end

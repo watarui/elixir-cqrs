@@ -37,7 +37,8 @@ defmodule CommandService.Application.Commands.ProductCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :create_product}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :create_product}
   end
 
   defmodule UpdateProduct do
@@ -61,10 +62,14 @@ defmodule CommandService.Application.Commands.ProductCommands do
     @impl true
     def validate(%__MODULE__{} = cmd) do
       cond do
-        is_nil(cmd.id) || cmd.id == "" -> {:error, "Product ID is required"}
+        is_nil(cmd.id) || cmd.id == "" ->
+          {:error, "Product ID is required"}
+
         is_nil(cmd.name) && is_nil(cmd.price) && is_nil(cmd.category_id) ->
           {:error, "At least one field must be updated"}
-        true -> :ok
+
+        true ->
+          :ok
       end
     end
 
@@ -72,7 +77,8 @@ defmodule CommandService.Application.Commands.ProductCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :update_product}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :update_product}
   end
 
   defmodule DeleteProduct do
@@ -103,6 +109,7 @@ defmodule CommandService.Application.Commands.ProductCommands do
     def aggregate_id(%__MODULE__{id: id}), do: id
 
     @impl true
-    def metadata(%__MODULE__{user_id: user_id}), do: %{user_id: user_id, command_type: :delete_product}
+    def metadata(%__MODULE__{user_id: user_id}),
+      do: %{user_id: user_id, command_type: :delete_product}
   end
 end

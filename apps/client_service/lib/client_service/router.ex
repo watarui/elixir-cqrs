@@ -14,7 +14,7 @@ defmodule ClientService.Router do
     pipe_through(:api)
 
     get("/health", ClientService.HealthController, :check)
-    
+
     # Prometheusメトリクスエンドポイント
     get("/metrics", ClientService.MetricsController, :metrics)
   end
@@ -25,7 +25,7 @@ defmodule ClientService.Router do
 
     post("/", Absinthe.Plug, schema: ClientService.GraphQL.Schema)
   end
-  
+
   # GraphQL Playground (開発環境のみ)
   if Mix.env() in [:dev, :test] do
     scope "/" do

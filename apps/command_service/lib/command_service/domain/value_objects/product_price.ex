@@ -17,7 +17,7 @@ defmodule CommandService.Domain.ValueObjects.ProductPrice do
   def new(value) when is_integer(value) do
     value |> to_string() |> Decimal.new() |> new()
   end
-  
+
   def new(value) when is_float(value) do
     value |> to_string() |> Decimal.new() |> new()
   end

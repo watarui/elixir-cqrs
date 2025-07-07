@@ -11,6 +11,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
     UpdateProduct,
     DeleteProduct
   }
+
   alias CommandService.Application.CommandBus
   alias Shared.Errors.GrpcErrorConverter
   alias Shared.Infrastructure.EventStore
@@ -20,7 +21,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
   defp datetime_to_timestamp(%DateTime{} = datetime) do
     seconds = DateTime.to_unix(datetime)
     nanos = datetime.microsecond |> elem(0) |> Kernel.*(1000)
-    
+
     %Google.Protobuf.Timestamp{
       seconds: seconds,
       nanos: nanos
@@ -51,19 +52,22 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
          categoryId: category_id
        }) do
     # コマンドを作成
-    command = CreateProduct.new(%{
-      id: UUID.uuid4(),
-      name: name,
-      price: to_string(price),
-      category_id: category_id,
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      CreateProduct.new(%{
+        id: UUID.uuid4(),
+        name: name,
+        price: to_string(price),
+        category_id: category_id,
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, result} ->
         # イベントから商品情報を復元
         product = build_product_from_result(result, command.id)
+
         response = %Proto.ProductUpResult{
           product: product,
           error: nil,
@@ -90,19 +94,22 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
          categoryId: category_id
        }) do
     # コマンドを作成
-    command = UpdateProduct.new(%{
-      id: id,
-      name: name,
-      price: if(price && price != 0, do: to_string(price), else: nil),
-      category_id: category_id,
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      UpdateProduct.new(%{
+        id: id,
+        name: name,
+        price: if(price && price != 0, do: to_string(price), else: nil),
+        category_id: category_id,
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, result} ->
         # イベントから商品情報を復元
         product = build_product_from_result(result, id)
+
         response = %Proto.ProductUpResult{
           product: product,
           error: nil,
@@ -124,12 +131,14 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
 
   defp handle_delete_product(%Proto.ProductUpParam{id: id}) do
     # コマンドを作成
-    command = DeleteProduct.new(%{
-      id: id,
-      reason: "Deleted via gRPC",
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      DeleteProduct.new(%{
+        id: id,
+        reason: "Deleted via gRPC",
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, _result} ->
@@ -155,20 +164,21 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
   # イベントから商品情報を復元
   defp build_product_from_result(%{aggregate_id: aggregate_id}, default_id) do
     id = aggregate_id || default_id
-    
+
     # イベントストアから最新の状態を取得
     case EventStore.read_aggregate_events(id) do
       {:ok, events} when events != [] ->
         # アグリゲートを復元
         aggregate = ProductAggregate.load_from_events(events)
-        
+
         %Proto.Product{
           id: ProductAggregate.id(aggregate),
           name: ProductAggregate.name(aggregate),
           price: ProductAggregate.price(aggregate) |> Decimal.to_float() |> trunc(),
-          category: nil  # TODO: カテゴリ情報も含める
+          # TODO: カテゴリ情報も含める
+          category: nil
         }
-      
+
       _ ->
         # イベントが見つからない場合は基本情報を返す
         %Proto.Product{

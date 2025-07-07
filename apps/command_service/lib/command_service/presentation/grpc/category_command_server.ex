@@ -11,6 +11,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
     UpdateCategory,
     DeleteCategory
   }
+
   alias CommandService.Application.CommandBus
   alias Shared.Errors.GrpcErrorConverter
   alias CommandService.Domain.Aggregates.CategoryAggregate
@@ -20,7 +21,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
   defp datetime_to_timestamp(%DateTime{} = datetime) do
     seconds = DateTime.to_unix(datetime)
     nanos = datetime.microsecond |> elem(0) |> Kernel.*(1000)
-    
+
     %Google.Protobuf.Timestamp{
       seconds: seconds,
       nanos: nanos
@@ -47,17 +48,20 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   defp handle_create_category(%Proto.CategoryUpParam{name: name}) do
     # コマンドを作成
-    command = CreateCategory.new(%{
-      id: UUID.uuid4(),
-      name: name,
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      CreateCategory.new(%{
+        id: UUID.uuid4(),
+        name: name,
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, result} ->
         # イベントからカテゴリ情報を復元
         category = build_category_from_result(result, command.id, name)
+
         response = %Proto.CategoryUpResult{
           category: category,
           error: nil,
@@ -79,17 +83,20 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   defp handle_update_category(%Proto.CategoryUpParam{id: id, name: name}) do
     # コマンドを作成
-    command = UpdateCategory.new(%{
-      id: id,
-      name: name,
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      UpdateCategory.new(%{
+        id: id,
+        name: name,
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, result} ->
         # イベントからカテゴリ情報を復元
         category = build_category_from_result(result, id, name)
+
         response = %Proto.CategoryUpResult{
           category: category,
           error: nil,
@@ -111,12 +118,14 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   defp handle_delete_category(%Proto.CategoryUpParam{id: id}) do
     # コマンドを作成
-    command = DeleteCategory.new(%{
-      id: id,
-      reason: "Deleted via gRPC",
-      user_id: "grpc-user" # TODO: 実際のユーザーIDを使用
-    })
-    
+    command =
+      DeleteCategory.new(%{
+        id: id,
+        reason: "Deleted via gRPC",
+        # TODO: 実際のユーザーIDを使用
+        user_id: "grpc-user"
+      })
+
     # コマンドバスで実行
     case CommandBus.execute(command) do
       {:ok, _result} ->
@@ -141,28 +150,31 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   defp build_category_from_result(result, id, name) do
     # 更新の場合は最新のカテゴリ情報を取得
-    category = if result.events != [] do
-      # イベントストアから最新の状態を取得
-      case EventStore.read_aggregate_events(id) do
-        {:ok, events} ->
-          aggregate = CategoryAggregate.load_from_events(events)
-          %Proto.Category{
-            id: CategoryAggregate.id(aggregate) || id,
-            name: CategoryAggregate.name(aggregate) || name
-          }
-        _ ->
-          %Proto.Category{
-            id: id,
-            name: name
-          }
+    category =
+      if result.events != [] do
+        # イベントストアから最新の状態を取得
+        case EventStore.read_aggregate_events(id) do
+          {:ok, events} ->
+            aggregate = CategoryAggregate.load_from_events(events)
+
+            %Proto.Category{
+              id: CategoryAggregate.id(aggregate) || id,
+              name: CategoryAggregate.name(aggregate) || name
+            }
+
+          _ ->
+            %Proto.Category{
+              id: id,
+              name: name
+            }
+        end
+      else
+        %Proto.Category{
+          id: id,
+          name: name
+        }
       end
-    else
-      %Proto.Category{
-        id: id,
-        name: name
-      }
-    end
-    
+
     category
   end
 end

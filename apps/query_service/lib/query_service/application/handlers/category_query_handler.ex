@@ -1,7 +1,7 @@
 defmodule QueryService.Application.Handlers.CategoryQueryHandler do
   @moduledoc """
   カテゴリクエリハンドラー
-  
+
   カテゴリに関するクエリを処理し、読み取り専用データを返します
   """
 
@@ -12,6 +12,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandler do
     ListCategories,
     GetCategoryWithProducts
   }
+
   alias QueryService.Infrastructure.Repositories.CategoryRepository, as: CategoryRepo
   alias QueryService.Infrastructure.Repositories.ProductRepository, as: ProductRepo
 
@@ -24,13 +25,13 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandler do
   def handle_query(%GetCategory{} = query) do
     with :ok <- query.__struct__.validate(query) do
       case CategoryRepo.find_by_id(query.id) do
-        {:ok, category} -> 
+        {:ok, category} ->
           {:ok, format_category(category)}
-        
-        {:error, :not_found} -> 
+
+        {:error, :not_found} ->
           {:error, "Category not found"}
-        
-        error -> 
+
+        error ->
           error
       end
     end
@@ -40,26 +41,28 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandler do
     with :ok <- query.__struct__.validate(query) do
       limit = query.limit || 20
       offset = query.offset || 0
-      
-      categories = CategoryRepo.list()
-      |> apply_sorting(query.sort_by, query.sort_order)
-      |> apply_pagination(limit, offset)
-      |> Enum.map(fn category ->
-        if query.include_product_count do
-          {:ok, products} = ProductRepo.find_by_category_id(category.id)
-          product_count = length(products)
-          format_category_with_count(category, product_count)
-        else
-          format_category(category)
-        end
-      end)
-      
-      {:ok, %{
-        categories: categories,
-        total: length(categories),
-        limit: limit,
-        offset: offset
-      }}
+
+      categories =
+        CategoryRepo.list()
+        |> apply_sorting(query.sort_by, query.sort_order)
+        |> apply_pagination(limit, offset)
+        |> Enum.map(fn category ->
+          if query.include_product_count do
+            {:ok, products} = ProductRepo.find_by_category_id(category.id)
+            product_count = length(products)
+            format_category_with_count(category, product_count)
+          else
+            format_category(category)
+          end
+        end)
+
+      {:ok,
+       %{
+         categories: categories,
+         total: length(categories),
+         limit: limit,
+         offset: offset
+       }}
     end
   end
 
@@ -67,24 +70,26 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandler do
     with :ok <- query.__struct__.validate(query) do
       product_limit = query.product_limit || 20
       product_offset = query.product_offset || 0
-      
+
       case CategoryRepo.find_by_id(query.id) do
         {:ok, category} ->
-          products = ProductRepo.find_by_category_id(query.id)
-          |> apply_pagination(product_limit, product_offset)
-          |> Enum.map(&format_product/1)
-          
-          {:ok, %{
-            category: format_category(category),
-            products: products,
-            products_total: length(products),
-            product_limit: product_limit,
-            product_offset: product_offset
-          }}
-        
+          products =
+            ProductRepo.find_by_category_id(query.id)
+            |> apply_pagination(product_limit, product_offset)
+            |> Enum.map(&format_product/1)
+
+          {:ok,
+           %{
+             category: format_category(category),
+             products: products,
+             products_total: length(products),
+             product_limit: product_limit,
+             product_offset: product_offset
+           }}
+
         {:error, :not_found} ->
           {:error, "Category not found"}
-        
+
         error ->
           error
       end

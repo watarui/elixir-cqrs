@@ -38,9 +38,10 @@ defmodule Shared.Domain.Events.CategoryEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        name: map["name"] || map[:name]
-      }}
+      {:ok,
+       %{
+         name: map["name"] || map[:name]
+       }}
     end
   end
 
@@ -84,10 +85,11 @@ defmodule Shared.Domain.Events.CategoryEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        old_name: map["old_name"] || map[:old_name],
-        new_name: map["new_name"] || map[:new_name]
-      }}
+      {:ok,
+       %{
+         old_name: map["old_name"] || map[:old_name],
+         new_name: map["new_name"] || map[:new_name]
+       }}
     end
   end
 
@@ -126,9 +128,10 @@ defmodule Shared.Domain.Events.CategoryEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        reason: map["reason"] || map[:reason]
-      }}
+      {:ok,
+       %{
+         reason: map["reason"] || map[:reason]
+       }}
     end
   end
 
@@ -148,7 +151,15 @@ defmodule Shared.Domain.Events.CategoryEvents do
             metadata: map()
           }
 
-    defstruct [:event_id, :aggregate_id, :from_category_id, :to_category_id, :product_ids, :occurred_at, :metadata]
+    defstruct [
+      :event_id,
+      :aggregate_id,
+      :from_category_id,
+      :to_category_id,
+      :product_ids,
+      :occurred_at,
+      :metadata
+    ]
 
     @spec new(String.t(), String.t(), list(String.t()), map()) :: t()
     def new(from_category_id, to_category_id, product_ids, metadata \\ %{}) do
@@ -175,11 +186,12 @@ defmodule Shared.Domain.Events.CategoryEvents do
     end
 
     defp map_to_payload(map) do
-      {:ok, %{
-        from_category_id: map["from_category_id"] || map[:from_category_id],
-        to_category_id: map["to_category_id"] || map[:to_category_id],
-        product_ids: map["product_ids"] || map[:product_ids] || []
-      }}
+      {:ok,
+       %{
+         from_category_id: map["from_category_id"] || map[:from_category_id],
+         to_category_id: map["to_category_id"] || map[:to_category_id],
+         product_ids: map["product_ids"] || map[:product_ids] || []
+       }}
     end
   end
 end

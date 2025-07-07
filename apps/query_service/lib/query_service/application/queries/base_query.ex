@@ -1,7 +1,7 @@
 defmodule QueryService.Application.Queries.BaseQuery do
   @moduledoc """
   クエリの基本ビヘイビア
-  
+
   すべてのクエリはこのビヘイビアを実装する必要があります
   """
 
@@ -32,7 +32,7 @@ defmodule QueryService.Application.Queries.BaseQuery do
       @impl true
       def metadata(_query), do: %{}
 
-      defoverridable [validate: 1, metadata: 1]
+      defoverridable validate: 1, metadata: 1
     end
   end
 end

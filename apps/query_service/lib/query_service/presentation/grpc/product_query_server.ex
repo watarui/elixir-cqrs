@@ -21,7 +21,8 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
 
   defp datetime_to_unix_timestamp(nil), do: 0
 
-  @spec get_product(Query.ProductQueryRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductQueryResponse.t()
+  @spec get_product(Query.ProductQueryRequest.t(), GRPC.Server.Stream.t()) ::
+          Query.ProductQueryResponse.t()
   def get_product(%Query.ProductQueryRequest{id: id}, _stream) do
     case ProductRepository.find_by_id(id) do
       {:error, :not_found} ->
@@ -36,7 +37,8 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
-  @spec get_product_by_name(Query.ProductByNameRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductQueryResponse.t()
+  @spec get_product_by_name(Query.ProductByNameRequest.t(), GRPC.Server.Stream.t()) ::
+          Query.ProductQueryResponse.t()
   def get_product_by_name(%Query.ProductByNameRequest{name: name}, _stream) do
     case ProductRepository.find_by_name(name) do
       {:error, :not_found} ->
@@ -66,7 +68,8 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
-  @spec get_products_by_category(Query.ProductByCategoryRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductListResponse.t()
+  @spec get_products_by_category(Query.ProductByCategoryRequest.t(), GRPC.Server.Stream.t()) ::
+          Query.ProductListResponse.t()
   def get_products_by_category(%Query.ProductByCategoryRequest{category_id: category_id}, _stream) do
     case ProductRepository.find_by_category_id(category_id) do
       {:ok, products} ->
@@ -81,7 +84,8 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
-  @spec search_products(Query.ProductSearchRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductListResponse.t()
+  @spec search_products(Query.ProductSearchRequest.t(), GRPC.Server.Stream.t()) ::
+          Query.ProductListResponse.t()
   def search_products(%Query.ProductSearchRequest{search_term: search_term}, _stream) do
     case ProductRepository.search(search_term) do
       {:ok, products} ->

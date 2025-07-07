@@ -70,10 +70,10 @@ defmodule Shared.Domain.Events.BaseEvent do
       end
 
       @impl true
-      def event_id, do: __MODULE__.event_id
+      def event_id, do: __MODULE__.event_id()
 
       @impl true
-      def aggregate_id, do: __MODULE__.aggregate_id
+      def aggregate_id, do: __MODULE__.aggregate_id()
 
       @impl true
       def event_type, do: __MODULE__ |> Module.split() |> List.last() |> String.to_atom()
@@ -82,10 +82,10 @@ defmodule Shared.Domain.Events.BaseEvent do
       def event_version, do: 1
 
       @impl true
-      def occurred_at, do: __MODULE__.occurred_at
+      def occurred_at, do: __MODULE__.occurred_at()
 
       @impl true
-      def metadata, do: __MODULE__.metadata || %{}
+      def metadata, do: __MODULE__.metadata() || %{}
 
       @impl true
       def to_map(event) do
@@ -103,30 +103,40 @@ defmodule Shared.Domain.Events.BaseEvent do
       @impl true
       def from_map(data) do
         with {:ok, payload} <- map_to_payload(data["payload"] || data[:payload]) do
-          event = struct(__MODULE__, Map.merge(payload, %{
-            event_id: data["event_id"] || data[:event_id],
-            aggregate_id: data["aggregate_id"] || data[:aggregate_id],
-            occurred_at: parse_timestamp(data["occurred_at"] || data[:occurred_at]),
-            metadata: data["metadata"] || data[:metadata] || %{}
-          }))
+          event =
+            struct(
+              __MODULE__,
+              Map.merge(payload, %{
+                event_id: data["event_id"] || data[:event_id],
+                aggregate_id: data["aggregate_id"] || data[:aggregate_id],
+                occurred_at: parse_timestamp(data["occurred_at"] || data[:occurred_at]),
+                metadata: data["metadata"] || data[:metadata] || %{}
+              })
+            )
+
           {:ok, event}
         end
       end
 
       # オーバーライド可能な関数
-      defp payload_to_map(event), do: Map.from_struct(event) |> Map.drop([:event_id, :aggregate_id, :occurred_at, :metadata])
+      defp payload_to_map(event),
+        do:
+          Map.from_struct(event) |> Map.drop([:event_id, :aggregate_id, :occurred_at, :metadata])
+
       defp map_to_payload(map), do: {:ok, map}
 
       defp parse_timestamp(%DateTime{} = dt), do: dt
+
       defp parse_timestamp(timestamp) when is_binary(timestamp) do
         case DateTime.from_iso8601(timestamp) do
           {:ok, dt, _} -> dt
           _ -> DateTime.utc_now()
         end
       end
+
       defp parse_timestamp(_), do: DateTime.utc_now()
 
-      defoverridable [payload_to_map: 1, map_to_payload: 1]
+      defoverridable payload_to_map: 1, map_to_payload: 1
     end
   end
 end

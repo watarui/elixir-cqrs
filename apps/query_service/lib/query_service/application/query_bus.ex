@@ -1,7 +1,7 @@
 defmodule QueryService.Application.QueryBus do
   @moduledoc """
   クエリバス（メディエーターパターンの実装）
-  
+
   クエリを適切なハンドラーにルーティングし、実行結果を返します
   """
 
@@ -58,10 +58,11 @@ defmodule QueryService.Application.QueryBus do
 
   defp get_server do
     case Process.whereis(__MODULE__) do
-      nil -> 
+      nil ->
         {:ok, pid} = start_link(name: __MODULE__)
         pid
-      pid -> 
+
+      pid ->
         pid
     end
   end
@@ -81,14 +82,14 @@ defmodule QueryService.Application.QueryBus do
 
   defp execute_query(query, registry) do
     query_type = query.__struct__
-    
+
     case Map.get(registry, query_type) do
       nil ->
         {:error, "No handler found for query: #{inspect(query_type)}"}
-      
+
       handler ->
         Logger.info("Executing query #{inspect(query_type)} with handler #{inspect(handler)}")
-        
+
         try do
           handler.handle_query(query)
         rescue

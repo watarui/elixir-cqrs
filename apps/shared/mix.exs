@@ -44,20 +44,20 @@ defmodule Shared.MixProject do
 
       # PostgreSQL（イベントストア用）
       {:postgrex, "~> 0.19"},
-      
+
       # OpenTelemetry
       {:opentelemetry, "~> 1.3"},
       {:opentelemetry_api, "~> 1.2"},
       {:opentelemetry_exporter, "~> 1.6"},
-      
+
       # Telemetry
       {:telemetry, "~> 1.0"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
-      
+
       # 構造化ログ
       {:logger_json, "~> 5.1"},
-      
+
       # UUID生成
       {:uuid, "~> 1.1"}
     ]

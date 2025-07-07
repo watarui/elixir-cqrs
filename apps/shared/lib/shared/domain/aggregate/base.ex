@@ -16,7 +16,8 @@ defmodule Shared.Domain.Aggregate.Base do
   @doc """
   コマンドを実行してイベントを生成する
   """
-  @callback execute(aggregate :: struct(), command :: struct()) :: {:ok, list(struct())} | {:error, term()}
+  @callback execute(aggregate :: struct(), command :: struct()) ::
+              {:ok, list(struct())} | {:error, term()}
 
   @doc """
   イベントを適用してアグリゲートの状態を更新する
@@ -87,7 +88,7 @@ defmodule Shared.Domain.Aggregate.Base do
         aggregate
       end
 
-      defoverridable [execute: 2, apply_event: 2]
+      defoverridable execute: 2, apply_event: 2
     end
   end
 end

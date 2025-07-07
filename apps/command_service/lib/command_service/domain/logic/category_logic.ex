@@ -68,7 +68,7 @@ defmodule CommandService.Domain.Logic.CategoryLogic do
   親子関係を持つカテゴリリストからツリー構造を生成
   """
   @spec build_category_tree([%{id: String.t(), name: String.t(), parent_id: String.t() | nil}]) ::
-        [%{category: map(), children: list()}]
+          [%{category: map(), children: list()}]
   def build_category_tree(categories) when is_list(categories) do
     # ルートカテゴリを見つける
     root_categories = Enum.filter(categories, &is_nil(&1.parent_id))
@@ -97,17 +97,18 @@ defmodule CommandService.Domain.Logic.CategoryLogic do
   カテゴリの変更を検証
   """
   @spec detect_changes(Category.t(), Category.t()) :: %{
-    name_changed: boolean(),
-    changes: map()
-  }
+          name_changed: boolean(),
+          changes: map()
+        }
   def detect_changes(%Category{} = old_category, %Category{} = new_category) do
     name_changed = Category.name(old_category) != Category.name(new_category)
 
-    changes = if name_changed do
-      %{name: %{from: Category.name(old_category), to: Category.name(new_category)}}
-    else
-      %{}
-    end
+    changes =
+      if name_changed do
+        %{name: %{from: Category.name(old_category), to: Category.name(new_category)}}
+      else
+        %{}
+      end
 
     %{
       name_changed: name_changed,
@@ -143,11 +144,11 @@ defmodule CommandService.Domain.Logic.CategoryLogic do
   商品数のマップを受け取り、統計を生成
   """
   @spec calculate_statistics([Category.t()], %{String.t() => non_neg_integer()}) :: %{
-    total_categories: non_neg_integer(),
-    categories_with_products: non_neg_integer(),
-    empty_categories: non_neg_integer(),
-    average_products_per_category: float()
-  }
+          total_categories: non_neg_integer(),
+          categories_with_products: non_neg_integer(),
+          empty_categories: non_neg_integer(),
+          average_products_per_category: float()
+        }
   def calculate_statistics(categories, product_counts)
       when is_list(categories) and is_map(product_counts) do
     total = length(categories)

@@ -52,13 +52,13 @@ defmodule QueryService.Application.Queries.ProductQueries do
       cond do
         not is_nil(query.limit) && query.limit < 1 ->
           {:error, "Limit must be positive"}
-        
+
         not is_nil(query.offset) && query.offset < 0 ->
           {:error, "Offset must be non-negative"}
-        
+
         not is_nil(query.sort_order) && query.sort_order not in [:asc, :desc] ->
           {:error, "Sort order must be :asc or :desc"}
-        
+
         true ->
           :ok
       end
@@ -91,17 +91,17 @@ defmodule QueryService.Application.Queries.ProductQueries do
       cond do
         is_nil(query.search_term) || String.trim(query.search_term) == "" ->
           {:error, "Search term is required"}
-        
-        not is_nil(query.min_price) && not is_nil(query.max_price) && 
-          Decimal.compare(query.min_price, query.max_price) == :gt ->
+
+        not is_nil(query.min_price) && not is_nil(query.max_price) &&
+            Decimal.compare(query.min_price, query.max_price) == :gt ->
           {:error, "Min price must be less than or equal to max price"}
-        
+
         not is_nil(query.limit) && query.limit < 1 ->
           {:error, "Limit must be positive"}
-        
+
         not is_nil(query.offset) && query.offset < 0 ->
           {:error, "Offset must be non-negative"}
-        
+
         true ->
           :ok
       end
@@ -131,13 +131,13 @@ defmodule QueryService.Application.Queries.ProductQueries do
       cond do
         is_nil(query.category_id) || query.category_id == "" ->
           {:error, "Category ID is required"}
-        
+
         not is_nil(query.limit) && query.limit < 1 ->
           {:error, "Limit must be positive"}
-        
+
         not is_nil(query.offset) && query.offset < 0 ->
           {:error, "Offset must be non-negative"}
-        
+
         true ->
           :ok
       end

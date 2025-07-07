@@ -12,27 +12,27 @@ defmodule CommandService.Application do
     # OpenTelemetryとTelemetryの初期化
     Shared.Telemetry.Setup.setup_opentelemetry()
     Shared.Telemetry.Setup.attach_telemetry_handlers()
-    
+
     # OpenTelemetry Ecto instrumentation
     # Docker環境ではモジュールがロードされていない可能性があるため、エラーハンドリングを追加
     if Code.ensure_loaded?(:opentelemetry_ecto) do
       :opentelemetry_ecto.setup([:command_service, :repo])
     end
-    
+
     children = [
       # データベース接続
       CommandService.Infrastructure.Database.Repo,
 
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
-      
+
       # Prometheusエクスポーター
-      {TelemetryMetricsPrometheus, 
-       metrics: Shared.Telemetry.Metrics.metrics(),
-       port: 9569,
-       # Prometheusエクスポーターは内部でPlugを使用するため、
-       # 別のPlug.Cowboyは不要
-       plug_cowboy_opts: []},
+      {
+        TelemetryMetricsPrometheus,
+        # Prometheusエクスポーターは内部でPlugを使用するため、
+        # 別のPlug.Cowboyは不要
+        metrics: Shared.Telemetry.Metrics.metrics(), port: 9569, plug_cowboy_opts: []
+      },
 
       # イベントストア (PostgreSQL)
       {Shared.Infrastructure.EventStore.PostgresAdapter, []},
@@ -42,17 +42,18 @@ defmodule CommandService.Application do
 
       # コマンドバス
       {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
-      
+
       # サガコーディネーター
-      {Shared.Infrastructure.Saga.SagaCoordinator, 
+      {Shared.Infrastructure.Saga.SagaCoordinator,
        saga_modules: [Shared.Infrastructure.Saga.OrderSaga]},
-      
+
       # サガイベントハンドラー
-      {Shared.Infrastructure.Saga.SagaEventHandler, [
-        saga_triggers: %{
-          "order_created" => Shared.Infrastructure.Saga.OrderSaga
-        }
-      ]},
+      {Shared.Infrastructure.Saga.SagaEventHandler,
+       [
+         saga_triggers: %{
+           "order_created" => Shared.Infrastructure.Saga.OrderSaga
+         }
+       ]},
 
       # gRPC サーバー
       {GRPC.Server.Supervisor,

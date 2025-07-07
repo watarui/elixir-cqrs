@@ -33,15 +33,15 @@ defmodule CommandService.Domain.Entities.Category do
 
   @doc """
   カテゴリ情報を更新します
-  
+
   与えられたパラメータマップに基づいて、カテゴリの各フィールドを更新します。
   nilまたは空文字列のフィールドはスキップされます。
-  
+
   ## パラメータ
     - category: 更新対象のカテゴリエンティティ
     - params: 更新するフィールドを含むマップ
       - :name - カテゴリ名（オプション）
-  
+
   ## 戻り値
     - {:ok, updated_category} - 更新成功
     - {:error, reason} - バリデーションエラー
@@ -51,8 +51,9 @@ defmodule CommandService.Domain.Entities.Category do
     update_fields = [
       {:name, params[:name], &update_name/2}
     ]
-    
-    Enum.reduce_while(update_fields, {:ok, category}, fn {_field, value, update_fn}, {:ok, current_category} ->
+
+    Enum.reduce_while(update_fields, {:ok, category}, fn {_field, value, update_fn},
+                                                         {:ok, current_category} ->
       case maybe_apply_field_update(current_category, value, update_fn) do
         {:ok, updated_category} -> {:cont, {:ok, updated_category}}
         {:error, _} = error -> {:halt, error}
@@ -71,7 +72,7 @@ defmodule CommandService.Domain.Entities.Category do
         error
     end
   end
-  
+
   # フィールド更新のヘルパー関数
   @spec maybe_apply_field_update(t(), any(), (t(), any() -> {:ok, t()} | {:error, String.t()})) ::
           {:ok, t()} | {:error, String.t()}

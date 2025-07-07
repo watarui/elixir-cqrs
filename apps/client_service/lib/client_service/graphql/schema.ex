@@ -157,7 +157,7 @@ defmodule ClientService.GraphQL.Schema do
       arg(:input, non_null(:order_cancel_input))
       resolve(&OrderResolver.cancel_order/3)
     end
-    
+
     @desc "SAGA関連のミューテーション"
     field :start_order_saga, :saga_start_result do
       arg(:input, non_null(:order_saga_input))

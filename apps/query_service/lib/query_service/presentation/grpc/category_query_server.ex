@@ -154,12 +154,13 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
   end
 
   def get_categories_by_ids(%Query.CategoryIdsRequest{ids: ids}, _stream) do
-    categories = Enum.reduce(ids, [], fn id, acc ->
-      case CategoryRepository.find_by_id(id) do
-        {:ok, category} -> [category | acc]
-        _ -> acc
-      end
-    end)
+    categories =
+      Enum.reduce(ids, [], fn id, acc ->
+        case CategoryRepository.find_by_id(id) do
+          {:ok, category} -> [category | acc]
+          _ -> acc
+        end
+      end)
 
     response = %Query.CategoryListResponse{
       categories:

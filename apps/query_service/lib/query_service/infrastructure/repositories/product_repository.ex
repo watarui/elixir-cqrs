@@ -16,7 +16,7 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
   def find_by_id(id) when is_binary(id) do
     CachedRepository.cached_find_by_id(__MODULE__, id)
   end
-  
+
   # キャッシュを使わない内部実装
   def find_by_id_uncached(id) when is_binary(id) do
     query =
@@ -53,7 +53,7 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
   def list do
     CachedRepository.cached_list(__MODULE__)
   end
-  
+
   # キャッシュを使わない内部実装
   def list_uncached do
     query =

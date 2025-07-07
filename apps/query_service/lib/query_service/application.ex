@@ -12,28 +12,28 @@ defmodule QueryService.Application do
     # OpenTelemetryとTelemetryの初期化
     Shared.Telemetry.Setup.setup_opentelemetry()
     Shared.Telemetry.Setup.attach_telemetry_handlers()
-    
+
     # OpenTelemetry Ecto instrumentation
     # Docker環境ではモジュールがロードされていない可能性があるため、エラーハンドリングを追加
     if Code.ensure_loaded?(:opentelemetry_ecto) do
       :opentelemetry_ecto.setup([:query_service, :repo])
     end
-    
+
     children = [
       # データベース接続
       QueryService.Infrastructure.Database.Repo,
-      
+
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
-      
+
       # Prometheusエクスポーター
-      {TelemetryMetricsPrometheus, 
-       metrics: Shared.Telemetry.Metrics.metrics(),
-       port: 9570,
-       # Prometheusエクスポーターは内部でPlugを使用するため、
-       # 別のPlug.Cowboyは不要
-       plug_cowboy_opts: []},
-      
+      {
+        TelemetryMetricsPrometheus,
+        # Prometheusエクスポーターは内部でPlugを使用するため、
+        # 別のPlug.Cowboyは不要
+        metrics: Shared.Telemetry.Metrics.metrics(), port: 9570, plug_cowboy_opts: []
+      },
+
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,
 
@@ -41,7 +41,7 @@ defmodule QueryService.Application do
       {Shared.Infrastructure.EventStore.PostgresAdapter, []},
 
       # プロジェクションマネージャー（イベント→Read Model投影）
-      {QueryService.Application.ProjectionManager, 
+      {QueryService.Application.ProjectionManager,
        query_repo: QueryService.Infrastructure.Database.Repo},
 
       # gRPC サーバー

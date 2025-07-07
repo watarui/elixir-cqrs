@@ -37,11 +37,11 @@ defmodule QueryService.MixProject do
 
       # OpenTelemetry Ecto instrumentation
       {:opentelemetry_ecto, "~> 1.1"},
-      
+
       # Prometheus and HTTP server for metrics
       {:telemetry_metrics_prometheus, "~> 1.1"},
       {:plug_cowboy, "~> 2.5"},
-      
+
       # Development and test
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
