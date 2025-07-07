@@ -103,14 +103,12 @@ defmodule CommandService.Application.Services.CategoryService do
   # プライベート関数 - カテゴリに商品が存在するかチェック
   defp has_products?(category_id, _repo) do
     # ProductRepositoryを使用して商品の存在をチェック
-    # TODO: 実際の実装では ProductRepository を使用
-    # alias CommandService.Infrastructure.Repositories.ProductRepository
-    # case ProductRepository.find_by_category_id(category_id) do
-    #   {:ok, []} -> false
-    #   {:ok, _products} -> true
-    #   {:error, _} -> false
-    # end
-    _category_id = category_id
-    false
+    alias CommandService.Infrastructure.Repositories.ProductRepository
+
+    case ProductRepository.find_by_category_id(category_id) do
+      {:ok, []} -> false
+      {:ok, _products} -> true
+      {:error, _} -> false
+    end
   end
 end

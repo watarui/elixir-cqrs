@@ -10,7 +10,7 @@ defmodule Shared.Infrastructure.Grpc.ResilientClient do
   """
 
   require Logger
-  alias Shared.Infrastructure.Grpc.{RetryStrategy, CircuitBreaker}
+  alias Shared.Infrastructure.Grpc.{CircuitBreaker, RetryStrategy}
 
   @type call_options :: %{
           timeout: pos_integer(),

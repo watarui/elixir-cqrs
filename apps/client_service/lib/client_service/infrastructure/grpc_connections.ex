@@ -11,8 +11,8 @@ defmodule ClientService.Infrastructure.GrpcConnections do
 
   # 接続設定
   @default_host "localhost"
-  @default_command_port 50051
-  @default_query_port 50052
+  @default_command_port 50_051
+  @default_query_port 50_052
 
   # 接続再試行設定
   @reconnect_interval 5000
@@ -24,9 +24,9 @@ defmodule ClientService.Infrastructure.GrpcConnections do
     defstruct command_channel: nil,
               query_channel: nil,
               command_host: "localhost",
-              command_port: 50051,
+              command_port: 50_051,
               query_host: "localhost",
-              query_port: 50052,
+              query_port: 50_052,
               reconnect_attempts: %{command: 0, query: 0}
   end
 

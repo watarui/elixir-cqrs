@@ -11,8 +11,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
 
   alias CommandService.Application.Commands.CategoryCommands.{
     CreateCategory,
-    UpdateCategory,
-    DeleteCategory
+    DeleteCategory,
+    UpdateCategory
   }
 
   alias Shared.Infrastructure.EventStore

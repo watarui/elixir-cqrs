@@ -9,9 +9,9 @@ defmodule CommandService.Application.CommandBus do
   require Logger
 
   alias CommandService.Application.Handlers.{
-    ProductCommandHandler,
     CategoryCommandHandler,
     OrderCommandHandler,
+    ProductCommandHandler,
     SagaCommandHandler
   }
 

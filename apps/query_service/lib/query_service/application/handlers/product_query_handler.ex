@@ -9,13 +9,13 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
 
   alias QueryService.Application.Queries.ProductQueries.{
     GetProduct,
+    GetProductsByCategory,
     ListProducts,
-    SearchProducts,
-    GetProductsByCategory
+    SearchProducts
   }
 
-  alias QueryService.Infrastructure.Repositories.ProductRepository, as: ProductRepo
   alias QueryService.Infrastructure.Repositories.CategoryRepository, as: CategoryRepo
+  alias QueryService.Infrastructure.Repositories.ProductRepository, as: ProductRepo
 
   @impl true
   def query_types do

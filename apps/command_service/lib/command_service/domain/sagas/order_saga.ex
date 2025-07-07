@@ -14,14 +14,14 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   use Shared.Domain.Saga.SagaBase
 
   alias CommandService.Application.Commands.OrderCommands.{
-    ReserveInventoryCommand,
-    ReleaseInventoryCommand,
-    ProcessPaymentCommand,
-    RefundPaymentCommand,
     ArrangeShippingCommand,
+    CancelOrderCommand,
     CancelShippingCommand,
     ConfirmOrderCommand,
-    CancelOrderCommand
+    ProcessPaymentCommand,
+    RefundPaymentCommand,
+    ReleaseInventoryCommand,
+    ReserveInventoryCommand
   }
 
   @impl true
@@ -176,12 +176,12 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   end
 
   @impl true
-  def is_completed?(saga) do
+  def completed?(saga) do
     saga.state == :completed && saga.order_confirmed
   end
 
   @impl true
-  def is_failed?(saga) do
+  def failed?(saga) do
     saga.state == :failed
   end
 

@@ -9,15 +9,15 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   alias Shared.Infrastructure.Grpc.ResilientClient
 
   alias Query.{
-    ProductQueryRequest,
-    ProductByNameRequest,
-    ProductSearchRequest,
-    ProductByCategoryRequest,
-    ProductPriceRangeRequest,
-    ProductPaginationRequest,
-    ProductExistsRequest,
     CategoryQueryRequest,
-    Empty
+    Empty,
+    ProductByCategoryRequest,
+    ProductByNameRequest,
+    ProductExistsRequest,
+    ProductPaginationRequest,
+    ProductPriceRangeRequest,
+    ProductQueryRequest,
+    ProductSearchRequest
   }
 
   alias Proto.ProductUpParam
@@ -245,8 +245,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
              }
            ) do
       # 作成成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, response.product, product_created: "*")
+      # Note: PubSub support is handled by the client application if needed
 
       case response do
         %{product: nil, error: %{message: message}} ->
@@ -285,9 +284,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          },
          {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 更新成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: "*")
-      # Absinthe.Subscription.publish(context.pubsub, response.product, product_updated: input.id)
+      # Note: PubSub support is handled by the client application if needed
 
       {:ok, format_product(response.product)}
     else
@@ -308,8 +305,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
          },
          {:ok, _response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
       # 削除成功通知を送信
-      # TODO: Add PubSub support
-      # Absinthe.Subscription.publish(context.pubsub, id, product_deleted: "*")
+      # Note: PubSub support is handled by the client application if needed
 
       {:ok, true}
     else

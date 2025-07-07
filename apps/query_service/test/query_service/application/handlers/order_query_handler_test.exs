@@ -1,7 +1,8 @@
 defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   use ExUnit.Case, async: true
-  
+
   alias QueryService.Application.Handlers.OrderQueryHandler
+
   alias QueryService.Application.Queries.{
     GetOrderQuery,
     ListOrdersQuery,
@@ -9,15 +10,16 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
     GetOrdersByStatusQuery,
     GetOrderStatsQuery
   }
+
   alias QueryService.Domain.ReadModels.Order
   alias QueryService.Infrastructure.Repositories.OrderRepository
-  
+
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
-    
+
     # Create test orders
     orders = create_test_orders()
     {:ok, orders: orders}
@@ -53,10 +55,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
     test "includes customer information when requested", %{orders: orders} do
       # Arrange
       order = hd(orders)
-      query = GetOrderQuery.new(%{
-        id: order.id,
-        include_customer: true
-      })
+
+      query =
+        GetOrderQuery.new(%{
+          id: order.id,
+          include_customer: true
+        })
 
       # Act
       {:ok, retrieved_order} = OrderQueryHandler.handle(query)
@@ -69,10 +73,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
     test "includes order timeline when requested", %{orders: orders} do
       # Arrange
       order = hd(orders)
-      query = GetOrderQuery.new(%{
-        id: order.id,
-        include_timeline: true
-      })
+
+      query =
+        GetOrderQuery.new(%{
+          id: order.id,
+          include_timeline: true
+        })
 
       # Act
       {:ok, retrieved_order} = OrderQueryHandler.handle(query)
@@ -80,9 +86,10 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       # Assert
       assert retrieved_order.timeline != nil
       assert is_list(retrieved_order.timeline)
+
       assert Enum.all?(retrieved_order.timeline, fn event ->
-        Map.has_key?(event, :timestamp) && Map.has_key?(event, :status)
-      end)
+               Map.has_key?(event, :timestamp) && Map.has_key?(event, :status)
+             end)
     end
   end
 
@@ -105,20 +112,21 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       # Arrange
       start_date = DateTime.utc_now() |> DateTime.add(-7, :day)
       end_date = DateTime.utc_now()
-      
-      query = ListOrdersQuery.new(%{
-        start_date: start_date,
-        end_date: end_date
-      })
+
+      query =
+        ListOrdersQuery.new(%{
+          start_date: start_date,
+          end_date: end_date
+        })
 
       # Act
       {:ok, %{data: orders}} = OrderQueryHandler.handle(query)
 
       # Assert
       assert Enum.all?(orders, fn order ->
-        DateTime.compare(order.created_at, start_date) != :lt &&
-        DateTime.compare(order.created_at, end_date) != :gt
-      end)
+               DateTime.compare(order.created_at, start_date) != :lt &&
+                 DateTime.compare(order.created_at, end_date) != :gt
+             end)
     end
 
     test "sorts orders by creation date descending by default" do
@@ -143,8 +151,8 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
       # Assert
       assert Enum.all?(orders, fn order ->
-        Decimal.compare(order.total_amount, min_amount) != :lt
-      end)
+               Decimal.compare(order.total_amount, min_amount) != :lt
+             end)
     end
   end
 
@@ -155,7 +163,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{customer_id: customer_id, status: "completed"})
       create_order(%{customer_id: customer_id, status: "pending"})
       create_order(%{customer_id: UUID.uuid4(), status: "pending"})
-      
+
       query = GetOrdersByCustomerQuery.new(%{customer_id: customer_id})
 
       # Act
@@ -164,27 +172,30 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       # Assert
       assert {:ok, %{data: orders}} = result
       assert length(orders) == 2
-      assert Enum.all?(orders, & &1.customer_id == customer_id)
+      assert Enum.all?(orders, &(&1.customer_id == customer_id))
     end
 
     test "includes order summary statistics", %{orders: _} do
       # Arrange
       customer_id = UUID.uuid4()
+
       create_order(%{
         customer_id: customer_id,
         total_amount: Decimal.new("50.00"),
         status: "completed"
       })
+
       create_order(%{
         customer_id: customer_id,
         total_amount: Decimal.new("75.00"),
         status: "completed"
       })
-      
-      query = GetOrdersByCustomerQuery.new(%{
-        customer_id: customer_id,
-        include_stats: true
-      })
+
+      query =
+        GetOrdersByCustomerQuery.new(%{
+          customer_id: customer_id,
+          include_stats: true
+        })
 
       # Act
       {:ok, result} = OrderQueryHandler.handle(query)
@@ -201,11 +212,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{customer_id: customer_id, status: "completed"})
       create_order(%{customer_id: customer_id, status: "pending"})
       create_order(%{customer_id: customer_id, status: "cancelled"})
-      
-      query = GetOrdersByCustomerQuery.new(%{
-        customer_id: customer_id,
-        status: "completed"
-      })
+
+      query =
+        GetOrdersByCustomerQuery.new(%{
+          customer_id: customer_id,
+          status: "completed"
+        })
 
       # Act
       {:ok, %{data: orders}} = OrderQueryHandler.handle(query)
@@ -233,7 +245,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{status: "pending"})
       create_order(%{status: "pending"})
       create_order(%{status: "completed"})
-      
+
       query = GetOrdersByStatusQuery.new(%{status: "pending"})
 
       # Act
@@ -241,7 +253,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
       # Assert
       assert length(orders) == 2
-      assert Enum.all?(orders, & &1.status == "pending")
+      assert Enum.all?(orders, &(&1.status == "pending"))
     end
 
     test "retrieves orders by multiple statuses" do
@@ -250,25 +262,27 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{status: "processing"})
       create_order(%{status: "completed"})
       create_order(%{status: "cancelled"})
-      
-      query = GetOrdersByStatusQuery.new(%{
-        statuses: ["pending", "processing"]
-      })
+
+      query =
+        GetOrdersByStatusQuery.new(%{
+          statuses: ["pending", "processing"]
+        })
 
       # Act
       {:ok, %{data: orders}} = OrderQueryHandler.handle(query)
 
       # Assert
       assert length(orders) == 2
-      assert Enum.all?(orders, & &1.status in ["pending", "processing"])
+      assert Enum.all?(orders, &(&1.status in ["pending", "processing"]))
     end
 
     test "includes status duration metrics" do
       # Arrange
-      query = GetOrdersByStatusQuery.new(%{
-        status: "processing",
-        include_duration_metrics: true
-      })
+      query =
+        GetOrdersByStatusQuery.new(%{
+          status: "processing",
+          include_duration_metrics: true
+        })
 
       # Act
       {:ok, result} = OrderQueryHandler.handle(query)
@@ -287,7 +301,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{total_amount: Decimal.new("100.00"), status: "completed"})
       create_order(%{total_amount: Decimal.new("200.00"), status: "completed"})
       create_order(%{total_amount: Decimal.new("150.00"), status: "pending"})
-      
+
       query = GetOrderStatsQuery.new(%{})
 
       # Act
@@ -305,11 +319,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       # Arrange
       start_date = DateTime.utc_now() |> DateTime.add(-30, :day)
       end_date = DateTime.utc_now()
-      
-      query = GetOrderStatsQuery.new(%{
-        start_date: start_date,
-        end_date: end_date
-      })
+
+      query =
+        GetOrderStatsQuery.new(%{
+          start_date: start_date,
+          end_date: end_date
+        })
 
       # Act
       {:ok, stats} = OrderQueryHandler.handle(query)
@@ -321,29 +336,32 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
     test "groups statistics by time interval" do
       # Arrange
-      query = GetOrderStatsQuery.new(%{
-        group_by: "day",
-        start_date: DateTime.utc_now() |> DateTime.add(-7, :day),
-        end_date: DateTime.utc_now()
-      })
+      query =
+        GetOrderStatsQuery.new(%{
+          group_by: "day",
+          start_date: DateTime.utc_now() |> DateTime.add(-7, :day),
+          end_date: DateTime.utc_now()
+        })
 
       # Act
       {:ok, stats} = OrderQueryHandler.handle(query)
 
       # Assert
       assert is_list(stats.time_series)
+
       assert Enum.all?(stats.time_series, fn point ->
-        Map.has_key?(point, :date) &&
-        Map.has_key?(point, :order_count) &&
-        Map.has_key?(point, :revenue)
-      end)
+               Map.has_key?(point, :date) &&
+                 Map.has_key?(point, :order_count) &&
+                 Map.has_key?(point, :revenue)
+             end)
     end
 
     test "includes product performance metrics" do
       # Arrange
-      query = GetOrderStatsQuery.new(%{
-        include_product_metrics: true
-      })
+      query =
+        GetOrderStatsQuery.new(%{
+          include_product_metrics: true
+        })
 
       # Act
       {:ok, stats} = OrderQueryHandler.handle(query)
@@ -351,11 +369,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       # Assert
       assert stats.top_products != nil
       assert is_list(stats.top_products)
+
       assert Enum.all?(stats.top_products, fn product ->
-        Map.has_key?(product, :product_id) &&
-        Map.has_key?(product, :quantity_sold) &&
-        Map.has_key?(product, :revenue)
-      end)
+               Map.has_key?(product, :product_id) &&
+                 Map.has_key?(product, :quantity_sold) &&
+                 Map.has_key?(product, :revenue)
+             end)
     end
 
     test "calculates order status distribution" do
@@ -364,7 +383,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
       create_order(%{status: "pending"})
       create_order(%{status: "processing"})
       create_order(%{status: "completed"})
-      
+
       query = GetOrderStatsQuery.new(%{})
 
       # Act
@@ -380,18 +399,19 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   describe "complex queries" do
     test "handles orders with many items efficiently" do
       # Create order with many items
-      items = for i <- 1..50 do
-        build(:order_item, %{
-          product_name: "Product #{i}",
-          quantity: 1
-        })
-      end
-      
+      items =
+        for i <- 1..50 do
+          build(:order_item, %{
+            product_name: "Product #{i}",
+            quantity: 1
+          })
+        end
+
       order = create_order(%{items: items})
-      
+
       query = GetOrderQuery.new(%{id: order.id})
       {:ok, retrieved_order} = OrderQueryHandler.handle(query)
-      
+
       assert length(retrieved_order.items) == 50
     end
 
@@ -403,22 +423,24 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
           status: Enum.random(["pending", "processing", "completed"])
         })
       end
-      
-      query = ListOrdersQuery.new(%{
-        min_amount: Decimal.new("500"),
-        sort_by: "total_amount",
-        sort_order: "desc",
-        page_size: 20
-      })
-      
+
+      query =
+        ListOrdersQuery.new(%{
+          min_amount: Decimal.new("500"),
+          sort_by: "total_amount",
+          sort_order: "desc",
+          page_size: 20
+        })
+
       {:ok, %{data: orders}} = OrderQueryHandler.handle(query)
-      
+
       # Verify filtering and sorting
       assert length(orders) <= 20
+
       assert Enum.all?(orders, fn o ->
-        Decimal.compare(o.total_amount, Decimal.new("500")) != :lt
-      end)
-      
+               Decimal.compare(o.total_amount, Decimal.new("500")) != :lt
+             end)
+
       amounts = Enum.map(orders, & &1.total_amount)
       assert amounts == Enum.sort(amounts, {:desc, Decimal})
     end
@@ -427,7 +449,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   # Helper functions
   defp create_test_orders do
     customer_id = UUID.uuid4()
-    
+
     [
       create_order(%{
         customer_id: customer_id,
@@ -449,10 +471,10 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
   defp create_order(attrs) do
     order_attrs = build(:order, attrs)
-    
+
     # Ensure created_at is set for date filtering tests
     order_attrs = Map.put_new(order_attrs, :created_at, DateTime.utc_now())
-    
+
     {:ok, order} = OrderRepository.create(order_attrs)
     order
   end

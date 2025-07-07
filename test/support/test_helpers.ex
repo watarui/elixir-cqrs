@@ -36,14 +36,14 @@ defmodule ElixirCqrs.TestHelpers do
   def create_product_with_projection(attrs \\ %{}) do
     product = Factory.build(:product, attrs)
     command = Factory.build(:create_product_command, payload: product)
-    
+
     {:ok, event} = CommandService.Application.CommandBus.dispatch(command)
-    
+
     # Wait for projection to be updated
     wait_for_projection(fn ->
       QueryService.Infrastructure.Repositories.ProductRepository.get(product.id)
     end)
-    
+
     product
   end
 
@@ -53,14 +53,14 @@ defmodule ElixirCqrs.TestHelpers do
   def create_category_with_projection(attrs \\ %{}) do
     category = Factory.build(:category, attrs)
     command = Factory.build(:create_category_command, payload: category)
-    
+
     {:ok, event} = CommandService.Application.CommandBus.dispatch(command)
-    
+
     # Wait for projection to be updated
     wait_for_projection(fn ->
       QueryService.Infrastructure.Repositories.CategoryRepository.get(category.id)
     end)
-    
+
     category
   end
 
@@ -69,7 +69,7 @@ defmodule ElixirCqrs.TestHelpers do
   """
   def wait_for_projection(check_fn, timeout \\ 5000) do
     start_time = System.monotonic_time(:millisecond)
-    
+
     Stream.interval(100)
     |> Stream.take_while(fn _ ->
       System.monotonic_time(:millisecond) - start_time < timeout
@@ -91,7 +91,7 @@ defmodule ElixirCqrs.TestHelpers do
   """
   def assert_event_published(event_type, aggregate_id) do
     events = CommandService.Infrastructure.EventStore.PostgresEventStore.get_events(aggregate_id)
-    
+
     assert Enum.any?(events, fn event ->
       event.event_type == event_type
     end), "Expected event #{event_type} for aggregate #{aggregate_id} was not published"

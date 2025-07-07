@@ -1,9 +1,9 @@
 defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
   use ExUnit.Case, async: false
 
-  alias Shared.Infrastructure.Saga.SagaCoordinator
-  alias Shared.Infrastructure.EventStore
   alias Shared.Domain.Saga.SagaEvents
+  alias Shared.Infrastructure.EventStore
+  alias Shared.Infrastructure.Saga.SagaCoordinator
 
   # テスト用のサガモジュール
   defmodule TestSaga do
@@ -55,12 +55,12 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
     end
 
     @impl true
-    def is_completed?(%{state: :completed}), do: true
-    def is_completed?(_), do: false
+    def completed?(%{state: :completed}), do: true
+    def completed?(_), do: false
 
     @impl true
-    def is_failed?(%{state: :failed}), do: true
-    def is_failed?(_), do: false
+    def failed?(%{state: :failed}), do: true
+    def failed?(_), do: false
 
     @impl true
     def get_compensation_commands(saga) do
@@ -99,7 +99,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
       %{saga | state: :compensating}
     end
 
-    def is_timed_out?(saga, timeout) do
+    def timed_out?(saga, timeout) do
       # テストでは簡略化
       false
     end

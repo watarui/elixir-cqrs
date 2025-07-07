@@ -5,7 +5,7 @@ defmodule CommandService.Domain.Entities.Product do
   商品のビジネスルールとドメインロジックを含みます
   """
 
-  alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
+  alias CommandService.Domain.ValueObjects.{CategoryId, ProductId, ProductName, ProductPrice}
 
   @enforce_keys [:id, :name, :price, :category_id]
   defstruct [:id, :name, :price, :category_id, :created_at, :updated_at]

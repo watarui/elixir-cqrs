@@ -1,4 +1,8 @@
 defmodule Proto.StartOrderSagaParam do
+  @moduledoc """
+  注文サガを開始するためのパラメータ。
+  注文ID、顧客ID、商品情報、合計金額、配送先住所を含む。
+  """
   use Protobuf, syntax: :proto3
 
   field(:orderId, 1, type: :string)
@@ -9,6 +13,10 @@ defmodule Proto.StartOrderSagaParam do
 end
 
 defmodule Proto.OrderItem do
+  @moduledoc """
+  注文の商品明細項目。
+  商品ID、商品名、数量、単価、小計を含む。
+  """
   use Protobuf, syntax: :proto3
 
   field(:productId, 1, type: :string)
@@ -19,6 +27,10 @@ defmodule Proto.OrderItem do
 end
 
 defmodule Proto.ShippingAddress do
+  @moduledoc """
+  配送先住所情報。
+  番地、都市、郵便番号を含む。
+  """
   use Protobuf, syntax: :proto3
 
   field(:street, 1, type: :string)
@@ -27,6 +39,10 @@ defmodule Proto.ShippingAddress do
 end
 
 defmodule Proto.StartSagaResult do
+  @moduledoc """
+  サガ開始処理の結果。
+  サガID、ステータス、エラー情報、開始時刻を含む。
+  """
   use Protobuf, syntax: :proto3
 
   field(:sagaId, 1, type: :string)
@@ -36,12 +52,20 @@ defmodule Proto.StartSagaResult do
 end
 
 defmodule Proto.GetSagaStatusParam do
+  @moduledoc """
+  サガステータス取得のためのパラメータ。
+  取得対象のサガIDを指定する。
+  """
   use Protobuf, syntax: :proto3
 
   field(:sagaId, 1, type: :string)
 end
 
 defmodule Proto.SagaStatusResult do
+  @moduledoc """
+  サガの現在のステータス情報。
+  サガID、状態、完了済みステップ、現在のステップ、失敗理由、タイムスタンプを含む。
+  """
   use Protobuf, syntax: :proto3
 
   field(:sagaId, 1, type: :string)

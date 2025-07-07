@@ -60,26 +60,50 @@ defmodule Shared.Events do
   """
 
   defmodule ProductCreated do
+    @moduledoc """
+    商品が作成されたことを表すドメインイベント。
+    ID、名称、価格、カテゴリID、タイムスタンプを含む。
+    """
     defstruct [:id, :name, :price, :category_id, :timestamp]
   end
 
   defmodule ProductUpdated do
+    @moduledoc """
+    商品情報が更新されたことを表すドメインイベント。
+    ID、更新前データ、更新後データ、タイムスタンプを含む。
+    """
     defstruct [:id, :old_data, :new_data, :timestamp]
   end
 
   defmodule ProductDeleted do
+    @moduledoc """
+    商品が削除されたことを表すドメインイベント。
+    IDとタイムスタンプを含む。
+    """
     defstruct [:id, :timestamp]
   end
 
   defmodule CategoryCreated do
+    @moduledoc """
+    カテゴリが作成されたことを表すドメインイベント。
+    ID、名称、タイムスタンプを含む。
+    """
     defstruct [:id, :name, :timestamp]
   end
 
   defmodule CategoryUpdated do
+    @moduledoc """
+    カテゴリ名が更新されたことを表すドメインイベント。
+    ID、更新前名称、更新後名称、タイムスタンプを含む。
+    """
     defstruct [:id, :old_name, :new_name, :timestamp]
   end
 
   defmodule CategoryDeleted do
+    @moduledoc """
+    カテゴリが削除されたことを表すドメインイベント。
+    IDとタイムスタンプを含む。
+    """
     defstruct [:id, :timestamp]
   end
 end

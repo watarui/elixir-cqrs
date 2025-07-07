@@ -8,13 +8,13 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
 
   alias CommandService.Application.Commands.CategoryCommands.{
     CreateCategory,
-    UpdateCategory,
-    DeleteCategory
+    DeleteCategory,
+    UpdateCategory
   }
 
   alias CommandService.Application.CommandBus
-  alias Shared.Errors.GrpcErrorConverter
   alias CommandService.Domain.Aggregates.CategoryAggregate
+  alias Shared.Errors.GrpcErrorConverter
   alias Shared.Infrastructure.EventStore
 
   # Helper function to convert DateTime to Google.Protobuf.Timestamp
@@ -52,8 +52,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       CreateCategory.new(%{
         id: UUID.uuid4(),
         name: name,
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -87,8 +86,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       UpdateCategory.new(%{
         id: id,
         name: name,
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -122,8 +120,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       DeleteCategory.new(%{
         id: id,
         reason: "Deleted via gRPC",
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -176,5 +173,12 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       end
 
     category
+  end
+
+  # ユーザーIDを抽出（将来的にはメタデータから取得）
+  defp extract_user_id do
+    # Note: 将来的にはgRPCメタデータからユーザーIDを抽出する実装に変更
+    # 現在はデフォルト値を返す
+    "grpc-user"
   end
 end

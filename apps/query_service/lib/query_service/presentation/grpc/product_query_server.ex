@@ -5,7 +5,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
 
   use GRPC.Server, service: Query.ProductQuery.Service
 
-  alias QueryService.Infrastructure.Repositories.{ProductRepository, CategoryRepository}
+  alias QueryService.Infrastructure.Repositories.{CategoryRepository, ProductRepository}
   alias Shared.Errors.{AppError, GrpcErrorConverter}
 
   # Helper function to convert DateTime to Unix timestamp

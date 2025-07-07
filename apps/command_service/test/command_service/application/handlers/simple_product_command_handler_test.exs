@@ -1,7 +1,8 @@
 defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
   use ExUnit.Case, async: true
-  
+
   alias CommandService.Application.Handlers.ProductCommandHandler
+
   alias CommandService.Application.Commands.ProductCommands.{
     CreateProduct,
     UpdateProduct,
@@ -17,7 +18,7 @@ defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
         price: "99.99",
         category_id: "cat-123"
       }
-      
+
       # コマンドの構造を確認
       assert valid_command.id == "test-id-123"
       assert valid_command.name == "Test Product"
@@ -33,7 +34,7 @@ defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
         price: "99.99",
         category_id: "cat-123"
       }
-      
+
       # 空の名前を持つコマンドの確認
       assert invalid_command.name == ""
     end
@@ -46,7 +47,7 @@ defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
         name: "Updated Product",
         price: "149.99"
       }
-      
+
       assert update_command.id == "test-id-123"
       assert update_command.name == "Updated Product"
       assert update_command.price == "149.99"
@@ -58,7 +59,7 @@ defmodule CommandService.Application.Handlers.SimpleProductCommandHandlerTest do
       delete_command = %DeleteProduct{
         id: "test-id-123"
       }
-      
+
       assert delete_command.id == "test-id-123"
     end
   end

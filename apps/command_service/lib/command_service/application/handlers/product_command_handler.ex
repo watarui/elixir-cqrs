@@ -11,8 +11,8 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
 
   alias CommandService.Application.Commands.ProductCommands.{
     CreateProduct,
-    UpdateProduct,
-    DeleteProduct
+    DeleteProduct,
+    UpdateProduct
   }
 
   alias Shared.Infrastructure.EventStore

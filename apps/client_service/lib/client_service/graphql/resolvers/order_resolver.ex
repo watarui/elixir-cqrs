@@ -26,15 +26,13 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
         items: items_with_details,
         total_amount: total_amount,
         shipping_address: %{
-          # TODO: 実際の配送先情報を受け取る
-          street: "123 Main St",
-          city: "Tokyo",
-          postal_code: "100-0001"
+          street: input[:shipping_address][:street] || "123 Main St",
+          city: input[:shipping_address][:city] || "Tokyo",
+          postal_code: input[:shipping_address][:postal_code] || "100-0001"
         }
       }
 
-      # TODO: SagaCoordinatorはcommand-service内部のモジュールなので、
-      # gRPC経由でサガを開始するコマンドを送信する必要がある
+      # gRPC経由でサガを開始するコマンドを送信
       case start_order_saga(saga_context) do
         {:ok, _saga_id} ->
           # 注文の初期状態を返す
@@ -71,12 +69,23 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
   注文をキャンセルする
   """
   @spec cancel_order(map(), map(), map()) :: {:ok, boolean()} | {:error, String.t()}
-  def cancel_order(_parent, %{input: _input}, _context) do
-    # TODO: 実装
-    # 1. 注文の現在の状態を確認
-    # 2. キャンセル可能な状態かチェック
-    # 3. サガの補償処理を開始
-    {:ok, true}
+  def cancel_order(_parent, %{input: input}, _context) do
+    order_id = input.order_id
+
+    # 注文の現在の状態を確認
+    with {:ok, order} <- get_order(%{}, %{id: order_id}, %{}),
+         # キャンセル可能な状態かチェック
+         :ok <- validate_cancellable_status(order.status),
+         # サガの補償処理を開始
+         {:ok, _} <- CqrsFacade.command({:cancel_order, order_id}) do
+      {:ok, true}
+    else
+      {:error, :not_cancellable} ->
+        {:error, "Order cannot be cancelled in current status"}
+
+      {:error, reason} ->
+        {:error, "Failed to cancel order: #{inspect(reason)}"}
+    end
   end
 
   @doc """
@@ -84,27 +93,60 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
   """
   @spec get_order(map(), map(), map()) :: {:ok, map()} | {:error, String.t()}
   def get_order(_parent, %{id: order_id}, _context) do
-    # TODO: クエリサービスから注文情報を取得
-    # 現在は仮の実装
-    {:ok,
-     %{
-       id: order_id,
-       user_id: "user-123",
-       status: :confirmed,
-       total_amount: 1500.0,
-       items: [],
-       created_at: DateTime.utc_now(),
-       updated_at: DateTime.utc_now()
-     }}
+    case CqrsFacade.query({:get_order, order_id}) do
+      {:ok, order} ->
+        # サガの状態も取得
+        saga_state =
+          case get_saga_state_internal(order_id) do
+            {:ok, state} -> state
+            _ -> nil
+          end
+
+        {:ok,
+         %{
+           id: order.id,
+           user_id: order.user_id,
+           status: order.status,
+           total_amount: order.total_amount,
+           items: format_order_items(order.items),
+           created_at: order.created_at,
+           updated_at: order.updated_at,
+           saga_state: saga_state
+         }}
+
+      {:error, :not_found} ->
+        {:error, "Order not found"}
+
+      {:error, reason} ->
+        {:error, "Failed to get order: #{inspect(reason)}"}
+    end
   end
 
   @doc """
   ユーザーの注文一覧を取得する
   """
   @spec list_user_orders(map(), map(), map()) :: {:ok, list(map())} | {:error, String.t()}
-  def list_user_orders(_parent, %{user_id: _user_id}, _context) do
-    # TODO: クエリサービスから注文一覧を取得
-    {:ok, []}
+  def list_user_orders(_parent, %{user_id: user_id}, _context) do
+    case CqrsFacade.query({:list_user_orders, user_id}) do
+      {:ok, orders} ->
+        formatted_orders =
+          Enum.map(orders, fn order ->
+            %{
+              id: order.id,
+              user_id: order.user_id,
+              status: order.status,
+              total_amount: order.total_amount,
+              items: format_order_items(order.items),
+              created_at: order.created_at,
+              updated_at: order.updated_at
+            }
+          end)
+
+        {:ok, formatted_orders}
+
+      {:error, reason} ->
+        {:error, "Failed to list orders: #{inspect(reason)}"}
+    end
   end
 
   @doc """
@@ -112,21 +154,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
   """
   @spec get_saga_state(map(), map(), map()) :: {:ok, map()} | {:error, String.t()}
   def get_saga_state(_parent, %{order_id: order_id}, _context) do
-    # TODO: サガの状態を取得
-    {:ok,
-     %{
-       saga_id: "saga-#{order_id}",
-       state: :completed,
-       completed_steps: [
-         "reserve_inventory",
-         "process_payment",
-         "arrange_shipping",
-         "confirm_order"
-       ],
-       error: nil,
-       started_at: DateTime.utc_now(),
-       completed_at: DateTime.utc_now()
-     }}
+    get_saga_state_internal(order_id)
   end
 
   @doc """

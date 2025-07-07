@@ -11,11 +11,11 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
 
   alias Query.{
     CategoryByNameRequest,
-    CategorySearchRequest,
-    CategoryPaginationRequest,
     CategoryExistsRequest,
-    ProductByCategoryRequest,
-    Empty
+    CategoryPaginationRequest,
+    CategorySearchRequest,
+    Empty,
+    ProductByCategoryRequest
   }
 
   @doc """

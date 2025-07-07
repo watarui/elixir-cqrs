@@ -46,7 +46,7 @@ defmodule QueryService.Application do
 
       # gRPC サーバー
       {GRPC.Server.Supervisor,
-       endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50052, start_server: true}
+       endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50_052, start_server: true}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

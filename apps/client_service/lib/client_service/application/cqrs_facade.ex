@@ -13,21 +13,21 @@ defmodule ClientService.Application.CqrsFacade do
 
   alias Proto.{
     CategoryCommand,
-    ProductCommand,
     CategoryUpParam,
+    ProductCommand,
     ProductUpParam
   }
 
   alias Query.{
-    CategoryQuery,
-    ProductQuery,
-    CategoryQueryRequest,
-    ListCategoriesQuery,
-    ProductQueryRequest,
-    ListProductsQuery,
     CategoryListResponse,
+    CategoryQuery,
+    CategoryQueryRequest,
+    Empty,
+    ListCategoriesQuery,
+    ListProductsQuery,
     ProductListResponse,
-    Empty
+    ProductQuery,
+    ProductQueryRequest
   }
 
   # クライアントAPI
@@ -399,33 +399,15 @@ defmodule ClientService.Application.CqrsFacade do
        completed_at: DateTime.utc_now()
      }}
 
-    # TODO: gRPCが正しく動作するようになったら以下のコードを有効化
+    # Note: Saga status implementation is currently mocked.
+    # When gRPC GetSagaStatus endpoint is implemented in command service,
+    # uncomment the following code to enable real saga status retrieval:
+    #
     # with {:ok, channel} <- GrpcConnections.get_command_channel() do
     #   request = struct(Proto.GetSagaStatusParam, %{sagaId: saga_id})
-    #   
     #   case Proto.SagaCommand.Stub.get_saga_status(channel, request) do
-    #     {:ok, response} ->
-    #       if response.error do
-    #         {:error, response.error.message}
-    #       else
-    #         {:ok, %{
-    #           saga_id: response.sagaId,
-    #           state: response.state,
-    #           completed_steps: response.completedSteps,
-    #           current_step: response.currentStep,
-    #           failure_reason: response.failureReason,
-    #           started_at: timestamp_to_datetime(response.startedAt),
-    #           completed_at: timestamp_to_datetime(response.completedAt)
-    #         }}
-    #       end
-    #     {:error, reason} ->
-    #       Logger.error("Failed to get saga status: #{inspect(reason)}")
-    #       {:error, :saga_status_failed}
+    #     ...
     #   end
-    # else
-    #   {:error, reason} ->
-    #     Logger.error("Failed to get command channel: #{inspect(reason)}")
-    #     {:error, :service_unavailable}
     # end
   end
 

@@ -5,14 +5,14 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   商品に関するすべてのビジネスロジックとイベント処理を管理します
   """
 
-  alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
-  alias CommandService.Domain.Logic.{ProductLogic, AggregateLogic}
+  alias CommandService.Domain.Logic.{AggregateLogic, ProductLogic}
+  alias CommandService.Domain.ValueObjects.{CategoryId, ProductId, ProductName, ProductPrice}
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
-    ProductUpdated,
     ProductDeleted,
-    ProductPriceChanged
+    ProductPriceChanged,
+    ProductUpdated
   }
 
   defstruct [:id, :name, :price, :category_id, :deleted, :version, :pending_events]
@@ -83,7 +83,7 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
         # 純粋な関数で重要な価格変更かを判定
         events =
           if Map.has_key?(changes, :price) &&
-               AggregateLogic.is_significant_price_change?(
+               AggregateLogic.significant_price_change?(
                  ProductPrice.value(aggregate.price),
                  changes.price,
                  10

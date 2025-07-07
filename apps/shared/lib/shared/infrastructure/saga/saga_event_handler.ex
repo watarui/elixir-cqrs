@@ -36,7 +36,7 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
       processed_events: MapSet.new(),
       saga_triggers: saga_triggers,
       # メモリリークを防ぐため古いイベントIDを削除
-      max_processed_events: 10000
+      max_processed_events: 10_000
     }
 
     # 定期的なクリーンアップをスケジュール

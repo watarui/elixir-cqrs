@@ -8,8 +8,8 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
   import Ecto.Query
 
   alias QueryService.Infrastructure.Database.Repo
-  alias QueryService.Infrastructure.Database.Schemas.{ProductSchema, CategorySchema}
   alias QueryService.Domain.Models.Product
+  alias QueryService.Infrastructure.Database.Schemas.{CategorySchema, ProductSchema}
   alias QueryService.Infrastructure.Repositories.CachedRepository
 
   @impl true

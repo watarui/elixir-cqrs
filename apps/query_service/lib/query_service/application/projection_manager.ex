@@ -13,15 +13,15 @@ defmodule QueryService.Application.ProjectionManager do
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
-    ProductUpdated,
     ProductDeleted,
-    ProductPriceChanged
+    ProductPriceChanged,
+    ProductUpdated
   }
 
   alias Shared.Domain.Events.CategoryEvents.{
     CategoryCreated,
-    CategoryUpdated,
-    CategoryDeleted
+    CategoryDeleted,
+    CategoryUpdated
   }
 
   # 1秒ごとにポーリング

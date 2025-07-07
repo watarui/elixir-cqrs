@@ -1,22 +1,24 @@
 defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
   use ExUnit.Case, async: true
-  
+
   alias QueryService.Application.Handlers.ProductQueryHandler
+
   alias QueryService.Application.Queries.{
     GetProductQuery,
     ListProductsQuery,
     SearchProductsQuery,
     GetProductsByCategoryQuery
   }
+
   alias QueryService.Domain.ReadModels.Product
   alias QueryService.Infrastructure.Repositories.ProductRepository
-  
+
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
-    
+
     # Create test products
     products = create_test_products()
     {:ok, products: products}
@@ -73,7 +75,8 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
       # Assert
       assert {:ok, %{data: retrieved_products, metadata: metadata}} = result
-      assert length(retrieved_products) <= 20  # default page size
+      # default page size
+      assert length(retrieved_products) <= 20
       assert metadata.page == 1
       assert metadata.total_count == length(products)
     end
@@ -83,7 +86,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
       for i <- 1..25 do
         create_product(%{name: "Product #{i}"})
       end
-      
+
       query = ListProductsQuery.new(%{page: 2, page_size: 10})
 
       # Act
@@ -98,10 +101,11 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "sorts products by specified field" do
       # Arrange
-      query = ListProductsQuery.new(%{
-        sort_by: "price",
-        sort_order: "desc"
-      })
+      query =
+        ListProductsQuery.new(%{
+          sort_by: "price",
+          sort_order: "desc"
+        })
 
       # Act
       {:ok, %{data: products}} = ProductQueryHandler.handle(query)
@@ -113,19 +117,20 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "filters by price range" do
       # Arrange
-      query = ListProductsQuery.new(%{
-        min_price: Decimal.new("50.00"),
-        max_price: Decimal.new("150.00")
-      })
+      query =
+        ListProductsQuery.new(%{
+          min_price: Decimal.new("50.00"),
+          max_price: Decimal.new("150.00")
+        })
 
       # Act
       {:ok, %{data: products}} = ProductQueryHandler.handle(query)
 
       # Assert all products are within price range
       assert Enum.all?(products, fn p ->
-        Decimal.compare(p.price, Decimal.new("50.00")) != :lt &&
-        Decimal.compare(p.price, Decimal.new("150.00")) != :gt
-      end)
+               Decimal.compare(p.price, Decimal.new("50.00")) != :lt &&
+                 Decimal.compare(p.price, Decimal.new("150.00")) != :gt
+             end)
     end
 
     test "filters by availability status" do
@@ -146,7 +151,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
       create_product(%{name: "Gaming Laptop Pro"})
       create_product(%{name: "Office Laptop Basic"})
       create_product(%{name: "Gaming Mouse"})
-      
+
       query = SearchProductsQuery.new(%{search_term: "gaming"})
 
       # Act
@@ -155,9 +160,10 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
       # Assert
       assert {:ok, %{data: products}} = result
       assert length(products) == 2
+
       assert Enum.all?(products, fn p ->
-        String.contains?(String.downcase(p.name), "gaming")
-      end)
+               String.contains?(String.downcase(p.name), "gaming")
+             end)
     end
 
     test "finds products by description search" do
@@ -166,11 +172,12 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
         name: "Product A",
         description: "High-performance device"
       })
+
       create_product(%{
         name: "Product B",
         description: "Budget-friendly option"
       })
-      
+
       query = SearchProductsQuery.new(%{search_term: "performance"})
 
       # Act
@@ -187,15 +194,17 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
         name: "Expensive Gaming PC",
         price: Decimal.new("2000.00")
       })
+
       create_product(%{
         name: "Budget Gaming Console",
         price: Decimal.new("300.00")
       })
-      
-      query = SearchProductsQuery.new(%{
-        search_term: "gaming",
-        max_price: Decimal.new("500.00")
-      })
+
+      query =
+        SearchProductsQuery.new(%{
+          search_term: "gaming",
+          max_price: Decimal.new("500.00")
+        })
 
       # Act
       {:ok, %{data: products}} = ProductQueryHandler.handle(query)
@@ -219,7 +228,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
     test "handles special characters in search" do
       # Arrange
       create_product(%{name: "Product (Special) Edition"})
-      
+
       query = SearchProductsQuery.new(%{search_term: "(Special)"})
 
       # Act
@@ -238,7 +247,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
       create_product(%{name: "Cat Product 1", category_id: category_id})
       create_product(%{name: "Cat Product 2", category_id: category_id})
       create_product(%{name: "Other Product", category_id: UUID.uuid4()})
-      
+
       query = GetProductsByCategoryQuery.new(%{category_id: category_id})
 
       # Act
@@ -247,28 +256,30 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
       # Assert
       assert {:ok, %{data: products}} = result
       assert length(products) == 2
-      assert Enum.all?(products, & &1.category_id == category_id)
+      assert Enum.all?(products, &(&1.category_id == category_id))
     end
 
     test "includes subcategory products when specified" do
       # Arrange
       parent_category_id = UUID.uuid4()
       sub_category_id = UUID.uuid4()
-      
+
       # Simulate category hierarchy
       create_product(%{
         name: "Parent Category Product",
         category_id: parent_category_id
       })
+
       create_product(%{
         name: "Subcategory Product",
         category_id: sub_category_id
       })
-      
-      query = GetProductsByCategoryQuery.new(%{
-        category_id: parent_category_id,
-        include_subcategories: true
-      })
+
+      query =
+        GetProductsByCategoryQuery.new(%{
+          category_id: parent_category_id,
+          include_subcategories: true
+        })
 
       # Act
       # Note: This test assumes category hierarchy is handled
@@ -316,10 +327,11 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "validates price range" do
       # Arrange
-      query = ListProductsQuery.new(%{
-        min_price: Decimal.new("100.00"),
-        max_price: Decimal.new("50.00")
-      })
+      query =
+        ListProductsQuery.new(%{
+          min_price: Decimal.new("100.00"),
+          max_price: Decimal.new("50.00")
+        })
 
       # Act
       result = ProductQueryHandler.handle(query)
@@ -333,14 +345,14 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
     test "uses proper indexes for common queries" do
       # This would typically be tested at the repository level
       # Here we just ensure the query doesn't timeout with large datasets
-      
+
       # Create many products
       for i <- 1..100 do
         create_product(%{name: "Product #{i}"})
       end
 
       query = ListProductsQuery.new(%{page_size: 50})
-      
+
       # Should complete quickly
       assert {:ok, _} = ProductQueryHandler.handle(query)
     end
@@ -349,7 +361,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
   # Helper functions
   defp create_test_products do
     category_id = UUID.uuid4()
-    
+
     [
       create_product(%{
         name: "Product 1",
@@ -374,7 +386,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
   defp create_product(attrs) do
     product_attrs = build(:product, attrs)
-    
+
     {:ok, product} = ProductRepository.create(product_attrs)
     product
   end

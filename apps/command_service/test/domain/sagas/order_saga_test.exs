@@ -1,8 +1,8 @@
 defmodule CommandService.Domain.Sagas.OrderSagaTest do
   use ExUnit.Case, async: true
 
-  alias CommandService.Domain.Sagas.OrderSaga
   alias CommandService.Application.Commands.OrderCommands
+  alias CommandService.Domain.Sagas.OrderSaga
 
   describe "new/2" do
     test "新しいOrderSagaを作成できる" do
@@ -199,25 +199,25 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
     end
   end
 
-  describe "is_completed?/1" do
+  describe "completed?/1" do
     test "完了状態を正しく判定する" do
       saga = OrderSaga.new("saga-123", %{})
 
-      refute OrderSaga.is_completed?(saga)
+      refute OrderSaga.completed?(saga)
 
       completed_saga = %{saga | state: :completed}
-      assert OrderSaga.is_completed?(completed_saga)
+      assert OrderSaga.completed?(completed_saga)
     end
   end
 
-  describe "is_failed?/1" do
+  describe "failed?/1" do
     test "失敗状態を正しく判定する" do
       saga = OrderSaga.new("saga-123", %{})
 
-      refute OrderSaga.is_failed?(saga)
+      refute OrderSaga.failed?(saga)
 
       failed_saga = %{saga | state: :failed}
-      assert OrderSaga.is_failed?(failed_saga)
+      assert OrderSaga.failed?(failed_saga)
     end
   end
 end

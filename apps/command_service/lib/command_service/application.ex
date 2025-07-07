@@ -28,7 +28,7 @@ defmodule CommandService.Application do
     ]
 
     # テスト環境ではPrometheusエクスポーターを起動しない
-    prometheus_children = 
+    prometheus_children =
       if Mix.env() != :test do
         [
           {
@@ -42,37 +42,39 @@ defmodule CommandService.Application do
         []
       end
 
-    children = base_children ++ prometheus_children ++ [
+    children =
+      base_children ++
+        prometheus_children ++
+        [
+          # イベントストア (PostgreSQL)
+          {Shared.Infrastructure.EventStore.PostgresAdapter, []},
 
-      # イベントストア (PostgreSQL)
-      {Shared.Infrastructure.EventStore.PostgresAdapter, []},
+          # イベントバス
+          {Shared.Infrastructure.EventBus, name: Shared.Infrastructure.EventBus},
 
-      # イベントバス
-      {Shared.Infrastructure.EventBus, name: Shared.Infrastructure.EventBus},
+          # コマンドバス
+          {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
 
-      # コマンドバス
-      {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
+          # サガコーディネーター
+          {Shared.Infrastructure.Saga.SagaCoordinator,
+           saga_modules: [Shared.Infrastructure.Saga.OrderSaga]},
 
-      # サガコーディネーター
-      {Shared.Infrastructure.Saga.SagaCoordinator,
-       saga_modules: [Shared.Infrastructure.Saga.OrderSaga]},
-
-      # サガイベントハンドラー
-      {Shared.Infrastructure.Saga.SagaEventHandler,
-       [
-         saga_triggers: %{
-           "order_created" => Shared.Infrastructure.Saga.OrderSaga
-         }
-       ]}
-    ]
+          # サガイベントハンドラー
+          {Shared.Infrastructure.Saga.SagaEventHandler,
+           [
+             saga_triggers: %{
+               "order_created" => Shared.Infrastructure.Saga.OrderSaga
+             }
+           ]}
+        ]
 
     # テスト環境ではgRPCサーバーを起動しない
-    grpc_children = 
+    grpc_children =
       if Mix.env() != :test do
         [
           # gRPC サーバー
           {GRPC.Server.Supervisor,
-           endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051, start_server: true}
+           endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50_051, start_server: true}
         ]
       else
         []

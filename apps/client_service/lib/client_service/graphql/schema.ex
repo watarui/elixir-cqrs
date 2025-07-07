@@ -11,7 +11,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Common)
   import_types(ClientService.GraphQL.Types.Order)
 
-  alias ClientService.GraphQL.Resolvers.{CategoryResolver, ProductResolver, OrderResolver}
+  alias ClientService.GraphQL.Resolvers.{CategoryResolver, OrderResolver, ProductResolver}
 
   # Query定義
   query do

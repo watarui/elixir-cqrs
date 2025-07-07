@@ -1,8 +1,8 @@
 defmodule CommandService.Domain.Logic.CategoryLogicTest do
   use ExUnit.Case, async: true
 
-  alias CommandService.Domain.Logic.CategoryLogic
   alias CommandService.Domain.Entities.Category
+  alias CommandService.Domain.Logic.CategoryLogic
 
   describe "validate_category_name/1" do
     test "accepts valid names" do

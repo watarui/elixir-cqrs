@@ -5,6 +5,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 在庫予約コマンド
   defmodule ReserveInventoryCommand do
+    @moduledoc """
+    注文商品の在庫を予約するコマンド。
+    注文IDと商品リストを指定して在庫を確保する。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             items: [map()],
@@ -24,6 +28,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 在庫解放コマンド
   defmodule ReleaseInventoryCommand do
+    @moduledoc """
+    予約した在庫を解放するコマンド。
+    注文キャンセル時やサガのロールバック時に使用される。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             items: [map()],
@@ -43,6 +51,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 支払い処理コマンド
   defmodule ProcessPaymentCommand do
+    @moduledoc """
+    注文の支払いを処理するコマンド。
+    顧客ID、注文ID、金額を指定して決済を実行する。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             customer_id: String.t(),
@@ -64,6 +76,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 返金コマンド
   defmodule RefundPaymentCommand do
+    @moduledoc """
+    支払いを返金するコマンド。
+    注文キャンセル時やサガのロールバック時に使用される。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             amount: Decimal.t(),
@@ -83,6 +99,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 配送手配コマンド
   defmodule ArrangeShippingCommand do
+    @moduledoc """
+    注文商品の配送を手配するコマンド。
+    配送先住所、商品リストを指定して配送手続きを開始する。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             shipping_address: map(),
@@ -104,6 +124,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 配送キャンセルコマンド
   defmodule CancelShippingCommand do
+    @moduledoc """
+    配送手配をキャンセルするコマンド。
+    注文キャンセル時やサガのロールバック時に使用される。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             metadata: map()
@@ -121,6 +145,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 注文確定コマンド
   defmodule ConfirmOrderCommand do
+    @moduledoc """
+    注文を確定し、完了状態にするコマンド。
+    すべてのサガステップが成功した後に実行される。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             metadata: map()
@@ -138,6 +166,10 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
   # 注文キャンセルコマンド
   defmodule CancelOrderCommand do
+    @moduledoc """
+    注文をキャンセルするコマンド。
+    サガのいずれかのステップが失敗した場合に実行される。
+    """
     @type t :: %__MODULE__{
             order_id: String.t(),
             metadata: map()

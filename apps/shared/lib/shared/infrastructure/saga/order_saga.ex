@@ -233,15 +233,15 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
   end
 
   # SAGAの状態管理関数
-  def is_completed?(saga) do
+  def completed?(saga) do
     saga.state == :completed
   end
 
-  def is_failed?(saga) do
+  def failed?(saga) do
     saga.state == :failed
   end
 
-  def is_timed_out?(saga, timeout) do
+  def timed_out?(saga, timeout) do
     elapsed = DateTime.diff(DateTime.utc_now(), saga.started_at, :millisecond)
     elapsed > timeout
   end

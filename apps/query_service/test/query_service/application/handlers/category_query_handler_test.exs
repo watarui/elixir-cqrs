@@ -1,22 +1,24 @@
 defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
   use ExUnit.Case, async: true
-  
+
   alias QueryService.Application.Handlers.CategoryQueryHandler
+
   alias QueryService.Application.Queries.{
     GetCategoryQuery,
     ListCategoriesQuery,
     GetCategoryTreeQuery,
     GetCategoryPathQuery
   }
+
   alias QueryService.Domain.ReadModels.Category
   alias QueryService.Infrastructure.Repositories.CategoryRepository
-  
+
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
-    
+
     # Create test category hierarchy
     categories = create_test_categories()
     {:ok, categories: categories}
@@ -63,17 +65,18 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "includes child categories when requested", %{categories: categories} do
       # Arrange
-      query = GetCategoryQuery.new(%{
-        id: categories.electronics.id,
-        include_children: true
-      })
+      query =
+        GetCategoryQuery.new(%{
+          id: categories.electronics.id,
+          include_children: true
+        })
 
       # Act
       {:ok, category} = CategoryQueryHandler.handle(query)
 
       # Assert
       assert length(category.children) > 0
-      assert Enum.any?(category.children, & &1.id == categories.smartphones.id)
+      assert Enum.any?(category.children, &(&1.id == categories.smartphones.id))
     end
 
     test "includes product count when requested", %{categories: categories} do
@@ -82,11 +85,12 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
       category_id = categories.electronics.id
       create_product(%{category_id: category_id})
       create_product(%{category_id: category_id})
-      
-      query = GetCategoryQuery.new(%{
-        id: category_id,
-        include_product_count: true
-      })
+
+      query =
+        GetCategoryQuery.new(%{
+          id: category_id,
+          include_product_count: true
+        })
 
       # Act
       {:ok, category} = CategoryQueryHandler.handle(query)
@@ -106,7 +110,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
       # Assert
       assert {:ok, %{data: categories}} = result
-      assert Enum.all?(categories, & &1.parent_id == nil)
+      assert Enum.all?(categories, &(&1.parent_id == nil))
     end
 
     test "retrieves categories at specific level" do
@@ -118,8 +122,8 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
       # Assert
       assert Enum.all?(categories, fn cat ->
-        cat.parent_id != nil && length(cat.path) == 1
-      end)
+               cat.parent_id != nil && length(cat.path) == 1
+             end)
     end
 
     test "filters by parent category" do
@@ -128,7 +132,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
       create_category(%{name: "Child 1", parent_id: parent_id})
       create_category(%{name: "Child 2", parent_id: parent_id})
       create_category(%{name: "Other", parent_id: UUID.uuid4()})
-      
+
       query = ListCategoriesQuery.new(%{parent_id: parent_id})
 
       # Act
@@ -136,7 +140,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
       # Assert
       assert length(categories) == 2
-      assert Enum.all?(categories, & &1.parent_id == parent_id)
+      assert Enum.all?(categories, &(&1.parent_id == parent_id))
     end
 
     test "sorts categories alphabetically" do
@@ -153,19 +157,20 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "includes nested children when requested" do
       # Arrange
-      query = ListCategoriesQuery.new(%{
-        include_children: true,
-        max_depth: 2
-      })
+      query =
+        ListCategoriesQuery.new(%{
+          include_children: true,
+          max_depth: 2
+        })
 
       # Act
       {:ok, %{data: categories}} = CategoryQueryHandler.handle(query)
 
       # Assert
       assert Enum.any?(categories, fn cat ->
-        cat.children != [] && 
-        Enum.any?(cat.children, & &1.children != [])
-      end)
+               cat.children != [] &&
+                 Enum.any?(cat.children, &(&1.children != []))
+             end)
     end
   end
 
@@ -180,18 +185,19 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
       # Assert
       assert {:ok, %{data: tree}} = result
       assert is_list(tree)
-      
+
       # Find electronics in tree
-      electronics = Enum.find(tree, & &1.name == "Electronics")
+      electronics = Enum.find(tree, &(&1.name == "Electronics"))
       assert electronics != nil
       assert length(electronics.children) > 0
     end
 
     test "builds subtree from specific category", %{categories: categories} do
       # Arrange
-      query = GetCategoryTreeQuery.new(%{
-        root_id: categories.electronics.id
-      })
+      query =
+        GetCategoryTreeQuery.new(%{
+          root_id: categories.electronics.id
+        })
 
       # Act
       {:ok, %{data: tree}} = CategoryQueryHandler.handle(query)
@@ -212,8 +218,8 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
       # Assert - no grandchildren should be loaded
       assert Enum.all?(tree, fn cat ->
-        Enum.all?(cat.children, & &1.children == [])
-      end)
+               Enum.all?(cat.children, &(&1.children == []))
+             end)
     end
 
     test "includes metadata in tree nodes", %{categories: categories} do
@@ -221,18 +227,19 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
       # Add products to categories
       create_product(%{category_id: categories.smartphones.id})
       create_product(%{category_id: categories.smartphones.id})
-      
-      query = GetCategoryTreeQuery.new(%{
-        include_metadata: true
-      })
+
+      query =
+        GetCategoryTreeQuery.new(%{
+          include_metadata: true
+        })
 
       # Act
       {:ok, %{data: tree}} = CategoryQueryHandler.handle(query)
 
       # Assert
-      electronics = Enum.find(tree, & &1.name == "Electronics")
-      smartphones = Enum.find(electronics.children, & &1.name == "Smartphones")
-      
+      electronics = Enum.find(tree, &(&1.name == "Electronics"))
+      smartphones = Enum.find(electronics.children, &(&1.name == "Smartphones"))
+
       assert smartphones.metadata.product_count == 2
       assert smartphones.metadata.total_subcategories >= 0
     end
@@ -241,23 +248,24 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
       # Arrange
       create_category(%{name: "Active", is_active: true})
       create_category(%{name: "Inactive", is_active: false})
-      
+
       query = GetCategoryTreeQuery.new(%{active_only: true})
 
       # Act
       {:ok, %{data: tree}} = CategoryQueryHandler.handle(query)
 
       # Assert
-      assert Enum.all?(tree, & &1.is_active == true)
+      assert Enum.all?(tree, &(&1.is_active == true))
     end
   end
 
   describe "handle GetCategoryPathQuery" do
     test "returns path from root to category", %{categories: categories} do
       # Arrange
-      query = GetCategoryPathQuery.new(%{
-        id: categories.iphones.id
-      })
+      query =
+        GetCategoryPathQuery.new(%{
+          id: categories.iphones.id
+        })
 
       # Act
       result = CategoryQueryHandler.handle(query)
@@ -272,9 +280,10 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "returns single element for root category", %{categories: categories} do
       # Arrange
-      query = GetCategoryPathQuery.new(%{
-        id: categories.electronics.id
-      })
+      query =
+        GetCategoryPathQuery.new(%{
+          id: categories.electronics.id
+        })
 
       # Act
       {:ok, %{data: path}} = CategoryQueryHandler.handle(query)
@@ -297,21 +306,23 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "includes breadcrumb-friendly format", %{categories: categories} do
       # Arrange
-      query = GetCategoryPathQuery.new(%{
-        id: categories.iphones.id,
-        format: "breadcrumb"
-      })
+      query =
+        GetCategoryPathQuery.new(%{
+          id: categories.iphones.id,
+          format: "breadcrumb"
+        })
 
       # Act
       {:ok, %{data: path}} = CategoryQueryHandler.handle(query)
 
       # Assert
       assert is_list(path)
+
       assert Enum.all?(path, fn item ->
-        Map.has_key?(item, :id) && 
-        Map.has_key?(item, :name) &&
-        Map.has_key?(item, :url_slug)
-      end)
+               Map.has_key?(item, :id) &&
+                 Map.has_key?(item, :name) &&
+                 Map.has_key?(item, :url_slug)
+             end)
     end
   end
 
@@ -319,13 +330,15 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
     test "efficiently handles deep hierarchies" do
       # Create a deep hierarchy
       parent = create_category(%{name: "Root"})
-      
+
       current = parent
+
       for level <- 1..10 do
-        current = create_category(%{
-          name: "Level #{level}",
-          parent_id: current.id
-        })
+        current =
+          create_category(%{
+            name: "Level #{level}",
+            parent_id: current.id
+          })
       end
 
       # Query should still be fast
@@ -336,7 +349,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
     test "handles categories with many children" do
       # Create category with many children
       parent = create_category(%{name: "Parent"})
-      
+
       for i <- 1..50 do
         create_category(%{
           name: "Child #{i}",
@@ -344,11 +357,12 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
         })
       end
 
-      query = GetCategoryQuery.new(%{
-        id: parent.id,
-        include_children: true
-      })
-      
+      query =
+        GetCategoryQuery.new(%{
+          id: parent.id,
+          include_children: true
+        })
+
       {:ok, category} = CategoryQueryHandler.handle(query)
       assert length(category.children) == 50
     end
@@ -357,29 +371,33 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
   # Helper functions
   defp create_test_categories do
     # Create hierarchy: Electronics -> Smartphones -> iPhones
-    electronics = create_category(%{
-      name: "Electronics",
-      description: "Electronic devices"
-    })
-    
-    smartphones = create_category(%{
-      name: "Smartphones",
-      description: "Mobile phones",
-      parent_id: electronics.id
-    })
-    
-    iphones = create_category(%{
-      name: "iPhones",
-      description: "Apple smartphones",
-      parent_id: smartphones.id
-    })
-    
+    electronics =
+      create_category(%{
+        name: "Electronics",
+        description: "Electronic devices"
+      })
+
+    smartphones =
+      create_category(%{
+        name: "Smartphones",
+        description: "Mobile phones",
+        parent_id: electronics.id
+      })
+
+    iphones =
+      create_category(%{
+        name: "iPhones",
+        description: "Apple smartphones",
+        parent_id: smartphones.id
+      })
+
     # Create another root category
-    clothing = create_category(%{
-      name: "Clothing",
-      description: "Apparel and accessories"
-    })
-    
+    clothing =
+      create_category(%{
+        name: "Clothing",
+        description: "Apparel and accessories"
+      })
+
     %{
       electronics: electronics,
       smartphones: smartphones,
@@ -390,17 +408,18 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
   defp create_category(attrs) do
     category_attrs = build(:category, attrs)
-    
+
     # Update path based on parent
-    path = if attrs[:parent_id] do
-      case CategoryRepository.get(attrs[:parent_id]) do
-        {:ok, parent} -> parent.path ++ [parent.id]
-        _ -> []
+    path =
+      if attrs[:parent_id] do
+        case CategoryRepository.get(attrs[:parent_id]) do
+          {:ok, parent} -> parent.path ++ [parent.id]
+          _ -> []
+        end
+      else
+        []
       end
-    else
-      []
-    end
-    
+
     {:ok, category} = CategoryRepository.create(Map.put(category_attrs, :path, path))
     category
   end

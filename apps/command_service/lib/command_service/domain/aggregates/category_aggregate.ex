@@ -9,8 +9,8 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   alias Shared.Domain.Events.CategoryEvents.{
     CategoryCreated,
-    CategoryUpdated,
-    CategoryDeleted
+    CategoryDeleted,
+    CategoryUpdated
   }
 
   defstruct [:id, :name, :deleted, :version, :pending_events]

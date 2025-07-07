@@ -8,14 +8,14 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
 
   alias CommandService.Application.Commands.ProductCommands.{
     CreateProduct,
-    UpdateProduct,
-    DeleteProduct
+    DeleteProduct,
+    UpdateProduct
   }
 
   alias CommandService.Application.CommandBus
+  alias CommandService.Domain.Aggregates.ProductAggregate
   alias Shared.Errors.GrpcErrorConverter
   alias Shared.Infrastructure.EventStore
-  alias CommandService.Domain.Aggregates.ProductAggregate
 
   # Helper function to convert DateTime to Google.Protobuf.Timestamp
   defp datetime_to_timestamp(%DateTime{} = datetime) do
@@ -58,8 +58,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
         name: name,
         price: to_string(price),
         category_id: category_id,
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -100,8 +99,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
         name: name,
         price: if(price && price != 0, do: to_string(price), else: nil),
         category_id: category_id,
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -135,8 +133,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
       DeleteProduct.new(%{
         id: id,
         reason: "Deleted via gRPC",
-        # TODO: 実際のユーザーIDを使用
-        user_id: "grpc-user"
+        user_id: extract_user_id()
       })
 
     # コマンドバスで実行
@@ -175,8 +172,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           id: ProductAggregate.id(aggregate),
           name: ProductAggregate.name(aggregate),
           price: ProductAggregate.price(aggregate) |> Decimal.to_float() |> trunc(),
-          # TODO: カテゴリ情報も含める
-          category: nil
+          categoryId: ProductAggregate.category_id(aggregate)
         }
 
       _ ->
@@ -188,5 +184,12 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           category: nil
         }
     end
+  end
+
+  # ユーザーIDを抽出（将来的にはメタデータから取得）
+  defp extract_user_id do
+    # Note: 将来的にはgRPCメタデータからユーザーIDを抽出する実装に変更
+    # 現在はデフォルト値を返す
+    "grpc-user"
   end
 end

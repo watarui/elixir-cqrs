@@ -6,9 +6,9 @@ defmodule CommandService.Presentation.Grpc.SagaCommandServer do
   use GRPC.Server, service: Proto.SagaCommand.Service
   require Logger
 
-  alias Shared.Infrastructure.Saga.SagaCoordinator
+  alias Proto.{Error, SagaStatusResult, StartSagaResult}
   alias Shared.Infrastructure.Saga.OrderSaga
-  alias Proto.{StartSagaResult, SagaStatusResult, Error}
+  alias Shared.Infrastructure.Saga.SagaCoordinator
 
   @impl true
   def start_order_saga(request, _stream) do

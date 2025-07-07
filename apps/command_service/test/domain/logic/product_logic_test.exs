@@ -1,8 +1,8 @@
 defmodule CommandService.Domain.Logic.ProductLogicTest do
   use ExUnit.Case, async: true
 
-  alias CommandService.Domain.Logic.ProductLogic
   alias CommandService.Domain.Entities.Product
+  alias CommandService.Domain.Logic.ProductLogic
 
   describe "validate_non_zero_price/1" do
     test "accepts positive prices" do

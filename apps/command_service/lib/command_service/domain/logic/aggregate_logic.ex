@@ -9,15 +9,15 @@ defmodule CommandService.Domain.Logic.AggregateLogic do
   価格変更が重要な変更かを判定
 
   ## 例
-      iex> AggregateLogic.is_significant_price_change?("100.00", "110.00", 5)
+      iex> AggregateLogic.significant_price_change?("100.00", "110.00", 5)
       true
 
-      iex> AggregateLogic.is_significant_price_change?("100.00", "101.00", 5)
+      iex> AggregateLogic.significant_price_change?("100.00", "101.00", 5)
       false
   """
-  @spec is_significant_price_change?(String.t() | Decimal.t(), String.t() | Decimal.t(), number()) ::
+  @spec significant_price_change?(String.t() | Decimal.t(), String.t() | Decimal.t(), number()) ::
           boolean()
-  def is_significant_price_change?(old_price, new_price, threshold_percent \\ 10) do
+  def significant_price_change?(old_price, new_price, threshold_percent \\ 10) do
     with {:ok, old_decimal} <- to_decimal(old_price),
          {:ok, new_decimal} <- to_decimal(new_price) do
       diff = Decimal.abs(Decimal.sub(new_decimal, old_decimal))

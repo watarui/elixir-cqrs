@@ -2,7 +2,7 @@ defmodule ClientService.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
-  
+
   Such tests rely on `Phoenix.ConnTest` and also
   import other functionality to make it easier
   to build common data structures and query the data layer.
@@ -34,8 +34,12 @@ defmodule ClientService.ConnCase do
       # For non-async tests, ensure clean state
       :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
       :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
-      
-      Ecto.Adapters.SQL.Sandbox.mode(CommandService.Infrastructure.Database.Repo, {:shared, self()})
+
+      Ecto.Adapters.SQL.Sandbox.mode(
+        CommandService.Infrastructure.Database.Repo,
+        {:shared, self()}
+      )
+
       Ecto.Adapters.SQL.Sandbox.mode(QueryService.Infrastructure.Database.Repo, {:shared, self()})
     end
 

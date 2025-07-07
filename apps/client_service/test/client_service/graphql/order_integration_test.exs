@@ -1,14 +1,14 @@
 defmodule ClientService.GraphQL.OrderIntegrationTest do
   use ExUnit.Case, async: false
   use ClientService.ConnCase
-  
+
   import ElixirCqrs.GraphQLHelpers
   import ElixirCqrs.TestHelpers
-  
+
   setup do
     # Setup both command and query databases
     setup_all_dbs(%{})
-    
+
     # Create test products
     products = create_test_products()
     {:ok, products: products}
@@ -18,14 +18,18 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
     test "returns list of orders with pagination" do
       # Create orders
       customer_id = UUID.uuid4()
-      order1 = create_order_with_projection(%{
-        customer_id: customer_id,
-        status: "pending"
-      })
-      order2 = create_order_with_projection(%{
-        customer_id: customer_id,
-        status: "processing"
-      })
+
+      order1 =
+        create_order_with_projection(%{
+          customer_id: customer_id,
+          status: "pending"
+        })
+
+      order2 =
+        create_order_with_projection(%{
+          customer_id: customer_id,
+          status: "processing"
+        })
 
       query = """
         query {
@@ -42,14 +46,14 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query)
       data = assert_no_errors(result)
-      
+
       orders = data["orders"]
       assert length(orders) >= 2
-      assert Enum.any?(orders, & &1["id"] == order1.id)
-      assert Enum.any?(orders, & &1["id"] == order2.id)
+      assert Enum.any?(orders, &(&1["id"] == order1.id))
+      assert Enum.any?(orders, &(&1["id"] == order2.id))
     end
 
     test "filters orders by status" do
@@ -65,30 +69,32 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query)
       data = assert_no_errors(result)
-      
+
       orders = data["orders"]
       assert length(orders) == 2
-      assert Enum.all?(orders, & &1["status"] == "pending")
+      assert Enum.all?(orders, &(&1["status"] == "pending"))
     end
 
     test "filters orders by date range" do
       # Create old order
       old_date = DateTime.utc_now() |> DateTime.add(-30, :day)
+
       create_order_with_projection(%{
         created_at: old_date
       })
-      
+
       # Create recent order
-      recent = create_order_with_projection(%{
-        created_at: DateTime.utc_now()
-      })
+      recent =
+        create_order_with_projection(%{
+          created_at: DateTime.utc_now()
+        })
 
       week_ago = DateTime.utc_now() |> DateTime.add(-7, :day) |> DateTime.to_iso8601()
       tomorrow = DateTime.utc_now() |> DateTime.add(1, :day) |> DateTime.to_iso8601()
-      
+
       query = """
         query($startDate: DateTime!, $endDate: DateTime!) {
           orders(startDate: $startDate, endDate: $endDate) {
@@ -96,15 +102,16 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(query, %{
-        "startDate" => week_ago,
-        "endDate" => tomorrow
-      })
-      
+
+      result =
+        run_query(query, %{
+          "startDate" => week_ago,
+          "endDate" => tomorrow
+        })
+
       data = assert_no_errors(result)
       orders = data["orders"]
-      
+
       assert length(orders) == 1
       assert hd(orders)["id"] == recent.id
     end
@@ -112,16 +119,17 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
 
   describe "order query" do
     test "returns single order with full details", %{products: products} do
-      order = create_order_with_projection(%{
-        items: [
-          %{
-            product_id: hd(products).id,
-            product_name: hd(products).name,
-            quantity: 2,
-            unit_price: hd(products).price
-          }
-        ]
-      })
+      order =
+        create_order_with_projection(%{
+          items: [
+            %{
+              product_id: hd(products).id,
+              product_name: hd(products).name,
+              quantity: 2,
+              unit_price: hd(products).price
+            }
+          ]
+        })
 
       query = """
         query($id: ID!) {
@@ -147,10 +155,10 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query, %{"id" => order.id})
       data = assert_no_errors(result)
-      
+
       returned_order = data["order"]
       assert returned_order["id"] == order.id
       assert length(returned_order["items"]) == 1
@@ -165,10 +173,10 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query, %{"id" => UUID.uuid4()})
       data = assert_no_errors(result)
-      
+
       assert data["order"] == nil
     end
   end
@@ -177,11 +185,11 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
     test "returns all orders for specific customer" do
       customer_id = UUID.uuid4()
       other_customer_id = UUID.uuid4()
-      
+
       # Create orders for target customer
       order1 = create_order_with_projection(%{customer_id: customer_id})
       order2 = create_order_with_projection(%{customer_id: customer_id})
-      
+
       # Create order for different customer
       create_order_with_projection(%{customer_id: other_customer_id})
 
@@ -193,23 +201,24 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query, %{"customerId" => customer_id})
       data = assert_no_errors(result)
-      
+
       orders = data["ordersByCustomer"]
       assert length(orders) == 2
-      assert Enum.all?(orders, & &1["customerId"] == customer_id)
+      assert Enum.all?(orders, &(&1["customerId"] == customer_id))
     end
 
     test "includes customer statistics when requested" do
       customer_id = UUID.uuid4()
-      
+
       create_order_with_projection(%{
         customer_id: customer_id,
         total_amount: Decimal.new("100.00"),
         status: "completed"
       })
+
       create_order_with_projection(%{
         customer_id: customer_id,
         total_amount: Decimal.new("200.00"),
@@ -226,10 +235,10 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query, %{"customerId" => customer_id})
       data = assert_no_errors(result)
-      
+
       stats = data["customerOrderStats"]
       assert stats["totalOrders"] == 2
       assert stats["completedOrders"] == 2
@@ -242,7 +251,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
     test "successfully creates an order", %{products: products} do
       product1 = hd(products)
       product2 = hd(tl(products))
-      
+
       input = %{
         "customerId" => UUID.uuid4(),
         "items" => [
@@ -279,10 +288,10 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(mutation, %{"input" => input})
       data = assert_no_errors(result)
-      
+
       created_order = data["createOrder"]
       assert created_order["id"] != nil
       assert created_order["status"] == "pending"
@@ -310,7 +319,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(mutation, %{"input" => input})
       assert_has_error(result, "at least one item")
     end
@@ -340,7 +349,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(mutation, %{"input" => input})
       assert_has_error(result, "positive")
     end
@@ -348,7 +357,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
     test "triggers order saga on creation" do
       # This test verifies that creating an order initiates the saga
       # In a real implementation, you might check saga state or events
-      
+
       input = %{
         "customerId" => UUID.uuid4(),
         "items" => [
@@ -374,14 +383,15 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(mutation, %{"input" => input})
       data = assert_no_errors(result)
-      
+
       created_order = data["createOrder"]
       # Saga should be initiated
-      assert created_order["sagaStatus"] == "started" || 
-             created_order["sagaStatus"] == nil  # Depending on implementation
+      # Depending on implementation
+      assert created_order["sagaStatus"] == "started" ||
+               created_order["sagaStatus"] == nil
     end
   end
 
@@ -398,15 +408,16 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(mutation, %{
-        "id" => order.id,
-        "status" => "PROCESSING"
-      })
-      
+
+      result =
+        run_query(mutation, %{
+          "id" => order.id,
+          "status" => "PROCESSING"
+        })
+
       data = assert_no_errors(result)
       updated = data["updateOrderStatus"]
-      
+
       assert updated["status"] == "processing"
       assert updated["updatedAt"] != nil
     end
@@ -422,13 +433,14 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       # Try to move back to pending
-      result = run_query(mutation, %{
-        "id" => order.id,
-        "status" => "PENDING"
-      })
-      
+      result =
+        run_query(mutation, %{
+          "id" => order.id,
+          "status" => "PENDING"
+        })
+
       assert_has_error(result, "Invalid status transition")
     end
   end
@@ -446,15 +458,16 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(mutation, %{
-        "id" => order.id,
-        "reason" => "Customer requested"
-      })
-      
+
+      result =
+        run_query(mutation, %{
+          "id" => order.id,
+          "reason" => "Customer requested"
+        })
+
       data = assert_no_errors(result)
       cancelled = data["cancelOrder"]
-      
+
       assert cancelled["status"] == "cancelled"
       assert cancelled["cancellationReason"] == "Customer requested"
     end
@@ -469,12 +482,13 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(mutation, %{
-        "id" => order.id,
-        "reason" => "Too late"
-      })
-      
+
+      result =
+        run_query(mutation, %{
+          "id" => order.id,
+          "reason" => "Too late"
+        })
+
       assert_has_error(result, "cannot be cancelled")
     end
 
@@ -490,18 +504,20 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(mutation, %{
-        "id" => order.id,
-        "reason" => "Out of stock"
-      })
-      
+
+      result =
+        run_query(mutation, %{
+          "id" => order.id,
+          "reason" => "Out of stock"
+        })
+
       data = assert_no_errors(result)
       cancelled = data["cancelOrder"]
-      
+
       # Verify compensation is triggered
+      # Depending on implementation
       assert cancelled["compensationStatus"] == "initiated" ||
-             cancelled["compensationStatus"] == nil  # Depending on implementation
+               cancelled["compensationStatus"] == nil
     end
   end
 
@@ -512,10 +528,12 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
         status: "completed",
         total_amount: Decimal.new("100.00")
       })
+
       create_order_with_projection(%{
         status: "completed",
         total_amount: Decimal.new("200.00")
       })
+
       create_order_with_projection(%{
         status: "pending",
         total_amount: Decimal.new("150.00")
@@ -532,27 +550,29 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
+
       result = run_query(query)
       data = assert_no_errors(result)
-      
+
       stats = data["orderStats"]
       assert stats["totalOrders"] == 3
       assert stats["completedOrders"] == 2
       assert stats["pendingOrders"] == 1
-      assert stats["totalRevenue"] == "300.00"  # Only completed orders
+      # Only completed orders
+      assert stats["totalRevenue"] == "300.00"
       assert stats["averageOrderValue"] == "150.00"
     end
 
     test "filters stats by date range" do
       # Create order outside range
       old_date = DateTime.utc_now() |> DateTime.add(-60, :day)
+
       create_order_with_projection(%{
         status: "completed",
         total_amount: Decimal.new("100.00"),
         created_at: old_date
       })
-      
+
       # Create order within range
       create_order_with_projection(%{
         status: "completed",
@@ -562,7 +582,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
 
       month_ago = DateTime.utc_now() |> DateTime.add(-30, :day) |> DateTime.to_iso8601()
       tomorrow = DateTime.utc_now() |> DateTime.add(1, :day) |> DateTime.to_iso8601()
-      
+
       query = """
         query($startDate: DateTime!, $endDate: DateTime!) {
           orderStats(startDate: $startDate, endDate: $endDate) {
@@ -571,15 +591,16 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
           }
         }
       """
-      
-      result = run_query(query, %{
-        "startDate" => month_ago,
-        "endDate" => tomorrow
-      })
-      
+
+      result =
+        run_query(query, %{
+          "startDate" => month_ago,
+          "endDate" => tomorrow
+        })
+
       data = assert_no_errors(result)
       stats = data["orderStats"]
-      
+
       assert stats["totalOrders"] == 1
       assert stats["totalRevenue"] == "200.00"
     end
@@ -624,9 +645,9 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
         country: "Test Country"
       }
     }
-    
+
     order_attrs = Map.merge(default_attrs, attrs)
-    
+
     # This would actually create through command service and wait for projection
     # For testing, we'll simulate direct creation
     {:ok, order} = QueryService.Infrastructure.Repositories.OrderRepository.create(order_attrs)

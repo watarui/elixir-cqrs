@@ -6,8 +6,8 @@ defmodule CommandService.Infrastructure.CommandBus do
   @behaviour Shared.Domain.Saga.CommandDispatcherBehaviour
 
   alias CommandService.Application.Handlers.{
-    OrderCommandHandler,
     CategoryCommandHandler,
+    OrderCommandHandler,
     ProductCommandHandler
   }
 
@@ -64,14 +64,14 @@ defmodule CommandService.Infrastructure.CommandBus do
   defp get_handler(command) do
     # コマンドの型に基づいてハンドラーを選択
     cond do
-      is_order_command?(command) -> OrderCommandHandler
-      is_category_command?(command) -> CategoryCommandHandler
-      is_product_command?(command) -> ProductCommandHandler
+      order_command?(command) -> OrderCommandHandler
+      category_command?(command) -> CategoryCommandHandler
+      product_command?(command) -> ProductCommandHandler
       true -> nil
     end
   end
 
-  defp is_order_command?(command) do
+  defp order_command?(command) do
     module = command.__struct__
 
     module in [
@@ -97,13 +97,23 @@ defmodule CommandService.Infrastructure.CommandBus do
     ]
   end
 
-  defp is_category_command?(_command) do
-    # TODO: カテゴリコマンドの判定を実装
-    false
+  defp category_command?(command) do
+    module = command.__struct__
+
+    module in [
+      CommandService.Application.Commands.CategoryCommands.CreateCategory,
+      CommandService.Application.Commands.CategoryCommands.UpdateCategory,
+      CommandService.Application.Commands.CategoryCommands.DeleteCategory
+    ]
   end
 
-  defp is_product_command?(_command) do
-    # TODO: 商品コマンドの判定を実装
-    false
+  defp product_command?(command) do
+    module = command.__struct__
+
+    module in [
+      CommandService.Application.Commands.ProductCommands.CreateProduct,
+      CommandService.Application.Commands.ProductCommands.UpdateProduct,
+      CommandService.Application.Commands.ProductCommands.DeleteProduct
+    ]
   end
 end

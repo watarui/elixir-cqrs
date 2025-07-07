@@ -12,8 +12,8 @@ defmodule Shared.Domain.Saga.SagaBase do
   @callback handle_event(event :: map(), state :: map()) ::
               {:ok, commands :: [map()]} | {:error, reason :: any()}
   @callback get_compensation_commands(state :: map()) :: [map()]
-  @callback is_completed?(state :: map()) :: boolean()
-  @callback is_failed?(state :: map()) :: boolean()
+  @callback completed?(state :: map()) :: boolean()
+  @callback failed?(state :: map()) :: boolean()
 
   defmacro __using__(_opts) do
     quote do
@@ -106,7 +106,7 @@ defmodule Shared.Domain.Saga.SagaBase do
       @doc """
       タイムアウトをチェックする
       """
-      def is_timed_out?(saga, timeout_ms) do
+      def timed_out?(saga, timeout_ms) do
         elapsed = DateTime.diff(DateTime.utc_now(), saga.started_at, :millisecond)
         elapsed > timeout_ms
       end

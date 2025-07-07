@@ -9,8 +9,8 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandler do
 
   alias QueryService.Application.Queries.CategoryQueries.{
     GetCategory,
-    ListCategories,
-    GetCategoryWithProducts
+    GetCategoryWithProducts,
+    ListCategories
   }
 
   alias QueryService.Infrastructure.Repositories.CategoryRepository, as: CategoryRepo

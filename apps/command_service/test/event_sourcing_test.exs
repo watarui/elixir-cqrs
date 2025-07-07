@@ -5,8 +5,8 @@ defmodule CommandService.EventSourcingTest do
 
   use ExUnit.Case
 
-  alias CommandService.Application.Commands.ProductCommands.CreateProduct
   alias CommandService.Application.CommandBus
+  alias CommandService.Application.Commands.ProductCommands.CreateProduct
   alias Shared.Infrastructure.EventStore
 
   test "商品作成コマンドがイベントを生成し保存する" do

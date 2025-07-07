@@ -1,14 +1,16 @@
 defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
   use ExUnit.Case, async: true
-  
+
   alias CommandService.Application.Handlers.CategoryCommandHandler
+
   alias CommandService.Application.Commands.{
     CreateCategoryCommand,
     UpdateCategoryCommand,
     DeleteCategoryCommand
   }
+
   alias CommandService.Domain.Aggregates.Category
-  
+
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
   import ElixirCqrs.EventStoreHelpers
@@ -21,12 +23,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
   describe "handle CreateCategoryCommand" do
     test "successfully creates a root category" do
       # Arrange
-      command = CreateCategoryCommand.new(%{
-        name: "Electronics",
-        description: "Electronic products",
-        parent_id: nil,
-        metadata: test_metadata()
-      })
+      command =
+        CreateCategoryCommand.new(%{
+          name: "Electronics",
+          description: "Electronic products",
+          parent_id: nil,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -34,7 +37,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # Assert
       assert {:ok, events} = result
       assert length(events) == 1
-      
+
       [event] = events
       assert event.event_type == "category_created"
       assert event.aggregate_type == "category"
@@ -46,13 +49,14 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "successfully creates a subcategory" do
       # Arrange
       parent = create_test_category(%{name: "Electronics"})
-      
-      command = CreateCategoryCommand.new(%{
-        name: "Smartphones",
-        description: "Mobile phones",
-        parent_id: parent.id,
-        metadata: test_metadata()
-      })
+
+      command =
+        CreateCategoryCommand.new(%{
+          name: "Smartphones",
+          description: "Mobile phones",
+          parent_id: parent.id,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -66,12 +70,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "fails to create category with empty name" do
       # Arrange
-      command = CreateCategoryCommand.new(%{
-        name: "",
-        description: "Test",
-        parent_id: nil,
-        metadata: test_metadata()
-      })
+      command =
+        CreateCategoryCommand.new(%{
+          name: "",
+          description: "Test",
+          parent_id: nil,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -83,13 +88,14 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to create category with duplicate name at same level" do
       # Arrange
       create_test_category(%{name: "Electronics"})
-      
-      command = CreateCategoryCommand.new(%{
-        name: "Electronics",
-        description: "Duplicate",
-        parent_id: nil,
-        metadata: test_metadata()
-      })
+
+      command =
+        CreateCategoryCommand.new(%{
+          name: "Electronics",
+          description: "Duplicate",
+          parent_id: nil,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -102,21 +108,23 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # Create a chain of categories up to max depth
       root = create_test_category(%{name: "Level 0"})
       parent = root
-      
+
       for level <- 1..4 do
-        parent = create_test_category(%{
-          name: "Level #{level}",
-          parent_id: parent.id
-        })
+        parent =
+          create_test_category(%{
+            name: "Level #{level}",
+            parent_id: parent.id
+          })
       end
 
       # Try to create one more level (should fail)
-      command = CreateCategoryCommand.new(%{
-        name: "Level 6",
-        description: "Too deep",
-        parent_id: parent.id,
-        metadata: test_metadata()
-      })
+      command =
+        CreateCategoryCommand.new(%{
+          name: "Level 6",
+          description: "Too deep",
+          parent_id: parent.id,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -134,12 +142,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "successfully updates category name and description", %{category: category} do
       # Arrange
-      command = UpdateCategoryCommand.new(%{
-        id: category.id,
-        name: "Updated Category",
-        description: "New description",
-        metadata: test_metadata()
-      })
+      command =
+        UpdateCategoryCommand.new(%{
+          id: category.id,
+          name: "Updated Category",
+          description: "New description",
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -155,13 +164,14 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to update category with duplicate name", %{category: category} do
       # Create another category
       create_test_category(%{name: "Existing Category"})
-      
+
       # Try to update to duplicate name
-      command = UpdateCategoryCommand.new(%{
-        id: category.id,
-        name: "Existing Category",
-        metadata: test_metadata()
-      })
+      command =
+        UpdateCategoryCommand.new(%{
+          id: category.id,
+          name: "Existing Category",
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -172,11 +182,12 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "fails to update non-existent category" do
       # Arrange
-      command = UpdateCategoryCommand.new(%{
-        id: UUID.uuid4(),
-        name: "Should Fail",
-        metadata: test_metadata()
-      })
+      command =
+        UpdateCategoryCommand.new(%{
+          id: UUID.uuid4(),
+          name: "Should Fail",
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -187,17 +198,19 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "cannot move category to create circular reference", %{category: parent} do
       # Create child category
-      child = create_test_category(%{
-        name: "Child",
-        parent_id: parent.id
-      })
+      child =
+        create_test_category(%{
+          name: "Child",
+          parent_id: parent.id
+        })
 
       # Try to make parent a child of its own child
-      command = UpdateCategoryCommand.new(%{
-        id: parent.id,
-        parent_id: child.id,
-        metadata: test_metadata()
-      })
+      command =
+        UpdateCategoryCommand.new(%{
+          id: parent.id,
+          parent_id: child.id,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -215,10 +228,11 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "successfully deletes an empty category", %{category: category} do
       # Arrange
-      command = DeleteCategoryCommand.new(%{
-        id: category.id,
-        metadata: test_metadata()
-      })
+      command =
+        DeleteCategoryCommand.new(%{
+          id: category.id,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -238,10 +252,11 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       })
 
       # Try to delete parent
-      command = DeleteCategoryCommand.new(%{
-        id: parent.id,
-        metadata: test_metadata()
-      })
+      command =
+        DeleteCategoryCommand.new(%{
+          id: parent.id,
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -253,11 +268,12 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to delete category with products", %{category: category} do
       # Simulate category having products
       # This would typically involve checking product repository
-      
-      command = DeleteCategoryCommand.new(%{
-        id: category.id,
-        metadata: test_metadata()
-      })
+
+      command =
+        DeleteCategoryCommand.new(%{
+          id: category.id,
+          metadata: test_metadata()
+        })
 
       # For this test, we'd need to mock the product check
       # Act & Assert would depend on implementation
@@ -265,10 +281,11 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
     test "fails to delete non-existent category" do
       # Arrange
-      command = DeleteCategoryCommand.new(%{
-        id: UUID.uuid4(),
-        metadata: test_metadata()
-      })
+      command =
+        DeleteCategoryCommand.new(%{
+          id: UUID.uuid4(),
+          metadata: test_metadata()
+        })
 
       # Act
       result = CategoryCommandHandler.handle(command)
@@ -282,21 +299,24 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "correctly builds category paths" do
       # Create hierarchy: Electronics -> Computers -> Laptops
       electronics = create_test_category(%{name: "Electronics"})
-      computers = create_test_category(%{
-        name: "Computers",
-        parent_id: electronics.id
-      })
-      
-      command = CreateCategoryCommand.new(%{
-        name: "Laptops",
-        description: "Portable computers",
-        parent_id: computers.id,
-        metadata: test_metadata()
-      })
+
+      computers =
+        create_test_category(%{
+          name: "Computers",
+          parent_id: electronics.id
+        })
+
+      command =
+        CreateCategoryCommand.new(%{
+          name: "Laptops",
+          description: "Portable computers",
+          parent_id: computers.id,
+          metadata: test_metadata()
+        })
 
       {:ok, events} = CategoryCommandHandler.handle(command)
       [event] = events
-      
+
       # Path should contain both parent IDs
       assert event.event_data.path == [electronics.id, computers.id]
     end
@@ -305,24 +325,29 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # Create hierarchy
       root1 = create_test_category(%{name: "Root 1"})
       root2 = create_test_category(%{name: "Root 2"})
-      child = create_test_category(%{
-        name: "Child",
-        parent_id: root1.id
-      })
-      grandchild = create_test_category(%{
-        name: "Grandchild",
-        parent_id: child.id
-      })
+
+      child =
+        create_test_category(%{
+          name: "Child",
+          parent_id: root1.id
+        })
+
+      grandchild =
+        create_test_category(%{
+          name: "Grandchild",
+          parent_id: child.id
+        })
 
       # Move child from root1 to root2
-      command = UpdateCategoryCommand.new(%{
-        id: child.id,
-        parent_id: root2.id,
-        metadata: test_metadata()
-      })
+      command =
+        UpdateCategoryCommand.new(%{
+          id: child.id,
+          parent_id: root2.id,
+          metadata: test_metadata()
+        })
 
       {:ok, events} = CategoryCommandHandler.handle(command)
-      
+
       # Should generate events for updating paths of child and grandchild
       assert length(events) >= 1
       assert Enum.any?(events, &(&1.event_type == "category_moved"))
@@ -333,10 +358,10 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
   defp create_test_category(attrs \\ %{}) do
     category_attrs = build(:category, attrs)
     command = CreateCategoryCommand.new(Map.merge(category_attrs, %{metadata: test_metadata()}))
-    
+
     {:ok, events} = CategoryCommandHandler.handle(command)
     event = hd(events)
-    
+
     %Category{
       id: event.aggregate_id,
       name: event.event_data.name,

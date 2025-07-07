@@ -9,8 +9,8 @@ defmodule QueryService.Application.QueryBus do
   require Logger
 
   alias QueryService.Application.Handlers.{
-    ProductQueryHandler,
-    CategoryQueryHandler
+    CategoryQueryHandler,
+    ProductQueryHandler
   }
 
   # Client API

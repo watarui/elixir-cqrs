@@ -9,8 +9,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   use GenServer
   require Logger
 
-  alias Shared.Infrastructure.EventStore
   alias Shared.Domain.Saga.SagaEvents
+  alias Shared.Infrastructure.EventStore
   alias Shared.Infrastructure.Saga.SagaRepository
 
   # 30秒ごとにタイムアウトチェック
@@ -452,7 +452,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
 
   defp handle_saga_completion(saga, saga_module, saga_id, state) do
     cond do
-      saga_module.is_completed?(saga) ->
+      saga_module.completed?(saga) ->
         # 完了イベントを発行
         event = SagaEvents.SagaCompleted.new(saga_id, saga.data)
         persist_saga_event(event)
@@ -461,7 +461,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
         {_, new_state} = pop_in(state.active_sagas[saga_id])
         new_state
 
-      saga_module.is_failed?(saga) ->
+      saga_module.failed?(saga) ->
         # 補償処理を開始
         start_compensation(saga, saga_module, saga_id, state)
 
@@ -523,7 +523,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
                                               acc_state ->
       timeout = saga.timeout || @default_saga_timeout
 
-      if saga_module.is_timed_out?(saga, timeout) do
+      if saga_module.timed_out?(saga, timeout) do
         Logger.warning("Saga #{saga_id} timed out")
         handle_saga_failure(saga, saga_module, saga_id, "timeout", "Saga timed out", acc_state)
       else

@@ -7,14 +7,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   use CommandService.Application.Handlers.BaseCommandHandler
 
   alias CommandService.Domain.Commands.{
-    ReserveInventory,
-    ReleaseInventory,
-    ProcessPayment,
-    RefundPayment,
     ArrangeShipping,
+    CancelOrder,
     CancelShipping,
     ConfirmOrder,
-    CancelOrder
+    ProcessPayment,
+    RefundPayment,
+    ReleaseInventory,
+    ReserveInventory
   }
 
   alias Shared.Infrastructure.EventStore.EventStore

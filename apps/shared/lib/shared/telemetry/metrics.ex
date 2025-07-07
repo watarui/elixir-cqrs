@@ -124,14 +124,14 @@ defmodule Shared.Telemetry.Metrics do
     [
       # HTTPレスポンスタイム
       distribution("http.request.duration",
-        reporter_options: [buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000]],
+        reporter_options: [buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10_000]],
         unit: {:native, :millisecond},
         tags: [:method, :route, :status]
       ),
 
       # gRPCレスポンスタイム
       distribution("grpc.request.duration",
-        reporter_options: [buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000]],
+        reporter_options: [buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10_000]],
         unit: {:native, :millisecond},
         tags: [:service, :method, :status]
       ),
