@@ -32,7 +32,11 @@ defmodule Shared.Domain.Saga.SagaDefinition do
 
       # コマンドディスパッチャーの設定
       defp get_command_dispatcher do
-        Application.get_env(:shared, :command_dispatcher, CommandService.Infrastructure.CommandBus)
+        Application.get_env(
+          :shared,
+          :command_dispatcher,
+          CommandService.Infrastructure.CommandBus
+        )
       end
 
       defp dispatch(command) do

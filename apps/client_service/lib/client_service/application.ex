@@ -23,8 +23,7 @@ defmodule ClientService.Application do
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Metrics.metrics()},
       # Prometheusエクスポーター
-      {TelemetryMetricsPrometheus,
-       metrics: Metrics.prometheus_metrics(), port: 9568},
+      {TelemetryMetricsPrometheus, metrics: Metrics.prometheus_metrics(), port: 9568},
       # バッチキャッシュ
       ClientService.GraphQL.BatchCache,
       # HTTP エンドポイントを起動
