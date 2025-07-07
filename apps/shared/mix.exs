@@ -40,7 +40,10 @@ defmodule Shared.MixProject do
       {:jason, "~> 1.0"},
 
       # Decimal（共通）
-      {:decimal, "~> 2.0"}
+      {:decimal, "~> 2.0"},
+
+      # PostgreSQL（イベントストア用）
+      {:postgrex, "~> 0.19"}
     ]
   end
 end

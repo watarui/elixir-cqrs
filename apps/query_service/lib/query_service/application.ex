@@ -16,6 +16,13 @@ defmodule QueryService.Application do
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,
 
+      # イベントストア (PostgreSQL) - ProjectionManagerがイベントを読むため
+      {Shared.Infrastructure.EventStore.PostgresAdapter, []},
+
+      # プロジェクションマネージャー（イベント→Read Model投影）
+      {QueryService.Application.ProjectionManager, 
+       query_repo: QueryService.Infrastructure.Database.Repo},
+
       # gRPC サーバー
       {GRPC.Server.Supervisor,
        endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50052, start_server: true}

@@ -39,6 +39,26 @@ services:
     networks:
       - elixir-cqrs-network
 
+  # PostgreSQL データベース（Event Store用）
+  postgres-event:
+    image: postgres:14-alpine
+    container_name: elixir-cqrs-postgres-event
+    environment:
+      POSTGRES_DB: event_store
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_event_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elixir-cqrs-network
+
   # Command Service
   command-service:
     build:
@@ -49,9 +69,13 @@ services:
       - "50051:50051"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres-command:5432/command_service_dev
+      - EVENT_STORE_HOST=postgres-event
+      - EVENT_STORE_PORT=5432
       - MIX_ENV=dev
     depends_on:
       postgres-command:
+        condition: service_healthy
+      postgres-event:
         condition: service_healthy
     volumes:
       - .:/app
@@ -68,9 +92,13 @@ services:
       - "50052:50052"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres-query:5432/query_service_dev
+      - EVENT_STORE_HOST=postgres-event
+      - EVENT_STORE_PORT=5432
       - MIX_ENV=dev
     depends_on:
       postgres-query:
+        condition: service_healthy
+      postgres-event:
         condition: service_healthy
     volumes:
       - .:/app
@@ -115,6 +143,7 @@ services:
 volumes:
   postgres_command_data:
   postgres_query_data:
+  postgres_event_data:
 
 networks:
   elixir-cqrs-network:

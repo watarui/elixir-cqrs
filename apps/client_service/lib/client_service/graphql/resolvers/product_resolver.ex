@@ -193,7 +193,10 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
         %{product: nil, error: %{message: message}} ->
           {:error, message}
         %{product: product} when not is_nil(product) ->
-          {:ok, format_product(product)}
+          # Commandサービスからの応答にはcategory_idが含まれないため、inputから補完
+          formatted = format_product(product)
+          formatted_with_category_id = Map.put(formatted, :category_id, input.category_id)
+          {:ok, formatted_with_category_id}
         _ ->
           {:error, "Unexpected response format"}
       end
@@ -273,7 +276,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       id: product.id,
       name: product.name,
       price: product.price,
-      category_id: if(product.category, do: product.category.id, else: nil),
+      category_id: Map.get(product, :category_id) || Map.get(product, :categoryId),
       created_at: format_timestamp(Map.get(product, :created_at)),
       updated_at: format_timestamp(Map.get(product, :updated_at))
     }

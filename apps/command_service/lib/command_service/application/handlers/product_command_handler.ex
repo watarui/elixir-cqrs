@@ -30,6 +30,9 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       # イベントをログに記録
       Enum.each(events, &Shared.EventLogger.log_domain_event/1)
       
+      # イベントバスに発行
+      Enum.each(events, &Shared.Infrastructure.EventBus.publish/1)
+      
       {:ok, %{aggregate_id: command.id, events: events}}
     end
   end

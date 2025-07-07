@@ -6,9 +6,7 @@ defmodule Shared.Infrastructure.EventStore do
 
   @behaviour Shared.Infrastructure.EventStore.EventStoreBehaviour
 
-  alias Shared.Infrastructure.EventStore.InMemoryAdapter
-
-  @adapter Application.compile_env(:shared, :event_store_adapter, InMemoryAdapter)
+  alias Shared.Infrastructure.EventStore.PostgresAdapter
 
   @type aggregate_id :: String.t()
   @type event :: struct()
@@ -21,7 +19,7 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec append_to_stream(stream_name(), list(event()), version()) :: {:ok, version()} | error()
   def append_to_stream(stream_name, events, expected_version) do
-    @adapter.append_to_stream(stream_name, events, expected_version)
+    adapter().append_to_stream(stream_name, events, expected_version)
   end
 
   @doc """
@@ -29,7 +27,7 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec read_stream_forward(stream_name(), version(), non_neg_integer() | :all) :: {:ok, list(event())} | error()
   def read_stream_forward(stream_name, from_version \\ 0, count \\ :all) do
-    @adapter.read_stream_forward(stream_name, from_version, count)
+    adapter().read_stream_forward(stream_name, from_version, count)
   end
 
   @doc """
@@ -55,7 +53,7 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec read_all_events(non_neg_integer()) :: {:ok, list(event())} | error()
   def read_all_events(from_position \\ 0) do
-    @adapter.read_all_events(from_position)
+    adapter().read_all_events(from_position)
   end
 
   @doc """
@@ -63,7 +61,7 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec read_events_by_type(atom(), non_neg_integer()) :: {:ok, list(event())} | error()
   def read_events_by_type(event_type, from_position \\ 0) do
-    @adapter.read_events_by_type(event_type, from_position)
+    adapter().read_events_by_type(event_type, from_position)
   end
 
   @doc """
@@ -71,7 +69,7 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec create_snapshot(aggregate_id(), struct(), version()) :: :ok | error()
   def create_snapshot(aggregate_id, snapshot, version) do
-    @adapter.create_snapshot(aggregate_id, snapshot, version)
+    adapter().create_snapshot(aggregate_id, snapshot, version)
   end
 
   @doc """
@@ -79,13 +77,18 @@ defmodule Shared.Infrastructure.EventStore do
   """
   @spec get_snapshot(aggregate_id()) :: {:ok, {struct(), version()}} | {:error, :not_found} | error()
   def get_snapshot(aggregate_id) do
-    @adapter.get_snapshot(aggregate_id)
+    adapter().get_snapshot(aggregate_id)
   end
 
   # プライベート関数
 
   defp aggregate_stream_name(aggregate_id) do
     "aggregate-#{aggregate_id}"
+  end
+  
+  defp adapter do
+    # 実行時に設定を取得
+    Application.get_env(:shared, :event_store_adapter, PostgresAdapter)
   end
 end
 

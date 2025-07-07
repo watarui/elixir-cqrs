@@ -1,0 +1,330 @@
+defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
+  @moduledoc """
+  PostgreSQL ベースのイベントストアアダプター
+  
+  イベントストアのビヘイビアを実装し、
+  PostgreSQL データベースにイベントを永続化します
+  """
+
+  @behaviour Shared.Infrastructure.EventStore.EventStoreBehaviour
+
+  use GenServer
+  require Logger
+
+  @table_name "events"
+  @snapshots_table "snapshots"
+
+  # Client API
+
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  # EventStoreBehaviour の実装
+
+  @impl true
+  def append_to_stream(stream_name, events, expected_version) do
+    GenServer.call(__MODULE__, {:append_to_stream, stream_name, events, expected_version})
+  end
+
+  @impl true
+  def read_stream_forward(stream_name, from_version \\ 0, count \\ :all) do
+    GenServer.call(__MODULE__, {:read_stream_forward, stream_name, from_version, count})
+  end
+
+  @impl true
+  def read_all_events(from_position \\ 0) do
+    GenServer.call(__MODULE__, {:read_all_events, from_position})
+  end
+
+  @impl true
+  def read_events_by_type(event_type, from_position \\ 0) do
+    GenServer.call(__MODULE__, {:read_events_by_type, event_type, from_position})
+  end
+
+  @impl true
+  def create_snapshot(aggregate_id, snapshot, version) do
+    GenServer.call(__MODULE__, {:create_snapshot, aggregate_id, snapshot, version})
+  end
+
+  @impl true
+  def get_snapshot(aggregate_id) do
+    GenServer.call(__MODULE__, {:get_snapshot, aggregate_id})
+  end
+
+  # Server callbacks
+
+  @impl GenServer
+  def init(opts) do
+    db_config = [
+      hostname: opts[:hostname] || System.get_env("EVENT_STORE_HOST", "postgres-event"),
+      username: opts[:username] || System.get_env("EVENT_STORE_USER", "postgres"),
+      password: opts[:password] || System.get_env("EVENT_STORE_PASSWORD", "postgres"),
+      database: opts[:database] || System.get_env("EVENT_STORE_DB", "event_store"),
+      port: opts[:port] || System.get_env("EVENT_STORE_PORT", "5432") |> String.to_integer()
+    ]
+
+    case Postgrex.start_link(db_config) do
+      {:ok, conn} ->
+        create_tables(conn)
+        {:ok, %{conn: conn}}
+      
+      {:error, reason} ->
+        Logger.error("Failed to connect to event store: #{inspect(reason)}")
+        {:stop, reason}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:append_to_stream, stream_name, events, expected_version}, _from, state) do
+    result = Postgrex.transaction(state.conn, fn conn ->
+      # 現在のバージョンを確認
+      current_version = get_stream_version(conn, stream_name)
+      
+      if current_version == expected_version do
+        # イベントを挿入
+        version = Enum.reduce(events, current_version, fn event, version ->
+          new_version = version + 1
+          insert_event(conn, stream_name, event, new_version)
+          new_version
+        end)
+        {:ok, version}
+      else
+        {:error, :version_mismatch}
+      end
+    end)
+
+    case result do
+      {:ok, {:ok, version}} -> {:reply, {:ok, version}, state}
+      {:ok, error} -> {:reply, error, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:read_stream_forward, stream_name, from_version, count}, _from, state) do
+    limit_clause = if count != :all do
+      "LIMIT #{count}"
+    else
+      ""
+    end
+    
+    query = """
+    SELECT event_type, event_data, version, occurred_at
+    FROM #{@table_name}
+    WHERE stream_name = $1 AND version > $2
+    ORDER BY version ASC
+    #{limit_clause}
+    """
+
+    case Postgrex.query(state.conn, query, [stream_name, from_version]) do
+      {:ok, %{rows: rows}} ->
+        events = Enum.map(rows, &deserialize_event/1)
+        {:reply, {:ok, events}, state}
+      
+      {:error, reason} ->
+        Logger.error("Failed to read stream: #{inspect(reason)}")
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:read_all_events, from_position}, _from, state) do
+    query = """
+    SELECT event_type, event_data, version, occurred_at, stream_name
+    FROM #{@table_name}
+    WHERE position > $1
+    ORDER BY position ASC
+    LIMIT 1000
+    """
+
+    case Postgrex.query(state.conn, query, [from_position]) do
+      {:ok, %{rows: rows}} ->
+        events = Enum.map(rows, &deserialize_event_with_metadata/1)
+        {:reply, {:ok, events}, state}
+      
+      {:error, reason} ->
+        Logger.error("Failed to read all events: #{inspect(reason)}")
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:read_events_by_type, event_type, from_position}, _from, state) do
+    query = """
+    SELECT event_type, event_data, version, occurred_at, stream_name
+    FROM #{@table_name}
+    WHERE event_type = $1 AND position > $2
+    ORDER BY position ASC
+    """
+
+    type_name = event_type |> to_string() |> String.split(".") |> List.last()
+    
+    case Postgrex.query(state.conn, query, [type_name, from_position]) do
+      {:ok, %{rows: rows}} ->
+        events = Enum.map(rows, &deserialize_event_with_metadata/1)
+        {:reply, {:ok, events}, state}
+      
+      {:error, reason} ->
+        Logger.error("Failed to read events by type: #{inspect(reason)}")
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:create_snapshot, aggregate_id, snapshot, version}, _from, state) do
+    query = """
+    INSERT INTO #{@snapshots_table} (aggregate_id, snapshot_data, version, created_at)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (aggregate_id) DO UPDATE
+    SET snapshot_data = $2, version = $3, created_at = $4
+    """
+
+    snapshot_data = Jason.encode!(Map.from_struct(snapshot))
+    
+    case Postgrex.query(state.conn, query, [aggregate_id, snapshot_data, version, DateTime.utc_now()]) do
+      {:ok, _} -> {:reply, :ok, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:get_snapshot, aggregate_id}, _from, state) do
+    query = """
+    SELECT snapshot_data, version
+    FROM #{@snapshots_table}
+    WHERE aggregate_id = $1
+    """
+
+    case Postgrex.query(state.conn, query, [aggregate_id]) do
+      {:ok, %{rows: [[snapshot_data, version]]}} ->
+        snapshot = Jason.decode!(snapshot_data, keys: :atoms)
+        {:reply, {:ok, {snapshot, version}}, state}
+      
+      {:ok, %{rows: []}} ->
+        {:reply, {:error, :not_found}, state}
+      
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  # Private functions
+
+  defp create_tables(conn) do
+    # イベントテーブルの作成
+    events_table = """
+    CREATE TABLE IF NOT EXISTS #{@table_name} (
+      position BIGSERIAL PRIMARY KEY,
+      stream_name VARCHAR(255) NOT NULL,
+      version INTEGER NOT NULL,
+      event_type VARCHAR(255) NOT NULL,
+      event_data JSONB NOT NULL,
+      occurred_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(stream_name, version)
+    )
+    """
+
+    # インデックスの作成
+    indices = [
+      "CREATE INDEX IF NOT EXISTS idx_events_stream_name ON #{@table_name} (stream_name)",
+      "CREATE INDEX IF NOT EXISTS idx_events_position ON #{@table_name} (position)",
+      "CREATE INDEX IF NOT EXISTS idx_events_event_type ON #{@table_name} (event_type)"
+    ]
+
+    # スナップショットテーブルの作成
+    snapshots_table = """
+    CREATE TABLE IF NOT EXISTS #{@snapshots_table} (
+      aggregate_id VARCHAR(255) PRIMARY KEY,
+      snapshot_data JSONB NOT NULL,
+      version INTEGER NOT NULL,
+      created_at TIMESTAMP NOT NULL
+    )
+    """
+
+    # 各SQL文を個別に実行
+    with {:ok, _} <- Postgrex.query(conn, events_table, []),
+         :ok <- Enum.each(indices, fn index_sql ->
+           case Postgrex.query(conn, index_sql, []) do
+             {:ok, _} -> :ok
+             {:error, reason} -> Logger.warning("Index creation warning: #{inspect(reason)}")
+           end
+         end),
+         {:ok, _} <- Postgrex.query(conn, snapshots_table, []) do
+      Logger.info("Event store tables created/verified")
+    else
+      {:error, reason} ->
+        Logger.error("Failed to create event store tables: #{inspect(reason)}")
+    end
+  end
+
+  defp get_stream_version(conn, stream_name) do
+    query = """
+    SELECT MAX(version) FROM #{@table_name}
+    WHERE stream_name = $1
+    """
+
+    case Postgrex.query(conn, query, [stream_name]) do
+      {:ok, %{rows: [[nil]]}} -> 0
+      {:ok, %{rows: [[version]]}} -> version
+      _ -> 0
+    end
+  end
+
+  defp insert_event(conn, stream_name, event, version) do
+    query = """
+    INSERT INTO #{@table_name} (stream_name, version, event_type, event_data, occurred_at)
+    VALUES ($1, $2, $3, $4, $5)
+    """
+
+    event_type = event.__struct__ |> Module.split() |> List.last()
+    event_data = Jason.encode!(Map.from_struct(event))
+    
+    Postgrex.query(conn, query, [
+      stream_name,
+      version,
+      event_type,
+      event_data,
+      event.occurred_at || DateTime.utc_now()
+    ])
+  end
+
+  defp deserialize_event([event_type, event_data, _version, occurred_at]) do
+    module = resolve_event_module(event_type)
+    
+    data = Jason.decode!(event_data, keys: :atoms)
+    |> Map.put(:occurred_at, occurred_at)
+    
+    struct(module, data)
+  end
+
+  defp deserialize_event_with_metadata([event_type, event_data, _version, occurred_at, stream_name]) do
+    event = deserialize_event([event_type, event_data, nil, occurred_at])
+    
+    # stream_nameから aggregate_id を抽出
+    aggregate_id = case String.split(stream_name, "-", parts: 2) do
+      ["aggregate", id] -> id
+      _ -> nil
+    end
+    
+    if aggregate_id && is_map(event) do
+      Map.put(event, :aggregate_id, aggregate_id)
+    else
+      event
+    end
+  end
+
+  defp resolve_event_module(event_type) do
+    case event_type do
+      "ProductCreated" -> Shared.Domain.Events.ProductEvents.ProductCreated
+      "ProductUpdated" -> Shared.Domain.Events.ProductEvents.ProductUpdated
+      "ProductDeleted" -> Shared.Domain.Events.ProductEvents.ProductDeleted
+      "ProductPriceChanged" -> Shared.Domain.Events.ProductEvents.ProductPriceChanged
+      "CategoryCreated" -> Shared.Domain.Events.CategoryEvents.CategoryCreated
+      "CategoryUpdated" -> Shared.Domain.Events.CategoryEvents.CategoryUpdated
+      "CategoryDeleted" -> Shared.Domain.Events.CategoryEvents.CategoryDeleted
+      _ -> raise "Unknown event type: #{event_type}"
+    end
+  end
+end

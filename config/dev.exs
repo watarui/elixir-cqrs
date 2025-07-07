@@ -1,5 +1,9 @@
 import Config
 
+# イベントストアの設定
+config :shared,
+  event_store_adapter: Shared.Infrastructure.EventStore.PostgresAdapter
+
 # Development環境でのデータベース設定
 config :command_service, CommandService.Infrastructure.Database.Repo,
   username: "postgres",
@@ -12,7 +16,7 @@ config :command_service, CommandService.Infrastructure.Database.Repo,
   pool_size: 10
 
 # Query Service の開発環境設定
-config :query_service, QueryService.Infrastructure.Database.Connection,
+config :query_service, QueryService.Infrastructure.Database.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
@@ -30,7 +34,8 @@ config :logger, level: :debug
 
 # Ecto クエリのログを有効化
 config :logger, :console,
-  format: "[$level] $message\n",
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id, :module],
   level: :debug
 
 # Stack trace の設定

@@ -23,7 +23,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
   def get_category(%Query.CategoryQueryRequest{id: id}, _stream) do
     case CategoryRepository.find_by_id(id) do
       {:error, :not_found} ->
-        {:error, "Category not found"}
+        {:error, %GRPC.RPCError{status: :not_found, message: "Category not found"}}
 
       {:ok, category} ->
         response = %Query.CategoryQueryResponse{
@@ -42,7 +42,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
   def get_category_by_name(%Query.CategoryByNameRequest{name: name}, _stream) do
     case CategoryRepository.find_by_name(name) do
       {:error, :not_found} ->
-        {:error, "Category not found"}
+        {:error, %GRPC.RPCError{status: :not_found, message: "Category not found"}}
 
       {:ok, category} ->
         response = %Query.CategoryQueryResponse{
@@ -139,7 +139,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
         response
 
       {:error, reason} ->
-        {:error, reason}
+        {:error, %GRPC.RPCError{status: :internal, message: to_string(reason)}}
     end
   end
 
@@ -148,6 +148,29 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
 
     response = %Query.CategoryExistsResponse{
       exists: exists
+    }
+
+    response
+  end
+
+  def get_categories_by_ids(%Query.CategoryIdsRequest{ids: ids}, _stream) do
+    categories = Enum.reduce(ids, [], fn id, acc ->
+      case CategoryRepository.find_by_id(id) do
+        {:ok, category} -> [category | acc]
+        _ -> acc
+      end
+    end)
+
+    response = %Query.CategoryListResponse{
+      categories:
+        Enum.map(categories, fn category ->
+          %Query.Category{
+            id: category.id,
+            name: category.name,
+            created_at: datetime_to_unix_timestamp(category.created_at),
+            updated_at: datetime_to_unix_timestamp(category.updated_at)
+          }
+        end)
     }
 
     response

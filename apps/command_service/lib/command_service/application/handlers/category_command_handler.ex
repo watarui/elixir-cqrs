@@ -30,6 +30,9 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
       # イベントをログに記録
       Enum.each(events, &Shared.EventLogger.log_domain_event/1)
       
+      # イベントバスに発行
+      Enum.each(events, &Shared.Infrastructure.EventBus.publish/1)
+      
       {:ok, %{aggregate_id: command.id, events: events}}
     end
   end
@@ -60,9 +63,6 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
       
       # イベントをログに記録
       Enum.each(new_events, &Shared.EventLogger.log_domain_event/1)
-      
-      # 商品の再割り当てが必要な場合は、該当する商品にもイベントを適用
-      # （実際の実装では、サガやプロセスマネージャーを使用する）
       
       {:ok, %{aggregate_id: command.id, events: new_events}}
     else

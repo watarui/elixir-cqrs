@@ -9,8 +9,7 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   alias Shared.Domain.Events.CategoryEvents.{
     CategoryCreated,
     CategoryUpdated,
-    CategoryDeleted,
-    CategoryProductsReassigned
+    CategoryDeleted
   }
 
   defstruct [:id, :name, :deleted, :version, :pending_events]
@@ -46,50 +45,34 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
     {:error, "Cannot execute commands on deleted category"}
   end
 
-  def execute(%__MODULE__{id: id, name: current_name} = _aggregate, {:update_category, params}) when not is_nil(id) do
+  def execute(%__MODULE__{id: id} = aggregate, {:update_category, params}) when not is_nil(id) do
     case params[:name] do
       nil -> {:ok, []}
       "" -> {:ok, []}
       new_name ->
         case CategoryName.new(new_name) do
-          {:ok, name} when name != current_name ->
+          {:ok, name} when name != aggregate.name ->
             event = CategoryUpdated.new(
               CategoryId.value(id),
-              CategoryName.value(current_name),
+              CategoryName.value(aggregate.name),
               CategoryName.value(name),
               %{user_id: params[:user_id]}
             )
             {:ok, [event]}
-          
-          {:ok, _} -> {:ok, []}  # 変更なし
-          error -> error
+          _ ->
+            {:ok, []}
         end
     end
   end
 
   def execute(%__MODULE__{id: id}, {:delete_category, params}) when not is_nil(id) do
-    events = [
-      CategoryDeleted.new(
-        CategoryId.value(id),
-        params[:reason],
-        %{user_id: params[:user_id]}
-      )
-    ]
+    event = CategoryDeleted.new(
+      CategoryId.value(id),
+      params[:reason],
+      %{user_id: params[:user_id]}
+    )
     
-    # 商品の再割り当てが必要な場合
-    events = if params[:reassign_products_to] && params[:product_ids] do
-      reassign_event = CategoryProductsReassigned.new(
-        CategoryId.value(id),
-        params[:reassign_products_to],
-        params[:product_ids],
-        %{user_id: params[:user_id]}
-      )
-      events ++ [reassign_event]
-    else
-      events
-    end
-    
-    {:ok, events}
+    {:ok, [event]}
   end
 
   def execute(_aggregate, _command) do
@@ -122,12 +105,6 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   def apply_event(%__MODULE__{} = aggregate, %CategoryDeleted{}) do
     %{aggregate | deleted: true}
-  end
-
-  def apply_event(%__MODULE__{} = aggregate, %CategoryProductsReassigned{}) do
-    # このイベントは他のアグリゲート（Product）に影響するため、
-    # Categoryアグリゲート自体の状態は変更しない
-    aggregate
   end
 
   def apply_event(aggregate, _event), do: aggregate
@@ -164,5 +141,14 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
       {:ok, category_id} -> %__MODULE__{new() | id: category_id}
       _ -> new()
     end
+  end
+  
+  @spec load_from_events(list(struct())) :: t()
+  def load_from_events(events) do
+    Enum.reduce(events, new(), fn event, aggregate ->
+      aggregate
+      |> apply_event(event)
+      |> Map.update!(:version, &(&1 + 1))
+    end)
   end
 end

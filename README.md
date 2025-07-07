@@ -147,7 +147,23 @@ mix phx.server
 curl http://localhost:4000/health
 ```
 
-#### 2. カテゴリ一覧取得
+#### 2. カテゴリ作成（Mutation）
+
+```bash
+curl -X POST http://localhost:4000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "mutation { createCategory(input: {name: \"Electronics\"}) { id name } }"}'
+```
+
+#### 3. 商品作成（Mutation）
+
+```bash
+curl -X POST http://localhost:4000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "mutation { createProduct(input: {name: \"Laptop\", price: 1500.0, categoryId: \"<category-id>\"}) { id name price } }"}'
+```
+
+#### 4. カテゴリ一覧取得
 
 ```bash
 curl -X POST http://localhost:4000/graphql \
@@ -155,7 +171,7 @@ curl -X POST http://localhost:4000/graphql \
   -d '{"query": "{ categories { id name } }"}'
 ```
 
-#### 3. 商品一覧取得（カテゴリ情報含む）
+#### 5. 商品一覧取得（カテゴリ情報含む）
 
 ```bash
 curl -X POST http://localhost:4000/graphql \
@@ -163,13 +179,10 @@ curl -X POST http://localhost:4000/graphql \
   -d '{"query": "{ products { id name price category { id name } } }"}'
 ```
 
-#### 4. 複合クエリ
+#### 6. イベントソーシングの動作確認
 
-```bash
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query": "{ categories { id name } products { id name price category { id name } } }"}'
-```
+コマンドを実行後、3秒程度待ってからクエリを実行してください。
+ProjectionManagerがイベントを読み取ってRead Modelを更新します。
 
 ## 解決された問題
 

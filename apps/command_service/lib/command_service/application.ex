@@ -13,6 +13,15 @@ defmodule CommandService.Application do
       # データベース接続
       CommandService.Infrastructure.Database.Repo,
 
+      # イベントストア (PostgreSQL)
+      {Shared.Infrastructure.EventStore.PostgresAdapter, []},
+
+      # イベントバス
+      {Shared.Infrastructure.EventBus, name: Shared.Infrastructure.EventBus},
+
+      # コマンドバス
+      {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
+
       # gRPC サーバー
       {GRPC.Server.Supervisor,
        endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051, start_server: true}
