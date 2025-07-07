@@ -8,7 +8,7 @@ defmodule CommandService.Domain.ValueObjects.CategoryId do
   @enforce_keys [:value]
   defstruct [:value]
 
-  @type t :: %__MODULE__{value: String.t()}
+  @opaque t :: %__MODULE__{value: String.t()}
 
   @spec new(String.t()) :: {:ok, t()} | {:error, String.t()}
   def new(value) when is_binary(value) do

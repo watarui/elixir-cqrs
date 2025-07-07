@@ -38,6 +38,7 @@ defmodule ClientService.MixProject do
       {:absinthe, "~> 1.7"},
       {:absinthe_phoenix, "~> 2.0"},
       {:absinthe_plug, "~> 1.5"},
+      {:dataloader, "~> 2.0"},
 
       # gRPC クライアント
       {:grpc, "~> 0.10.0"},

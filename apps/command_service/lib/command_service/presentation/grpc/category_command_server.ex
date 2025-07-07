@@ -6,6 +6,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
   use GRPC.Server, service: Proto.CategoryCommand.Service
 
   alias CommandService.Application.Services.CategoryService
+  alias Shared.Errors.GrpcErrorConverter
 
   # Helper function to convert DateTime to Google.Protobuf.Timestamp
   defp datetime_to_timestamp(%DateTime{} = datetime) do
@@ -52,10 +53,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
           category: nil,
-          error: %Proto.Error{
-            type: "CREATION_FAILED",
-            message: "Failed to create category: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
@@ -77,10 +75,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
           category: nil,
-          error: %Proto.Error{
-            type: "UPDATE_FAILED",
-            message: "Failed to update category: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
@@ -102,10 +97,7 @@ defmodule CommandService.Presentation.Grpc.CategoryCommandServer do
       {:error, reason} ->
         response = %Proto.CategoryUpResult{
           category: nil,
-          error: %Proto.Error{
-            type: "DELETE_FAILED",
-            message: "Failed to delete category: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 

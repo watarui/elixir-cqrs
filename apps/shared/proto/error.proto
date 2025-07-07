@@ -7,4 +7,6 @@ option go_package = "/pb";
 message Error {
   string type = 1; // エラー種別
   string message = 2; // エラーメッセージ
+  int32 code = 3; // エラーコード（gRPCステータスコードと互換）
+  map<string, string> details = 4; // 追加のエラー詳細情報
 }

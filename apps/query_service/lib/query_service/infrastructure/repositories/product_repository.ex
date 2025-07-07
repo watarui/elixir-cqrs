@@ -10,9 +10,15 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
   alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Database.Schemas.{ProductSchema, CategorySchema}
   alias QueryService.Domain.Models.Product
+  alias QueryService.Infrastructure.Repositories.CachedRepository
 
   @impl true
   def find_by_id(id) when is_binary(id) do
+    CachedRepository.cached_find_by_id(__MODULE__, id)
+  end
+  
+  # キャッシュを使わない内部実装
+  def find_by_id_uncached(id) when is_binary(id) do
     query =
       from(p in ProductSchema,
         left_join: c in CategorySchema,
@@ -45,6 +51,11 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def list do
+    CachedRepository.cached_list(__MODULE__)
+  end
+  
+  # キャッシュを使わない内部実装
+  def list_uncached do
     query =
       from(p in ProductSchema,
         left_join: c in CategorySchema,

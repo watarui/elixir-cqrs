@@ -21,6 +21,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   IDでカテゴリを取得
   """
+  @spec get_category(any(), %{id: String.t()}, any()) :: {:ok, map()} | {:error, String.t()}
   def get_category(_parent, %{id: id}, _context) do
     id
     |> build_category_query_request()
@@ -31,6 +32,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   名前でカテゴリを取得
   """
+  @spec get_category_by_name(any(), %{name: String.t()}, any()) :: {:ok, map()} | {:error, String.t()}
   def get_category_by_name(_parent, %{name: name}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %CategoryByNameRequest{name: name},
@@ -45,6 +47,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   全カテゴリを取得
   """
+  @spec list_categories(any(), any(), any()) :: {:ok, [map()]} | {:error, String.t()}
   def list_categories(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %Empty{},
@@ -67,6 +70,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを検索
   """
+  @spec search_categories(any(), %{search_term: String.t()}, any()) :: {:ok, [map()]} | {:error, String.t()}
   def search_categories(_parent, %{search_term: search_term}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %CategorySearchRequest{search_term: search_term},
@@ -82,6 +86,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   ページネーション付きカテゴリ一覧
   """
+  @spec list_categories_paginated(any(), %{page: integer(), per_page: integer()}, any()) :: {:ok, [map()]} | {:error, String.t()}
   def list_categories_paginated(_parent, %{page: page, per_page: per_page}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %CategoryPaginationRequest{page: page, per_page: per_page},
@@ -97,6 +102,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリ統計情報を取得
   """
+  @spec get_statistics(any(), any(), any()) :: {:ok, map()} | {:error, String.t()}
   def get_statistics(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %Empty{},
@@ -117,6 +123,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリ存在チェック
   """
+  @spec category_exists(any(), %{id: String.t()}, any()) :: {:ok, boolean()} | {:error, String.t()}
   def category_exists(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %CategoryExistsRequest{id: id},
@@ -131,6 +138,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを作成
   """
+  @spec create_category(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def create_category(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
@@ -159,6 +167,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを更新
   """
+  @spec update_category(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def update_category(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
@@ -182,6 +191,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリを削除
   """
+  @spec delete_category(any(), %{id: String.t()}, any()) :: {:ok, boolean()} | {:error, String.t()}
   def delete_category(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %CategoryUpParam{
@@ -203,6 +213,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   @doc """
   カテゴリに属する商品を取得（遅延読み込み）
   """
+  @spec get_products(%{id: String.t()}, any(), any()) :: {:ok, [map()]} | {:error, String.t()}
   def get_products(%{id: category_id}, _args, context) do
     # Product リゾルバーに委譲
     ClientService.GraphQL.Resolvers.ProductResolver.get_products_by_category(

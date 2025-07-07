@@ -6,6 +6,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
   use GRPC.Server, service: Query.ProductQuery.Service
 
   alias QueryService.Infrastructure.Repositories.{ProductRepository, CategoryRepository}
+  alias Shared.Errors.{AppError, GrpcErrorConverter}
 
   # Helper function to convert DateTime to Unix timestamp
   defp datetime_to_unix_timestamp(%DateTime{} = datetime) do
@@ -20,10 +21,11 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
 
   defp datetime_to_unix_timestamp(nil), do: 0
 
+  @spec get_product(Query.ProductQueryRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductQueryResponse.t()
   def get_product(%Query.ProductQueryRequest{id: id}, _stream) do
     case ProductRepository.find_by_id(id) do
       {:error, :not_found} ->
-        {:error, "Product not found"}
+        raise GrpcErrorConverter.to_rpc_error({:error, :not_found})
 
       {:ok, product} ->
         response = %Query.ProductQueryResponse{
@@ -34,10 +36,11 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
+  @spec get_product_by_name(Query.ProductByNameRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductQueryResponse.t()
   def get_product_by_name(%Query.ProductByNameRequest{name: name}, _stream) do
     case ProductRepository.find_by_name(name) do
       {:error, :not_found} ->
-        {:error, "Product not found"}
+        raise GrpcErrorConverter.to_rpc_error({:error, :not_found})
 
       {:ok, product} ->
         response = %Query.ProductQueryResponse{
@@ -48,6 +51,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
+  @spec list_products(Query.Empty.t(), GRPC.Server.Stream.t()) :: Query.ProductListResponse.t()
   def list_products(%Query.Empty{}, _stream) do
     case ProductRepository.list() do
       {:ok, products} ->
@@ -62,6 +66,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
+  @spec get_products_by_category(Query.ProductByCategoryRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductListResponse.t()
   def get_products_by_category(%Query.ProductByCategoryRequest{category_id: category_id}, _stream) do
     case ProductRepository.find_by_category_id(category_id) do
       {:ok, products} ->
@@ -76,6 +81,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     end
   end
 
+  @spec search_products(Query.ProductSearchRequest.t(), GRPC.Server.Stream.t()) :: Query.ProductListResponse.t()
   def search_products(%Query.ProductSearchRequest{search_term: search_term}, _stream) do
     case ProductRepository.search(search_term) do
       {:ok, products} ->

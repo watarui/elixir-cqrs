@@ -12,6 +12,9 @@ defmodule QueryService.Application do
     children = [
       # データベース接続
       QueryService.Infrastructure.Database.Repo,
+      
+      # ETSキャッシュ
+      QueryService.Infrastructure.Cache.EtsCache,
 
       # gRPC サーバー
       {GRPC.Server.Supervisor,

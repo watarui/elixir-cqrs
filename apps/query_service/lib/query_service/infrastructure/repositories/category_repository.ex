@@ -10,9 +10,15 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
   alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Database.Schemas.CategorySchema
   alias QueryService.Domain.Models.Category
+  alias QueryService.Infrastructure.Repositories.CachedRepository
 
   @impl true
   def find_by_id(id) when is_binary(id) do
+    CachedRepository.cached_find_by_id(__MODULE__, id)
+  end
+  
+  # キャッシュを使わない内部実装
+  def find_by_id_uncached(id) when is_binary(id) do
     case Repo.get(CategorySchema, id) do
       nil -> {:error, :not_found}
       schema -> {:ok, schema_to_model(schema)}
@@ -29,6 +35,11 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
 
   @impl true
   def list do
+    CachedRepository.cached_list(__MODULE__)
+  end
+  
+  # キャッシュを使わない内部実装
+  def list_uncached do
     schemas = Repo.all(CategorySchema)
     models = Enum.map(schemas, &schema_to_model/1)
     {:ok, models}

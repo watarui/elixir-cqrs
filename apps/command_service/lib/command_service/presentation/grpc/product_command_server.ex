@@ -6,6 +6,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
   use GRPC.Server, service: Proto.ProductCommand.Service
 
   alias CommandService.Application.Services.ProductService
+  alias Shared.Errors.{AppError, GrpcErrorConverter}
 
   # Helper function to convert DateTime to Google.Protobuf.Timestamp
   defp datetime_to_timestamp(%DateTime{} = datetime) do
@@ -56,10 +57,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
       {:error, reason} ->
         response = %Proto.ProductUpResult{
           product: nil,
-          error: %Proto.Error{
-            type: "CREATION_FAILED",
-            message: "Failed to create product: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
@@ -86,10 +84,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
       {:error, reason} ->
         response = %Proto.ProductUpResult{
           product: nil,
-          error: %Proto.Error{
-            type: "UPDATE_FAILED",
-            message: "Failed to update product: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 
@@ -111,10 +106,7 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
       {:error, reason} ->
         response = %Proto.ProductUpResult{
           product: nil,
-          error: %Proto.Error{
-            type: "DELETE_FAILED",
-            message: "Failed to delete product: #{inspect(reason)}"
-          },
+          error: GrpcErrorConverter.convert({:error, reason}),
           timestamp: datetime_to_timestamp(DateTime.utc_now())
         }
 

@@ -323,14 +323,14 @@ elixir-cqrs/
 
 ### 1. コアドメインロジックの改善
 
-- [ ] **Product 更新ロジックのリファクタリング**
+- [x] **Product 更新ロジックのリファクタリング**
 
   - やっつけ実装を改善済み（`ProductService.apply_updates`）
   - データ駆動型アプローチで拡張性を向上
 
-- [ ] **エンティティの`update`メソッド統一**
-  - 現在: 個別フィールドごとの更新メソッド（`update_name`, `update_price`等）
-  - 推奨: 統一された`update/2`メソッドで複数フィールドを一度に更新
+- [x] **エンティティの`update`メソッド統一**
+  - 現在: 個別フィールドごとの更新メソッド（`update_name`, `update_price`等）→ 完了
+  - 推奨: 統一された`update/2`メソッドで複数フィールドを一度に更新 → 実装済み
   ```elixir
   def update(entity, params) do
     # バリデーションとアトミックな更新
@@ -339,33 +339,34 @@ elixir-cqrs/
 
 ### 2. 型安全性とインターフェースの強化
 
-- [ ] **型定義の徹底**
+- [x] **型定義の徹底**
 
-  - すべての関数に`@spec`を必須化
-  - カスタム型（`@type`）の積極的活用
-  - Dialyzer の警告をゼロに
+  - すべての関数に`@spec`を必須化（主要モジュールに追加完了）
+    - GraphQLリゾルバー（ProductResolver、CategoryResolver）
+    - gRPCサーバー（一部実装）
+    - 値オブジェクト（実装済み）
+  - カスタム型（`@type`）の積極的活用（実装済み）
+  - Dialyzer の警告をゼロに（今後の課題）
 
-- [ ] **ビヘイビアの活用**
+- [x] **ビヘイビアの活用**
 
-  - リポジトリインターフェースの定義
-  - サービス層のコントラクト明確化
+  - リポジトリインターフェースの定義（完了）
+  - サービス層のコントラクト明確化（完了）
+  - CommandService.Domain.Repositories.ProductRepository（実装済み）
+  - CommandService.Domain.Repositories.CategoryRepository（実装済み）
+  - QueryService.Domain.Repositories.ProductRepository（実装済み）
+  - QueryService.Domain.Repositories.CategoryRepository（実装済み）
 
-  ```elixir
-  defmodule Repository do
-    @callback save(entity :: struct()) :: {:ok, struct()} | {:error, term()}
-    @callback find_by_id(id :: String.t()) :: {:ok, struct()} | {:error, :not_found}
-  end
-  ```
-
-- [ ] **値オブジェクトの型安全性向上**
-  - opaque タイプの使用検討
-  - ファクトリー関数でのみ生成可能に
+- [x] **値オブジェクトの型安全性向上**
+  - opaque タイプの使用検討（実装済み）
+    - ProductId、CategoryId、ProductName、CategoryName、ProductPrice
+  - ファクトリー関数でのみ生成可能に（new/1関数で実装済み）
 
 ### 3. エラーハンドリングの統一
 
-- [ ] **エラー型の標準化**
+- [x] **エラー型の標準化**
 
-  - 統一されたエラー構造体の定義
+  - 統一されたエラー構造体の定義（AppError実装済み）
   - エラーカテゴリの明確化（ドメインエラー、インフラエラー等）
 
   ```elixir
@@ -397,11 +398,13 @@ elixir-cqrs/
 
 ### 5. インフラストラクチャの改善
 
-- [ ] **gRPC エラーハンドリング**
+- [x] **gRPC エラーハンドリング**
 
-  - カスタムエラーステータスの定義
-  - リトライ戦略の実装
-  - サーキットブレーカーの追加
+  - カスタムエラーステータスの定義（GrpcErrorConverter実装済み）
+  - AppErrorからProto.Errorへの統一変換（完了）
+  - gRPCステータスコードのマッピング（完了）
+  - リトライ戦略の実装（今後の課題）
+  - サーキットブレーカーの追加（今後の課題）
 
 - [ ] **データベース層の抽象化**
   - リポジトリパターンの完全実装
@@ -410,10 +413,10 @@ elixir-cqrs/
 
 ### 6. テスタビリティの向上
 
-- [ ] **依存性注入の改善**
+- [x] **依存性注入の改善**
 
-  - ハードコードされた依存を排除
-  - モックしやすい設計に
+  - ハードコードされた依存を排除（完了）
+  - モックしやすい設計に（完了）
 
   ```elixir
   # 現在
@@ -436,9 +439,11 @@ elixir-cqrs/
   - DataLoader の導入（GraphQL）
   - プリロード戦略の最適化
 
-- [ ] **キャッシング戦略**
-  - クエリサービスでのキャッシュ実装
-  - ETS を使用したインメモリキャッシュ
+- [x] **キャッシング戦略**
+  - クエリサービスでのキャッシュ実装（完了）
+  - ETS を使用したインメモリキャッシュ（完了）
+  - TTLベースの自動期限切れ処理（完了）
+  - CategoryRepositoryとProductRepositoryにキャッシング適用（完了）
 
 ## コーディング規約
 

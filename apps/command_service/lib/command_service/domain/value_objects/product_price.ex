@@ -8,7 +8,7 @@ defmodule CommandService.Domain.ValueObjects.ProductPrice do
   @enforce_keys [:value]
   defstruct [:value]
 
-  @type t :: %__MODULE__{value: Decimal.t()}
+  @opaque t :: %__MODULE__{value: Decimal.t()}
 
   @min_price Decimal.new("0.01")
   @max_price Decimal.new("999999.99")

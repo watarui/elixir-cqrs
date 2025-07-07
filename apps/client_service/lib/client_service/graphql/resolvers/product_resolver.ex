@@ -23,6 +23,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   IDで商品を取得
   """
+  @spec get_product(any(), %{id: String.t()}, any()) :: {:ok, map()} | {:error, String.t()}
   def get_product(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductQueryRequest{id: id},
@@ -37,6 +38,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   名前で商品を取得
   """
+  @spec get_product_by_name(any(), %{name: String.t()}, any()) :: {:ok, map()} | {:error, String.t()}
   def get_product_by_name(_parent, %{name: name}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductByNameRequest{name: name},
@@ -51,6 +53,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   全商品を取得
   """
+  @spec list_products(any(), any(), any()) :: {:ok, [map()]} | {:error, String.t()}
   def list_products(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %Empty{},
@@ -66,6 +69,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を検索
   """
+  @spec search_products(any(), %{search_term: String.t()}, any()) :: {:ok, [map()]} | {:error, String.t()}
   def search_products(_parent, %{search_term: search_term}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductSearchRequest{search_term: search_term},
@@ -81,6 +85,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   ページネーション付き商品一覧
   """
+  @spec list_products_paginated(any(), %{page: integer(), per_page: integer()}, any()) :: {:ok, map()} | {:error, String.t()}
   def list_products_paginated(_parent, %{page: page, per_page: per_page}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductPaginationRequest{page: page, per_page: per_page},
@@ -96,6 +101,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   カテゴリ別商品一覧
   """
+  @spec get_products_by_category(any(), %{category_id: String.t()}, any()) :: {:ok, [map()]} | {:error, String.t()}
   def get_products_by_category(_parent, %{category_id: category_id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductByCategoryRequest{category_id: category_id},
@@ -111,6 +117,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   価格範囲で商品を検索
   """
+  @spec get_products_by_price_range(any(), %{min_price: float(), max_price: float()}, any()) :: {:ok, [map()]} | {:error, String.t()}
   def get_products_by_price_range(
         _parent,
         %{min_price: min_price, max_price: max_price},
@@ -130,6 +137,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品統計情報を取得
   """
+  @spec get_statistics(any(), any(), any()) :: {:ok, map()} | {:error, String.t()}
   def get_statistics(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %Empty{},
@@ -152,6 +160,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品存在チェック
   """
+  @spec product_exists(any(), %{id: String.t()}, any()) :: {:ok, boolean()} | {:error, String.t()}
   def product_exists(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductExistsRequest{id: id},
@@ -166,6 +175,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を作成
   """
+  @spec create_product(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def create_product(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
@@ -196,6 +206,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を更新
   """
+  @spec update_product(any(), %{input: map()}, any()) :: {:ok, map()} | {:error, String.t()}
   def update_product(_parent, %{input: input}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
@@ -221,6 +232,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品を削除
   """
+  @spec delete_product(any(), %{id: String.t()}, any()) :: {:ok, boolean()} | {:error, String.t()}
   def delete_product(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_command_channel(),
          request <- %ProductUpParam{
@@ -242,6 +254,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   @doc """
   商品が属するカテゴリを取得（遅延読み込み）
   """
+  @spec get_category(%{category_id: String.t()}, any(), any()) :: {:ok, map()} | {:error, String.t()}
   def get_category(%{category_id: category_id}, _args, context) do
     # Category リゾルバーに委譲
     ClientService.GraphQL.Resolvers.CategoryResolver.get_category(

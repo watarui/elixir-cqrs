@@ -8,7 +8,7 @@ defmodule CommandService.Domain.ValueObjects.ProductName do
   @enforce_keys [:value]
   defstruct [:value]
 
-  @type t :: %__MODULE__{value: String.t()}
+  @opaque t :: %__MODULE__{value: String.t()}
 
   @max_length 200
   @min_length 1
