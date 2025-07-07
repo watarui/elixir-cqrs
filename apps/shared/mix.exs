@@ -56,7 +56,10 @@ defmodule Shared.MixProject do
       {:telemetry_poller, "~> 1.0"},
       
       # 構造化ログ
-      {:logger_json, "~> 5.1"}
+      {:logger_json, "~> 5.1"},
+      
+      # UUID生成
+      {:uuid, "~> 1.1"}
     ]
   end
 end

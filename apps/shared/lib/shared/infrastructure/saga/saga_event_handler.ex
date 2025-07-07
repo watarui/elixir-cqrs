@@ -10,8 +10,9 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
   alias Shared.Infrastructure.Saga.SagaCoordinator
   
   # イベントタイプとサガのマッピング
+  # 注: 実際の運用では、アプリケーション設定から読み込むことを推奨
   @saga_triggers %{
-    "order_created" => CommandService.Domain.Sagas.OrderSaga,
+    # "order_created" => CommandService.Domain.Sagas.OrderSaga,
     # 他のサガトリガーをここに追加
   }
   
@@ -24,14 +25,21 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
   # Server callbacks
   
   @impl true
-  def init(_opts) do
+  def init(opts) do
     # EventBusにサブスクライブ
     EventBus.subscribe(self())
     
+    # オプションからサガトリガーを取得（デフォルトは@saga_triggers）
+    saga_triggers = Keyword.get(opts, :saga_triggers, @saga_triggers)
+    
     state = %{
       processed_events: MapSet.new(),
-      saga_triggers: @saga_triggers
+      saga_triggers: saga_triggers,
+      max_processed_events: 10000  # メモリリークを防ぐため古いイベントIDを削除
     }
+    
+    # 定期的なクリーンアップをスケジュール
+    schedule_cleanup()
     
     {:ok, state}
   end
@@ -45,6 +53,22 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
       new_state = process_event(event, state)
       {:noreply, new_state}
     end
+  end
+  
+  @impl true
+  def handle_info(:cleanup_processed_events, state) do
+    # 処理済みイベントのリストが大きくなりすぎないようにクリーンアップ
+    new_state = 
+      if MapSet.size(state.processed_events) > state.max_processed_events do
+        %{state | processed_events: MapSet.new()}
+      else
+        state
+      end
+    
+    # 次のクリーンアップをスケジュール
+    schedule_cleanup()
+    
+    {:noreply, new_state}
   end
   
   @impl true
@@ -75,7 +99,8 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
   
   defp saga_related_event?(event) do
     # イベントのmetadataにsaga_idが含まれているかチェック
-    Map.has_key?(event[:metadata] || %{}, :saga_id)
+    metadata = Map.get(event, :metadata, %{})
+    Map.has_key?(metadata, :saga_id) or Map.has_key?(metadata, "saga_id")
   end
   
   defp start_new_saga(saga_module, event) do
@@ -114,5 +139,10 @@ defmodule Shared.Infrastructure.Saga.SagaEventHandler do
         # デフォルトはペイロード全体を使用
         event.payload
     end
+  end
+  
+  defp schedule_cleanup do
+    # 1時間ごとにクリーンアップを実行
+    Process.send_after(self(), :cleanup_processed_events, :timer.hours(1))
   end
 end

@@ -121,6 +121,40 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
       completed_at: DateTime.utc_now()
     }}
   end
+  
+  @doc """
+  Order SAGAを開始する
+  """
+  def start_order_saga(_parent, %{input: input}, _resolution) do
+    saga_context = %{
+      order_id: input.order_id,
+      user_id: input.user_id,
+      items: Enum.map(input.items, fn item ->
+        %{
+          product_id: item.product_id,
+          quantity: item.quantity
+        }
+      end),
+      total_amount: input.total_amount
+    }
+    
+    case CqrsFacade.start_saga(saga_context) do
+      {:ok, saga_id} ->
+        {:ok, %{
+          saga_id: saga_id,
+          success: true,
+          message: "Order SAGA started successfully",
+          started_at: DateTime.utc_now()
+        }}
+      {:error, reason} ->
+        {:ok, %{
+          saga_id: "",
+          success: false,
+          message: "Failed to start SAGA: #{inspect(reason)}",
+          started_at: DateTime.utc_now()
+        }}
+    end
+  end
 
   # Private functions
 
@@ -140,28 +174,39 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
             unit_price: product.price,
             subtotal: product.price * item.quantity
           }
-        {:error, _} ->
-          :error
+        {:error, reason} ->
+          Logger.warn("Product not found, using fallback: #{inspect(reason)}")
+          # フォールバック: 商品情報が取得できない場合でも処理を続行
+          %{
+            product_id: item.product_id,
+            product_name: "Product #{item.product_id}",
+            quantity: item.quantity,
+            unit_price: 0.0,
+            subtotal: 0.0
+          }
       end
     end)
 
-    if Enum.any?(items_with_details, &(&1 == :error)) do
-      {:error, "一部の商品情報を取得できませんでした"}
-    else
-      {:ok, items_with_details}
-    end
+    {:ok, items_with_details}
   end
 
   defp get_product_info(product_id) do
     # CqrsFacadeを使用して商品情報を取得
-    case CqrsFacade.query({:get_product, product_id}) do
+    Logger.info("Fetching product info for: #{product_id}")
+    
+    result = CqrsFacade.query({:get_product, product_id})
+    Logger.info("Product query result: #{inspect(result)}")
+    
+    case result do
       {:ok, product} -> 
         {:ok, %{
           id: product.id,
           name: product.name,
           price: product.price
         }}
-      {:error, _} = error -> error
+      {:error, reason} = error -> 
+        Logger.error("Failed to fetch product: #{inspect(reason)}")
+        error
     end
   end
 

@@ -53,6 +53,10 @@ config :opentelemetry, :processors,
     exporter: {:opentelemetry_exporter, %{}}
   }
 
+# Saga設定
+config :shared,
+  command_dispatcher: CommandService.Infrastructure.SagaCommandDispatcher
+
 # レジリエンス設定をインポート
 import_config "resilience.exs"
 

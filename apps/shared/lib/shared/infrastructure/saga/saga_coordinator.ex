@@ -9,7 +9,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   use GenServer
   require Logger
   
-  alias Shared.Infrastructure.EventStore.EventStore
+  alias Shared.Infrastructure.EventStore
   alias Shared.Domain.Saga.SagaEvents
   alias Shared.Infrastructure.Saga.SagaRepository
   
@@ -222,9 +222,107 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     end
   end
   
-  defp check_saga_triggers(_event, _state) do
-    # TODO: イベントタイプに基づいて新しいサガを開始するロジック
-    []
+  defp check_saga_triggers(event, state) do
+    # イベントタイプに基づいて新しいサガを開始するロジック
+    event_type = Map.get(event, :event_type)
+    
+    # 各サガモジュールのトリガーイベントをチェック
+    Enum.reduce(state.saga_modules, [], fn {saga_type, saga_module}, acc ->
+      if function_exported?(saga_module, :trigger_events, 0) do
+        trigger_events = saga_module.trigger_events()
+        
+        if event_type in trigger_events do
+          # サガを開始すべき場合
+          saga_id = UUID.uuid4()
+          initial_data = extract_initial_data(event, saga_module)
+          
+          case start_saga_internal(saga_module, saga_id, initial_data, %{triggered_by: event.event_id}, state) do
+            {:ok, new_state} ->
+              Logger.info("Saga automatically triggered",
+                saga_type: saga_type,
+                saga_id: saga_id,
+                trigger_event: event_type
+              )
+              acc
+              
+            {:error, reason} ->
+              Logger.error("Failed to trigger saga",
+                saga_type: saga_type,
+                trigger_event: event_type,
+                error: inspect(reason)
+              )
+              acc
+          end
+        else
+          acc
+        end
+      else
+        acc
+      end
+    end)
+  end
+  
+  defp extract_initial_data(event, saga_module) do
+    # サガモジュールが初期データ抽出関数を持っている場合は使用
+    if function_exported?(saga_module, :extract_initial_data, 1) do
+      saga_module.extract_initial_data(event)
+    else
+      # デフォルト: イベントのペイロードを使用
+      Map.get(event, :payload, %{})
+    end
+  end
+  
+  defp start_saga_internal(saga_module, saga_id, initial_data, metadata, state) do
+    saga = saga_module.new(saga_id, initial_data)
+    
+    # サガ開始イベントを発行
+    event = SagaEvents.SagaStarted.new(
+      saga_id,
+      saga_module |> Module.split() |> List.last(),
+      initial_data,
+      metadata
+    )
+    
+    case EventStore.append_to_stream("saga-#{saga_id}", [event], 0) do
+      {:ok, _} ->
+        # メモリに保存
+        new_state = put_in(state.active_sagas[saga_id], %{
+          module: saga_module,
+          saga: saga,
+          started_at: DateTime.utc_now()
+        })
+        
+        # 持続化
+        SagaRepository.save(saga)
+        
+        # 最初のステップを実行
+        process_next_step(saga_id, saga, saga_module, new_state)
+        
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  defp process_next_step(saga_id, saga, saga_module, state) do
+    # サガの次のステップを実行
+    case saga_module.next_step(saga) do
+      {:ok, commands} when is_list(commands) and length(commands) > 0 ->
+        # コマンドを発行
+        dispatch_commands(commands, saga_id)
+        state
+        
+      {:ok, []} ->
+        # すべてのステップが完了
+        complete_saga(saga_id, saga, saga_module, state)
+        
+      {:error, reason} ->
+        Logger.error("Failed to determine next step for saga",
+          saga_id: saga_id,
+          saga_type: saga_module,
+          error: inspect(reason)
+        )
+        handle_saga_failure(saga, saga_module, saga_id, "next_step", reason, state)
+    end
   end
   
   defp process_event_for_saga(event, saga_id, %{module: saga_module, saga: saga}, state) do
@@ -306,22 +404,16 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   end
   
   defp dispatch_command(command) do
-    # CommandBusを使用してコマンドを実行
-    # SagaCoordinatorはsharedアプリにあるため、CommandBusを直接参照できない
-    # そのため、プロセス登録名を使用して動的に呼び出す
-    case Process.whereis(CommandService.Application.CommandBus) do
-      nil ->
-        Logger.error("CommandBus not found")
-        {:error, :command_bus_not_found}
-      
-      pid ->
-        try do
-          CommandService.Application.CommandBus.execute(command)
-        rescue
-          error ->
-            Logger.error("Failed to dispatch command: #{inspect(error)}")
-            {:error, error}
-        end
+    # 設定されたコマンドディスパッチャーを使用
+    dispatcher = Application.get_env(:shared, :command_dispatcher, Shared.Infrastructure.Saga.CommandDispatcher)
+    
+    case dispatcher.dispatch(command) do
+      {:ok, result} ->
+        {:ok, result}
+        
+      {:error, reason} = error ->
+        Logger.error("Failed to dispatch command: #{inspect(reason)}")
+        error
     end
   end
   
@@ -363,6 +455,19 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     start_compensation(failed_saga, saga_module, saga_id, state)
   end
   
+  defp complete_saga(saga_id, saga, saga_module, state) do
+    # 完了イベントを発行
+    event = SagaEvents.SagaCompleted.new(saga_id, saga.data)
+    persist_saga_event(event)
+    
+    # アーカイブ
+    SagaRepository.archive_completed_saga(saga_id)
+    
+    # アクティブリストから削除
+    {_, new_state} = pop_in(state.active_sagas[saga_id])
+    new_state
+  end
+  
   defp start_compensation(saga, saga_module, saga_id, state) do
     # 補償開始イベントを記録
     event = SagaEvents.SagaCompensationStarted.new(saga_id)
@@ -396,5 +501,27 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
         acc_state
       end
     end)
+  end
+  
+  defp persist_saga_event(event) do
+    saga_id = event.aggregate_id
+    stream_name = "saga-#{saga_id}"
+    
+    case EventStore.append_to_stream(stream_name, [event], :any) do
+      {:ok, _} ->
+        Logger.debug("Saga event persisted",
+          saga_id: saga_id,
+          event_type: event.event_type
+        )
+        :ok
+        
+      {:error, reason} ->
+        Logger.error("Failed to persist saga event",
+          saga_id: saga_id,
+          event_type: event.event_type,
+          error: inspect(reason)
+        )
+        {:error, reason}
+    end
   end
 end

@@ -48,7 +48,11 @@ defmodule CommandService.Application do
        saga_modules: [CommandService.Domain.Sagas.OrderSaga]},
       
       # サガイベントハンドラー
-      {Shared.Infrastructure.Saga.SagaEventHandler, []},
+      {Shared.Infrastructure.Saga.SagaEventHandler, [
+        saga_triggers: %{
+          "order_created" => CommandService.Domain.Sagas.OrderSaga
+        }
+      ]},
 
       # gRPC サーバー
       {GRPC.Server.Supervisor,

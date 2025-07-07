@@ -5,7 +5,7 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   EventStoreを使用してサガの状態を保存・復元します。
   """
   
-  alias Shared.Infrastructure.EventStore.EventStore
+  alias Shared.Infrastructure.EventStore
   require Logger
   
   @saga_snapshot_prefix "saga-snapshot-"
@@ -81,9 +81,49 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   """
   @spec archive_completed_saga(String.t()) :: :ok | {:error, any()}
   def archive_completed_saga(saga_id) do
-    # TODO: 完了したサガを別のストレージに移動
-    # 現在は何もしない
-    :ok
+    # 完了したサガをアーカイブする
+    case get(saga_id) do
+      {:ok, saga} ->
+        # アーカイブフラグを設定
+        archived_saga = Map.put(saga, :archived_at, DateTime.utc_now())
+        
+        # アーカイブイベントを記録
+        archive_event = %{
+          event_id: UUID.uuid4(),
+          event_type: "saga_archived",
+          aggregate_id: saga_id,
+          occurred_at: DateTime.utc_now(),
+          payload: %{
+            saga_type: saga.saga_type,
+            status: saga.status,
+            archived_at: archived_saga.archived_at
+          },
+          metadata: %{}
+        }
+        
+        case EventStore.append_to_stream("saga-#{saga_id}", [archive_event], :any) do
+          {:ok, _} ->
+            # メモリから削除（オプション）
+            # 実際の運用では、別のストレージに移動するか、
+            # アクティブなサガのみをメモリに保持する
+            Logger.info("Saga archived", saga_id: saga_id, saga_type: saga.saga_type)
+            :ok
+            
+          {:error, reason} ->
+            Logger.error("Failed to archive saga", 
+              saga_id: saga_id, 
+              error: inspect(reason)
+            )
+            {:error, reason}
+        end
+        
+      {:error, :not_found} ->
+        # 既に存在しないサガはアーカイブ済みとみなす
+        :ok
+        
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
   
   # Private functions

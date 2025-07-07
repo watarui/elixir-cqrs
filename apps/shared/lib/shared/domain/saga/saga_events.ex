@@ -11,6 +11,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     """
     use BaseEvent
     
+    @impl true
+    def payload do
+      %{}
+    end
+    
     defstruct [
       :event_id,
       :aggregate_id,
@@ -46,6 +51,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     サガのステップが完了したイベント
     """
     use BaseEvent
+    
+    @impl true
+    def payload do
+      %{}
+    end
     
     defstruct [
       :event_id,
@@ -83,6 +93,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     """
     use BaseEvent
     
+    @impl true
+    def payload do
+      %{}
+    end
+    
     defstruct [
       :event_id,
       :aggregate_id,
@@ -119,6 +134,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     """
     use BaseEvent
     
+    @impl true
+    def payload do
+      %{}
+    end
+    
     defstruct [
       :event_id,
       :aggregate_id,
@@ -148,6 +168,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     """
     use BaseEvent
     
+    @impl true
+    def payload do
+      %{}
+    end
+    
     defstruct [
       :event_id,
       :aggregate_id,
@@ -176,6 +201,11 @@ defmodule Shared.Domain.Saga.SagaEvents do
     サガが正常に完了したイベント
     """
     use BaseEvent
+    
+    @impl true
+    def payload do
+      %{}
+    end
     
     defstruct [
       :event_id,

@@ -74,4 +74,20 @@ defmodule ClientService.GraphQL.Types.Order do
     field :order_id, non_null(:string)
     field :reason, :string
   end
+  
+  # Order SAGA入力型
+  input_object :order_saga_input do
+    field :order_id, non_null(:string)
+    field :user_id, non_null(:string)
+    field :items, non_null(list_of(:order_item_input))
+    field :total_amount, non_null(:float)
+  end
+  
+  # SAGA開始結果型
+  object :saga_start_result do
+    field :saga_id, non_null(:string)
+    field :success, non_null(:boolean)
+    field :message, :string
+    field :started_at, non_null(:datetime)
+  end
 end
