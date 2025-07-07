@@ -12,9 +12,6 @@ defmodule Shared.Telemetry.Setup do
     # OpenTelemetry設定
     :opentelemetry.set_default_tracer(:elixir_cqrs)
     
-    # Jaegerエクスポーター設定
-    :opentelemetry.register_tracer(:elixir_cqrs, "0.1.0")
-    
     Logger.info("OpenTelemetry initialized")
   end
   

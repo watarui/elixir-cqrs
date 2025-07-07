@@ -33,7 +33,7 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
 - [x] **イベントソーシング基盤**
 
   - イベント型定義（BaseEvent、ProductEvents、CategoryEvents）
-  - イベントストア（In-Memory 実装）
+  - イベントストア（PostgreSQL 実装）
   - アグリゲート基底クラス
   - イベントソース対応アグリゲート（ProductAggregate、CategoryAggregate）
 
@@ -56,6 +56,18 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
   - コマンド/クエリの統一実行 API
   - 非同期コマンド実行
   - トランザクションサポート（簡易版）
+
+- [x] **レジリエンス機能**
+  - gRPC リトライ戦略（エクスポネンシャルバックオフ）
+  - サーキットブレーカーパターン
+  - タイムアウト管理
+  - 包括的なメトリクスとロギング
+
+- [x] **サガパターン**
+  - 分散トランザクション管理
+  - 補償トランザクション
+  - イベント駆動のワークフロー
+  - タイムアウト処理
 
 ## アーキテクチャ
 
@@ -192,17 +204,42 @@ ProjectionManager がイベントを読み取って Read Model を更新しま�
 ## 監視インフラ
 
 1. 監視インフラの起動
+   ```bash
    docker compose -f docker-compose.monitoring.yml up -d
+   ```
 
 2. 各 UI へのアクセス
-
    - Jaeger: http://localhost:16686
    - Prometheus: http://localhost:9090
-   - Grafana: http://localhost:3000
+   - Grafana: http://localhost:3000 (admin/admin)
 
 3. アプリケーションの起動
+   ```bash
    mix deps.get
    mix run --no-halt
+   ```
+
+## API ドキュメント
+
+### GraphQL Playground
+
+開発環境では GraphQL Playground が利用可能です：
+- URL: http://localhost:4000/graphiql
+- 対話的なクエリ実行
+- スキーマの探索
+- ドキュメントの参照
+- リアルタイムの自動補完
+
+### 利用可能な操作
+
+#### GraphQL エンドポイント
+- **メインエンドポイント**: `POST /graphql`
+- **Playground**: `GET /graphiql` (開発環境のみ)
+
+### ドキュメント
+
+- [GraphQL API 詳細仕様](docs/graphql-api.md)
+- [API 利用ガイド](docs/api-usage-guide.md)
 
 ## 解決された問題
 
@@ -371,7 +408,7 @@ elixir-cqrs/
   - 開発環境のコンテナ化
   - CI/CD パイプライン構築
 
-- [ ] **監視・ログ収集の実装**
+- [x] **監視・ログ収集の実装**
 
   - Prometheus メトリクス収集
   - Grafana ダッシュボード作成
@@ -385,9 +422,8 @@ elixir-cqrs/
   - ボトルネック特定
   - 最適化実施
 
-- [ ] **API ドキュメントの充実**
+- [x] **API ドキュメントの充実**
   - GraphQL Playground 設定
-  - OpenAPI 仕様書作成
   - コード例の追加
   - 開発者向けガイド
 
@@ -414,7 +450,7 @@ elixir-cqrs/
   - パフォーマンス分析
   - 障害調査支援
 
-- [ ] **障害回復機能**
+- [x] **障害回復機能**
   - Circuit Breaker 実装
   - Retry メカニズム
   - Fallback 戦略
@@ -517,8 +553,8 @@ elixir-cqrs/
   - カスタムエラーステータスの定義（GrpcErrorConverter 実装済み）
   - AppError から Proto.Error への統一変換（完了）
   - gRPC ステータスコードのマッピング（完了）
-  - リトライ戦略の実装（今後の課題）
-  - サーキットブレーカーの追加（今後の課題）
+  - リトライ戦略の実装（完了）
+  - サーキットブレーカーの追加（完了）
 
 - [x] **データベース層の抽象化**
   - リポジトリパターンの完全実装（完了）
@@ -640,8 +676,8 @@ elixir-cqrs/
 
 - [x] イベントストアの PostgreSQL 実装（完了）
 - [x] プロジェクション（読み取りモデル）の自動更新（ProjectionManager 実装済み）
-- [ ] サガパターンの実装（分散トランザクション）
-- [ ] gRPC リトライ戦略とサーキットブレーカー
+- [x] サガパターンの実装（分散トランザクション）
+- [x] gRPC リトライ戦略とサーキットブレーカー
 - [x] Unit of Work パターンの実装（完了）
 
 ### 中期
@@ -651,11 +687,11 @@ elixir-cqrs/
 - [x] N+1 問題解決（BatchCache 実装済み）
 - [x] イベントの永続化とリプレイ機能（PostgreSQL EventStore 実装済み）
 - [ ] スナップショット機能
-- [ ] Dialyzer 警告の完全解消
+- [x] Dialyzer 警告の解消（主要な警告は対応済み）
 
 ### 長期
 
-- [ ] ログ・モニタリングの改善
+- [x] ログ・モニタリングの改善（OpenTelemetry、Jaeger、Prometheus 実装済み）
 - [ ] パフォーマンス最適化
 - [ ] テストカバレッジの向上
 - [ ] エラーレポート機能

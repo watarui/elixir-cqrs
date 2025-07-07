@@ -25,4 +25,15 @@ defmodule ClientService.Router do
 
     post("/", Absinthe.Plug, schema: ClientService.GraphQL.Schema)
   end
+  
+  # GraphQL Playground (開発環境のみ)
+  if Mix.env() in [:dev, :test] do
+    scope "/" do
+      # GraphQL Playgroundはブラウザアクセス用なのでHTMLを受け付ける必要がある
+      forward("/graphiql", Absinthe.Plug.GraphiQL,
+        schema: ClientService.GraphQL.Schema,
+        interface: :playground
+      )
+    end
+  end
 end

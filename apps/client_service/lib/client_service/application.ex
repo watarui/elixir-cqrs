@@ -21,7 +21,10 @@ defmodule ClientService.Application do
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
       # Prometheusエクスポーター
-      {TelemetryMetricsPrometheus, metrics: Shared.Telemetry.Metrics.prometheus_metrics()},
+      {TelemetryMetricsPrometheus, 
+        metrics: Shared.Telemetry.Metrics.prometheus_metrics(),
+        port: 9568
+      },
       # バッチキャッシュ
       ClientService.GraphQL.BatchCache,
       # HTTP エンドポイントを起動
