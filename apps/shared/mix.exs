@@ -52,7 +52,7 @@ defmodule Shared.MixProject do
 
       # Telemetry
       {:telemetry, "~> 1.0"},
-      {:telemetry_metrics, "~> 0.6"},
+      {:telemetry_metrics, "~> 1.1"},
       {:telemetry_poller, "~> 1.0"},
 
       # 構造化ログ
