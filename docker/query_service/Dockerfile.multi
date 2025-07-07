@@ -35,7 +35,7 @@ RUN mix compile
 RUN mix release query_service
 
 # ランタイムステージ
-FROM alpine:3.19 AS runtime
+FROM alpine:3.22 AS runtime
 
 # ランタイムに必要なパッケージをインストール
 RUN apk add --no-cache openssl ncurses-libs libstdc++ libgcc
