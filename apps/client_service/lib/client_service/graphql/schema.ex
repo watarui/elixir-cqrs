@@ -11,22 +11,6 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Common)
 
   alias ClientService.GraphQL.Resolvers.{CategoryResolver, ProductResolver}
-  alias ClientService.GraphQL.DataLoader
-  
-  # DataLoaderのコンテキスト設定
-  def context(ctx) do
-    loader =
-      Dataloader.new()
-      |> Dataloader.add_source(:categories, DataLoader.new_category_loader())
-      |> Dataloader.add_source(:products_by_category, DataLoader.new_products_by_category_loader())
-    
-    Map.put(ctx, :loader, loader)
-  end
-  
-  # DataLoaderプラグイン
-  def plugins do
-    [Absinthe.Middleware.Dataloader | Absinthe.Plugin.defaults()]
-  end
 
   # Query定義
   query do

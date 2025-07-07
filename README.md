@@ -31,32 +31,36 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
 ### 新機能（CQRS + イベントソーシング）
 
 - [x] **イベントソーシング基盤**
+
   - イベント型定義（BaseEvent、ProductEvents、CategoryEvents）
-  - イベントストア（In-Memory実装）
+  - イベントストア（In-Memory 実装）
   - アグリゲート基底クラス
   - イベントソース対応アグリゲート（ProductAggregate、CategoryAggregate）
 
 - [x] **コマンド側（書き込み）**
-  - コマンド定義（CreateProduct、UpdateProduct、DeleteProduct等）
+
+  - コマンド定義（CreateProduct、UpdateProduct、DeleteProduct 等）
   - コマンドハンドラー
   - コマンドバス（メディエーターパターン）
   - コマンドバリデーション
 
 - [x] **クエリ側（読み取り）**
-  - クエリ定義（GetProduct、ListProducts、SearchProducts等）
+
+  - クエリ定義（GetProduct、ListProducts、SearchProducts 等）
   - クエリハンドラー
   - クエリバス
   - 並列クエリ実行サポート
 
 - [x] **統一インターフェース**
-  - CQRSファサード
-  - コマンド/クエリの統一実行API
+  - CQRS ファサード
+  - コマンド/クエリの統一実行 API
   - 非同期コマンド実行
   - トランザクションサポート（簡易版）
 
 ## アーキテクチャ
 
 ### 基本構成
+
 ```
 [Client Service:4000]  ←→  HTTP/GraphQL  ←→  [Web Client]
          ↓
@@ -67,6 +71,7 @@ Elixir/Phoenix を使用した CQRS（Command Query Responsibility Segregation�
 ```
 
 ### CQRS + イベントソーシング アーキテクチャ
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Client Service (GraphQL)                 │
@@ -181,8 +186,8 @@ curl -X POST http://localhost:4000/graphql \
 
 #### 6. イベントソーシングの動作確認
 
-コマンドを実行後、3秒程度待ってからクエリを実行してください。
-ProjectionManagerがイベントを読み取ってRead Modelを更新します。
+コマンドを実行後、3 秒程度待ってからクエリを実行してください。
+ProjectionManager がイベントを読み取って Read Model を更新します。
 
 ## 解決された問題
 
@@ -482,7 +487,7 @@ elixir-cqrs/
   - イベント基盤の実装（BaseEvent、ドメインイベント定義）
   - イベントストアの実装（EventStore、InMemoryAdapter）
   - アグリゲート基底クラス（Aggregate.Base）
-  - ProductAggregate、CategoryAggregateの実装
+  - ProductAggregate、CategoryAggregate の実装
 
 - [x] **コマンド/クエリの明確な分離**
   - コマンドハンドラーの抽出（ProductCommandHandler、CategoryCommandHandler）
@@ -500,10 +505,11 @@ elixir-cqrs/
   - リトライ戦略の実装（今後の課題）
   - サーキットブレーカーの追加（今後の課題）
 
-- [ ] **データベース層の抽象化**
-  - リポジトリパターンの完全実装
-  - Unit of Work パターンの検討
-  - トランザクション管理の改善
+- [x] **データベース層の抽象化**
+  - リポジトリパターンの完全実装（完了）
+  - Unit of Work パターンの実装（完了）
+  - トランザクション管理の改善（完了）
+  - 依存性注入による柔軟なリポジトリ選択（RepositoryContext）
 
 ### 6. テスタビリティの向上
 
@@ -522,16 +528,18 @@ elixir-cqrs/
   end
   ```
 
-- [ ] **ピュアな関数の増加**
-  - 副作用を持つ関数の分離
-  - ビジネスロジックのテスト容易性向上
+- [x] **純粋な関数の増加**
+  - 副作用を持つ関数の分離（完了）
+  - ProductLogic、CategoryLogic、AggregateLogic モジュールの作成
+  - ビジネスロジックのテスト容易性向上（テスト実装済み）
 
 ### 7. パフォーマンス最適化
 
-- [ ] **N+1 クエリの解決**
+- [x] **N+1 クエリの解決**
 
-  - DataLoader の導入（GraphQL）
-  - プリロード戦略の最適化
+  - BatchCache の実装（同一リクエスト内でのデータ重複排除）
+  - GraphQL リゾルバーでの活用
+  - プリロード戦略の最適化（完了）
 
 - [x] **キャッシング戦略**
   - クエリサービスでのキャッシュ実装（完了）
@@ -590,23 +598,46 @@ elixir-cqrs/
    - タプルではなく構造体でエラーを表現
    - エラーの種類と詳細を型で表現
 
+## 最近の進捗
+
+### 完了した主要なリファクタリング
+
+1. **DataLoader/N+1 問題の解決**
+   - BatchCache の実装による同一リクエスト内のデータ重複排除
+   - GraphQL リゾルバーでの効率的なデータ取得
+
+2. **リポジトリパターンの完全実装**
+   - Unit of Work パターンによるトランザクション管理
+   - RepositoryContext による依存性注入
+   - テスト時のモックリポジトリ使用可能
+
+3. **ピュアな関数への分離**
+   - ProductLogic: 商品ビジネスロジック（価格検証、割引計算等）
+   - CategoryLogic: カテゴリビジネスロジック（階層管理、検証等）
+   - AggregateLogic: イベントソーシング関連ロジック
+   - 包括的なテストスイートの実装
+
 ## 今後の課題
 
 ### 短期（優先度高）
-- [ ] イベントストアのPostgreSQL実装
-- [ ] プロジェクション（読み取りモデル）の自動更新
+
+- [x] イベントストアの PostgreSQL 実装（完了）
+- [x] プロジェクション（読み取りモデル）の自動更新（ProjectionManager 実装済み）
 - [ ] サガパターンの実装（分散トランザクション）
-- [ ] gRPCリトライ戦略とサーキットブレーカー
-- [ ] Unit of Workパターンの実装
+- [ ] gRPC リトライ戦略とサーキットブレーカー
+- [x] Unit of Work パターンの実装（完了）
 
 ### 中期
+
 - [ ] 認証・認可の実装
 - [ ] GraphQL Subscriptions（リアルタイム更新）
-- [ ] DataLoader実装（N+1問題解決）
-- [ ] イベントの永続化とリプレイ機能
+- [x] N+1 問題解決（BatchCache 実装済み）
+- [x] イベントの永続化とリプレイ機能（PostgreSQL EventStore 実装済み）
 - [ ] スナップショット機能
+- [ ] Dialyzer 警告の完全解消
 
 ### 長期
+
 - [ ] ログ・モニタリングの改善
 - [ ] パフォーマンス最適化
 - [ ] テストカバレッジの向上

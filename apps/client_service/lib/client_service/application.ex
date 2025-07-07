@@ -10,6 +10,8 @@ defmodule ClientService.Application do
     children = [
       # Phoenix PubSub を最初に起動
       {Phoenix.PubSub, name: ClientService.PubSub},
+      # バッチキャッシュ
+      ClientService.GraphQL.BatchCache,
       # HTTP エンドポイントを起動
       ClientService.Endpoint,
       # gRPC クライアント接続管理

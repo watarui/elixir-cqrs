@@ -1,11 +1,12 @@
 defmodule CommandService.Domain.Aggregates.ProductAggregate do
   @moduledoc """
   商品アグリゲート（イベントソーシング対応）
-  
+
   商品に関するすべてのビジネスロジックとイベント処理を管理します
   """
 
   alias CommandService.Domain.ValueObjects.{ProductId, ProductName, ProductPrice, CategoryId}
+  alias CommandService.Domain.Logic.{ProductLogic, AggregateLogic}
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
     ProductUpdated,
@@ -30,65 +31,91 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   # コマンドハンドラー
 
   @impl true
+  # コマンドハンドラー
+  def execute(%__MODULE__{deleted: true}, _command) do
+    {:error, "Cannot execute commands on deleted product"}
+  end
+
   def execute(%__MODULE__{id: nil}, {:create_product, params}) do
-    with {:ok, product_id} <- ProductId.new(params.id),
+    # 純粋な関数でビジネスルールを検証
+    with :ok <- ProductLogic.validate_product_name_format(params.name || ""),
+         :ok <- ProductLogic.validate_non_zero_price(params.price || 0),
+         {:ok, product_id} <- ProductId.new(params.id),
          {:ok, product_name} <- ProductName.new(params.name),
          {:ok, product_price} <- ProductPrice.new(params.price),
          {:ok, category_id} <- CategoryId.new(params.category_id) do
-      
+
+      # 純粋な関数でメタデータを生成
+      metadata = AggregateLogic.build_command_metadata(params)
+
       event = ProductCreated.new(
         ProductId.value(product_id),
         ProductName.value(product_name),
         ProductPrice.value(product_price),
         CategoryId.value(category_id),
-        %{user_id: params[:user_id]}
+        metadata
       )
-      
+
       {:ok, [event]}
     end
   end
 
-  def execute(%__MODULE__{deleted: true}, _command) do
-    {:error, "Cannot execute commands on deleted product"}
-  end
 
   def execute(%__MODULE__{id: id} = aggregate, {:update_product, params}) when not is_nil(id) do
-    changes = build_changes(aggregate, params)
-    
-    if map_size(changes) == 0 do
-      {:ok, []}
-    else
-      event = ProductUpdated.new(
-        ProductId.value(id),
-        changes,
-        %{user_id: params[:user_id]}
-      )
-      
-      # 価格変更の場合は追加のビジネスイベントを発行
-      events = if Map.has_key?(changes, :price) do
-        price_change_event = ProductPriceChanged.new(
-          ProductId.value(id),
-          ProductPrice.value(aggregate.price),
-          changes.price,
-          params[:price_change_reason],
-          %{user_id: params[:user_id]}
-        )
-        [event, price_change_event]
+    # 純粋な関数でビジネスルールを適用
+    with {:ok, validated_params} <- validate_and_filter_params(params),
+         changes <- build_changes(aggregate, validated_params) do
+
+      if map_size(changes) == 0 do
+        {:ok, []}
       else
-        [event]
+        metadata = AggregateLogic.build_command_metadata(params)
+
+        event = ProductUpdated.new(
+          ProductId.value(id),
+          changes,
+          metadata
+        )
+
+        # 純粋な関数で重要な価格変更かを判定
+        events = if Map.has_key?(changes, :price) &&
+                   AggregateLogic.is_significant_price_change?(
+                     ProductPrice.value(aggregate.price),
+                     changes.price,
+                     10
+                   ) do
+          price_change_event = ProductPriceChanged.new(
+            ProductId.value(id),
+            ProductPrice.value(aggregate.price),
+            changes.price,
+            params[:price_change_reason] || "Price update",
+            metadata
+          )
+          [event, price_change_event]
+        else
+          [event]
+        end
+
+        {:ok, events}
       end
-      
-      {:ok, events}
     end
   end
 
+  # パラメータの検証とフィルタリング
+  defp validate_and_filter_params(params) do
+    filtered = ProductLogic.filter_update_params(params)
+    ProductLogic.apply_price_update_rules(filtered)
+  end
+
   def execute(%__MODULE__{id: id}, {:delete_product, params}) when not is_nil(id) do
+    metadata = AggregateLogic.build_command_metadata(params)
+
     event = ProductDeleted.new(
       ProductId.value(id),
-      params[:reason],
-      %{user_id: params[:user_id]}
+      params[:reason] || "Product deleted",
+      metadata
     )
-    
+
     {:ok, [event]}
   end
 
@@ -124,19 +151,19 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
           {:ok, name} -> %{acc | name: name}
           _ -> acc
         end
-      
+
       {:price, new_price}, acc ->
         case ProductPrice.new(new_price) do
           {:ok, price} -> %{acc | price: price}
           _ -> acc
         end
-      
+
       {:category_id, new_category_id}, acc ->
         case CategoryId.new(new_category_id) do
           {:ok, category_id} -> %{acc | category_id: category_id}
           _ -> acc
         end
-      
+
       _, acc -> acc
     end)
   end
@@ -157,39 +184,54 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   @spec build_changes(t(), map()) :: map()
   defp build_changes(aggregate, params) do
     changes = %{}
-    
+
     changes = case params[:name] do
       nil -> changes
       "" -> changes
       new_name ->
         case ProductName.new(new_name) do
-          {:ok, name} when name != aggregate.name ->
-            Map.put(changes, :name, ProductName.value(name))
+          {:ok, name} ->
+            current_name = if aggregate.name, do: ProductName.value(aggregate.name), else: ""
+            if ProductName.value(name) != current_name do
+              Map.put(changes, :name, ProductName.value(name))
+            else
+              changes
+            end
           _ -> changes
         end
     end
-    
+
     changes = case params[:price] do
       nil -> changes
       new_price ->
         case ProductPrice.new(new_price) do
-          {:ok, price} when price != aggregate.price ->
-            Map.put(changes, :price, ProductPrice.value(price))
+          {:ok, price} ->
+            current_price = if aggregate.price, do: ProductPrice.value(aggregate.price), else: Decimal.new(0)
+            if ProductPrice.value(price) != current_price do
+              Map.put(changes, :price, ProductPrice.value(price))
+            else
+              changes
+            end
           _ -> changes
         end
     end
-    
+
     changes = case params[:category_id] do
       nil -> changes
       "" -> changes
       new_category_id ->
         case CategoryId.new(new_category_id) do
-          {:ok, category_id} when category_id != aggregate.category_id ->
-            Map.put(changes, :category_id, CategoryId.value(category_id))
+          {:ok, category_id} ->
+            current_category = if aggregate.category_id, do: CategoryId.value(aggregate.category_id), else: ""
+            if CategoryId.value(category_id) != current_category do
+              Map.put(changes, :category_id, CategoryId.value(category_id))
+            else
+              changes
+            end
           _ -> changes
         end
     end
-    
+
     changes
   end
 

@@ -15,6 +15,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
     ProductPriceRangeRequest,
     ProductPaginationRequest,
     ProductExistsRequest,
+    CategoryQueryRequest,
     Empty
   }
 
@@ -255,16 +256,25 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   end
 
   @doc """
-  商品が属するカテゴリを取得（遅延読み込み）
+  商品が属するカテゴリを取得（遅延読み込み、キャッシュ使用）
   """
   @spec get_category(%{category_id: String.t()}, any(), any()) :: {:ok, map()} | {:error, String.t()}
-  def get_category(%{category_id: category_id}, _args, context) do
-    # Category リゾルバーに委譲
-    ClientService.GraphQL.Resolvers.CategoryResolver.get_category(
-      nil,
-      %{id: category_id},
-      context
-    )
+  def get_category(%{category_id: category_id}, _args, _context) do
+    ClientService.GraphQL.BatchCache.get_category(category_id, fn ->
+      # キャッシュミスの場合のみgRPC呼び出し
+      with {:ok, channel} <- GrpcConnections.get_query_channel(),
+           request <- %CategoryQueryRequest{id: category_id},
+           {:ok, response} <- Query.CategoryQuery.Stub.get_category(channel, request) do
+        {:ok, format_category(response.category)}
+      else
+        {:error, %GRPC.RPCError{status: :not_found}} -> 
+          {:error, "Category not found"}
+        {:error, %GRPC.RPCError{} = error} -> 
+          {:error, "Failed to get category: #{error.message}"}
+        error -> 
+          {:error, "Unexpected error: #{inspect(error)}"}
+      end
+    end)
   end
 
   # プライベート関数
@@ -302,5 +312,16 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   defp format_timestamp(other) do
     # その他の場合は文字列に変換
     to_string(other)
+  end
+  
+  defp format_category(nil), do: nil
+  
+  defp format_category(category) do
+    %{
+      id: category.id,
+      name: category.name,
+      created_at: format_timestamp(Map.get(category, :created_at)),
+      updated_at: format_timestamp(Map.get(category, :updated_at))
+    }
   end
 end

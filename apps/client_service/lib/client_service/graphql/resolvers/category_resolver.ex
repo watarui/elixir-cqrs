@@ -13,6 +13,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
     CategorySearchRequest,
     CategoryPaginationRequest,
     CategoryExistsRequest,
+    ProductByCategoryRequest,
     Empty
   }
 
@@ -214,13 +215,21 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   カテゴリに属する商品を取得（遅延読み込み）
   """
   @spec get_products(%{id: String.t()}, any(), any()) :: {:ok, [map()]} | {:error, String.t()}
-  def get_products(%{id: category_id}, _args, context) do
-    # Product リゾルバーに委譲
-    ClientService.GraphQL.Resolvers.ProductResolver.get_products_by_category(
-      nil,
-      %{category_id: category_id},
-      context
-    )
+  def get_products(%{id: category_id}, _args, _context) do
+    ClientService.GraphQL.BatchCache.get_products_by_category(category_id, fn ->
+      # キャッシュミスの場合のみgRPC呼び出し
+      with {:ok, channel} <- GrpcConnections.get_query_channel(),
+           request <- %ProductByCategoryRequest{category_id: category_id},
+           {:ok, response} <- Query.ProductQuery.Stub.get_products_by_category(channel, request) do
+        products = Enum.map(response.products, &format_product/1)
+        {:ok, products}
+      else
+        {:error, %GRPC.RPCError{} = error} -> 
+          {:error, "Failed to get products: #{error.message}"}
+        error -> 
+          {:error, "Unexpected error: #{inspect(error)}"}
+      end
+    end)
   end
 
   # プライベート関数
@@ -278,5 +287,18 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolver do
   defp format_timestamp(other) do
     # その他の場合は文字列に変換
     to_string(other)
+  end
+  
+  defp format_product(nil), do: nil
+  
+  defp format_product(product) do
+    %{
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      category_id: Map.get(product, :category_id) || Map.get(product, :categoryId),
+      created_at: format_timestamp(Map.get(product, :created_at)),
+      updated_at: format_timestamp(Map.get(product, :updated_at))
+    }
   end
 end
