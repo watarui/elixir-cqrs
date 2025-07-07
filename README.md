@@ -342,8 +342,8 @@ elixir-cqrs/
 - [x] **型定義の徹底**
 
   - すべての関数に`@spec`を必須化（主要モジュールに追加完了）
-    - GraphQLリゾルバー（ProductResolver、CategoryResolver）
-    - gRPCサーバー（一部実装）
+    - GraphQL リゾルバー（ProductResolver、CategoryResolver）
+    - gRPC サーバー（一部実装）
     - 値オブジェクト（実装済み）
   - カスタム型（`@type`）の積極的活用（実装済み）
   - Dialyzer の警告をゼロに（今後の課題）
@@ -360,13 +360,13 @@ elixir-cqrs/
 - [x] **値オブジェクトの型安全性向上**
   - opaque タイプの使用検討（実装済み）
     - ProductId、CategoryId、ProductName、CategoryName、ProductPrice
-  - ファクトリー関数でのみ生成可能に（new/1関数で実装済み）
+  - ファクトリー関数でのみ生成可能に（new/1 関数で実装済み）
 
 ### 3. エラーハンドリングの統一
 
 - [x] **エラー型の標準化**
 
-  - 統一されたエラー構造体の定義（AppError実装済み）
+  - 統一されたエラー構造体の定義（AppError 実装済み）
   - エラーカテゴリの明確化（ドメインエラー、インフラエラー等）
 
   ```elixir
@@ -378,10 +378,6 @@ elixir-cqrs/
     }
   end
   ```
-
-- [ ] **Railway Oriented Programming**
-  - `with`文の過度な使用を見直し
-  - カスタムモナド的パイプラインの検討
 
 ### 4. CQRS パターンの完全実装
 
@@ -400,9 +396,9 @@ elixir-cqrs/
 
 - [x] **gRPC エラーハンドリング**
 
-  - カスタムエラーステータスの定義（GrpcErrorConverter実装済み）
-  - AppErrorからProto.Errorへの統一変換（完了）
-  - gRPCステータスコードのマッピング（完了）
+  - カスタムエラーステータスの定義（GrpcErrorConverter 実装済み）
+  - AppError から Proto.Error への統一変換（完了）
+  - gRPC ステータスコードのマッピング（完了）
   - リトライ戦略の実装（今後の課題）
   - サーキットブレーカーの追加（今後の課題）
 
@@ -442,8 +438,8 @@ elixir-cqrs/
 - [x] **キャッシング戦略**
   - クエリサービスでのキャッシュ実装（完了）
   - ETS を使用したインメモリキャッシュ（完了）
-  - TTLベースの自動期限切れ処理（完了）
-  - CategoryRepositoryとProductRepositoryにキャッシング適用（完了）
+  - TTL ベースの自動期限切れ処理（完了）
+  - CategoryRepository と ProductRepository にキャッシング適用（完了）
 
 ## コーディング規約
 
