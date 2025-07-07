@@ -9,19 +9,18 @@ Elixir/Phoenix を使用した CQRS + イベントソーシング + サガパタ
 ## アーキテクチャ概要
 
 - Client Service (GraphQL) - ポート 4000
-- Command Service (gRPC) - ポート 50051  
+- Command Service (gRPC) - ポート 50051
 - Query Service (gRPC) - ポート 50052
 - PostgreSQL - ポート 5432-5434
 
 詳細な設計については [アーキテクチャ設計書](docs/architecture.md) を参照してください。
-
 
 ## Quick Start
 
 ### Docker Compose による起動（推奨）
 
 ```bash
-# 開発環境の起動
+# 開発環境の起動（データベース作成・マイグレーション自動実行）
 docker compose up -d
 
 # 監視スタックも含めて起動
@@ -31,61 +30,22 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 docker compose logs -f
 ```
 
-### 手動セットアップ
-
-#### 前提条件
-
-- Elixir 1.18+
-- PostgreSQL 14+
-- protoc (Protocol Buffers コンパイラ)
-- protoc-gen-elixir
-
-#### データベースセットアップ
-
-```bash
-# データベース作成
-createdb command_service_dev
-createdb query_service_dev
-createdb event_store_dev
-
-# マイグレーション実行
-cd apps/command_service && mix ecto.migrate
-cd apps/query_service && mix ecto.migrate
-cd apps/shared && MIX_ENV=dev mix ecto.migrate -r Shared.Infrastructure.EventStore.Repo
-```
-
-#### サービス起動
-
-```bash
-# 依存関係のインストール
-mix deps.get
-
-# 各サービスを個別のターミナルで起動
-# Terminal 1: Query Service
-cd apps/query_service && mix run --no-halt
-
-# Terminal 2: Command Service
-cd apps/command_service && mix run --no-halt
-
-# Terminal 3: Client Service
-cd apps/client_service && mix phx.server
-```
-
 ## API アクセス
 
 GraphQL Playground: http://localhost:4000/graphiql
 
-使用例やAPI仕様については [API仕様書](docs/api-specification.md) を参照してください。
+使用例や API 仕様については [API 仕様書](docs/api-specification.md) を参照してください。
 
 ## 実装内容
 
 - CQRS パターン
-- イベントソーシング  
+- イベントソーシング
 - サガパターン
 - gRPC/GraphQL 通信
 - 監視・可観測性
 
 詳細については以下のドキュメントを参照：
+
 - [イベントソーシングガイド](docs/event-sourcing.md)
 - [サガパターン実装ガイド](docs/saga-pattern.md)
 
