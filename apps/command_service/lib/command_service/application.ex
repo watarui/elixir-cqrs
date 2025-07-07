@@ -19,20 +19,30 @@ defmodule CommandService.Application do
       :opentelemetry_ecto.setup([:command_service, :repo])
     end
 
-    children = [
+    base_children = [
       # データベース接続
       CommandService.Infrastructure.Database.Repo,
 
       # Telemetry監視
-      {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()},
+      {Telemetry.Metrics.ConsoleReporter, metrics: Shared.Telemetry.Metrics.metrics()}
+    ]
 
-      # Prometheusエクスポーター
-      {
-        TelemetryMetricsPrometheus,
-        # Prometheusエクスポーターは内部でPlugを使用するため、
-        # 別のPlug.Cowboyは不要
-        metrics: Shared.Telemetry.Metrics.metrics(), port: 9569, plug_cowboy_opts: []
-      },
+    # テスト環境ではPrometheusエクスポーターを起動しない
+    prometheus_children = 
+      if Mix.env() != :test do
+        [
+          {
+            TelemetryMetricsPrometheus,
+            # Prometheusエクスポーターは内部でPlugを使用するため、
+            # 別のPlug.Cowboyは不要
+            metrics: Shared.Telemetry.Metrics.metrics(), port: 9569, plug_cowboy_opts: []
+          }
+        ]
+      else
+        []
+      end
+
+    children = base_children ++ prometheus_children ++ [
 
       # イベントストア (PostgreSQL)
       {Shared.Infrastructure.EventStore.PostgresAdapter, []},
@@ -53,12 +63,22 @@ defmodule CommandService.Application do
          saga_triggers: %{
            "order_created" => Shared.Infrastructure.Saga.OrderSaga
          }
-       ]},
-
-      # gRPC サーバー
-      {GRPC.Server.Supervisor,
-       endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051, start_server: true}
+       ]}
     ]
+
+    # テスト環境ではgRPCサーバーを起動しない
+    grpc_children = 
+      if Mix.env() != :test do
+        [
+          # gRPC サーバー
+          {GRPC.Server.Supervisor,
+           endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50051, start_server: true}
+        ]
+      else
+        []
+      end
+
+    children = children ++ grpc_children
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

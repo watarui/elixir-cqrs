@@ -23,8 +23,8 @@ config :query_service, QueryService.Infrastructure.Database.Repo,
 config :query_service, :grpc_port, 50052
 
 # 構造化ログの設定
-config :logger, :console,
-  format: {LoggerJSON.Formatters.Basic, []}
+# LoggerJSON は Elixir 1.15+ の新しい Logger バックエンドシステムを使用
+# テスト環境では標準フォーマッタを使用
 
 config :logger,
   backends: [:console],

@@ -40,6 +40,10 @@ defmodule ElixirCqrs.MixProject do
       # JSON
       {:jason, "~> 1.2"},
 
+      # Test factories and data generation
+      {:ex_machina, "~> 2.7", only: :test},
+      {:faker, "~> 0.17", only: :test},
+
       # Development and test
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
