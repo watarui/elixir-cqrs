@@ -7,6 +7,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   require Logger
 
   alias GRPC.Channel
+  alias Shared.Infrastructure.Grpc.CircuitBreaker
 
   # 接続設定
   @default_host "localhost"
@@ -81,6 +82,24 @@ defmodule ClientService.Infrastructure.GrpcConnections do
 
   @impl true
   def init([]) do
+    # サーキットブレーカーを起動
+    {:ok, _} = CircuitBreaker.start_link(
+      name: :command_service_cb,
+      options: %{
+        failure_threshold: 5,
+        success_threshold: 2,
+        timeout: 30_000
+      }
+    )
+    
+    {:ok, _} = CircuitBreaker.start_link(
+      name: :query_service_cb,
+      options: %{
+        failure_threshold: 5,
+        success_threshold: 2,
+        timeout: 30_000
+      }
+    )
     state = %State{
       command_host: get_env_or_default(:command_service_host, @default_host),
       command_port: get_env_or_default(:command_service_port, @default_command_port),
@@ -235,5 +254,26 @@ defmodule ClientService.Infrastructure.GrpcConnections do
       nil -> default
       value -> value
     end
+  end
+  
+  @doc """
+  サーキットブレーカーの状態を取得する
+  """
+  @spec get_circuit_breaker_status() :: map()
+  def get_circuit_breaker_status do
+    %{
+      command: CircuitBreaker.get_state(:command_service_cb),
+      query: CircuitBreaker.get_state(:query_service_cb)
+    }
+  end
+  
+  @doc """
+  サーキットブレーカーをリセットする
+  """
+  @spec reset_circuit_breakers() :: :ok
+  def reset_circuit_breakers do
+    CircuitBreaker.reset(:command_service_cb)
+    CircuitBreaker.reset(:query_service_cb)
+    :ok
   end
 end

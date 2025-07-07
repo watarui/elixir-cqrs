@@ -76,6 +76,18 @@ defmodule Shared.Telemetry.Setup do
       nil
     )
     
+    # gRPCリトライとサーキットブレーカーのトレース
+    :telemetry.attach_many(
+      "elixir-cqrs-resilience-handler",
+      [
+        [:grpc, :retry],
+        [:grpc, :client, :call],
+        [:circuit_breaker, :call]
+      ],
+      &handle_resilience_event/4,
+      nil
+    )
+    
     Logger.info("Telemetry handlers attached")
   end
   
@@ -124,6 +136,39 @@ defmodule Shared.Telemetry.Setup do
       user_id: metadata[:user_id],
       duration_ms: measurements[:duration] && System.convert_time_unit(measurements[:duration], :native, :millisecond)
     )
+  end
+  
+  # レジリエンスイベントハンドラー
+  defp handle_resilience_event(event_name, measurements, metadata, _config) do
+    case event_name do
+      [:grpc, :retry] ->
+        Logger.warning("gRPC retry event",
+          status: metadata[:status],
+          attempt: measurements[:attempt_count],
+          duration_ms: measurements[:duration]
+        )
+        
+      [:grpc, :client, :call] ->
+        if metadata[:error] do
+          Logger.error("gRPC client call failed",
+            operation: metadata[:metadata] && metadata[:metadata][:operation],
+            status: metadata[:status],
+            duration_ms: measurements[:duration]
+          )
+        else
+          Logger.debug("gRPC client call succeeded",
+            operation: metadata[:metadata] && metadata[:metadata][:operation],
+            duration_ms: measurements[:duration]
+          )
+        end
+        
+      [:circuit_breaker, :call] ->
+        Logger.info("Circuit breaker event",
+          circuit: metadata[:circuit_breaker],
+          status: metadata[:status],
+          latency_ms: measurements[:latency]
+        )
+    end
   end
   
   @doc """

@@ -53,5 +53,8 @@ config :opentelemetry, :processors,
     exporter: {:opentelemetry_exporter, %{}}
   }
 
+# レジリエンス設定をインポート
+import_config "resilience.exs"
+
 # 環境別設定ファイルをインポート
 import_config "#{config_env()}.exs"

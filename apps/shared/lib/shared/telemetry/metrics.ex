@@ -60,6 +60,28 @@ defmodule Shared.Telemetry.Metrics do
         tags: [:service, :method, :status]
       ),
       
+      # レジリエンスメトリクス
+      counter("grpc.retry.count",
+        tags: [:status]
+      ),
+      summary("grpc.retry.duration",
+        unit: {:native, :millisecond}
+      ),
+      counter("grpc.client.call.count",
+        tags: [:operation, :status, :error]
+      ),
+      summary("grpc.client.call.duration",
+        unit: {:native, :millisecond},
+        tags: [:operation, :status]
+      ),
+      counter("circuit_breaker.call.count",
+        tags: [:circuit_breaker, :status]
+      ),
+      summary("circuit_breaker.call.latency",
+        unit: {:native, :millisecond},
+        tags: [:circuit_breaker, :status]
+      ),
+      
       # ビジネスメトリクス
       counter("command.execute.count",
         tags: [:command_type, :status]

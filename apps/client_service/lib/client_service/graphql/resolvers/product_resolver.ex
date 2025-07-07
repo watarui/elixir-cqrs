@@ -6,6 +6,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
 
   alias ClientService.Infrastructure.GrpcConnections
+  alias Shared.Infrastructure.Grpc.ResilientClient
 
   alias Query.{
     ProductQueryRequest,
@@ -28,9 +29,19 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   def get_product(_parent, %{id: id}, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %ProductQueryRequest{id: id},
-         {:ok, response} <- Query.ProductQuery.Stub.get_product(channel, request) do
+         {:ok, response} <- ResilientClient.call(
+           fn -> Query.ProductQuery.Stub.get_product(channel, request) end,
+           %{
+             timeout: 3000,
+             retry: %{max_attempts: 3},
+             circuit_breaker: :query_service_cb,
+             metadata: %{operation: "get_product", product_id: id}
+           }
+         ) do
       {:ok, format_product(response.product)}
     else
+      {:error, :circuit_open} -> {:error, "Service temporarily unavailable"}
+      {:error, :timeout} -> {:error, "Request timed out"}
       {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to get product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
@@ -58,10 +69,20 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   def list_products(_parent, _args, _context) do
     with {:ok, channel} <- GrpcConnections.get_query_channel(),
          request <- %Empty{},
-         {:ok, response} <- Query.ProductQuery.Stub.list_products(channel, request) do
+         {:ok, response} <- ResilientClient.call(
+           fn -> Query.ProductQuery.Stub.list_products(channel, request) end,
+           %{
+             timeout: 5000,
+             retry: %{max_attempts: 2},
+             circuit_breaker: :query_service_cb,
+             metadata: %{operation: "list_products"}
+           }
+         ) do
       products = Enum.map(response.products, &format_product/1)
       {:ok, products}
     else
+      {:error, :circuit_open} -> {:error, "Service temporarily unavailable"}
+      {:error, :timeout} -> {:error, "Request timed out"}
       {:error, reason} -> {:error, "Failed to get products: #{inspect(reason)}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
@@ -185,7 +206,15 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
            price: round(input.price),
            categoryId: input.category_id
          },
-         {:ok, response} <- Proto.ProductCommand.Stub.update_product(channel, request) do
+         {:ok, response} <- ResilientClient.call(
+           fn -> Proto.ProductCommand.Stub.update_product(channel, request) end,
+           %{
+             timeout: 5000,
+             retry: %{max_attempts: 3},
+             circuit_breaker: :command_service_cb,
+             metadata: %{operation: "create_product", name: input.name}
+           }
+         ) do
       # 作成成功通知を送信
       # TODO: Add PubSub support
       # Absinthe.Subscription.publish(context.pubsub, response.product, product_created: "*")
@@ -202,6 +231,8 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
           {:error, "Unexpected response format"}
       end
     else
+      {:error, :circuit_open} -> {:error, "Service temporarily unavailable"}
+      {:error, :timeout} -> {:error, "Request timed out"}
       {:error, %GRPC.RPCError{} = error} -> {:error, "Failed to create product: #{error.message}"}
       %GRPC.RPCError{} = error -> {:error, "gRPC error: #{error.message}"}
     end
@@ -264,9 +295,19 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
       # キャッシュミスの場合のみgRPC呼び出し
       with {:ok, channel} <- GrpcConnections.get_query_channel(),
            request <- %CategoryQueryRequest{id: category_id},
-           {:ok, response} <- Query.CategoryQuery.Stub.get_category(channel, request) do
+           {:ok, response} <- ResilientClient.call(
+             fn -> Query.CategoryQuery.Stub.get_category(channel, request) end,
+             %{
+               timeout: 2000,
+               retry: %{max_attempts: 2},
+               circuit_breaker: :query_service_cb,
+               metadata: %{operation: "get_category", category_id: category_id}
+             }
+           ) do
         {:ok, format_category(response.category)}
       else
+        {:error, :circuit_open} -> {:error, "Service temporarily unavailable"}
+        {:error, :timeout} -> {:error, "Request timed out"}
         {:error, %GRPC.RPCError{status: :not_found}} -> 
           {:error, "Category not found"}
         {:error, %GRPC.RPCError{} = error} -> 
