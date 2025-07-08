@@ -7,7 +7,7 @@ defmodule CommandService.Application do
 
   use Application
 
-  alias Shared.Telemetry.{Setup, Metrics}
+  alias Shared.Telemetry.{Metrics, Setup}
 
   @impl true
   def start(_type, _args) do

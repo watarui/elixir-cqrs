@@ -69,7 +69,7 @@ defmodule ElixirCqrs.GraphQLHelpers do
   Asserts that a GraphQL response contains no errors.
   """
   def assert_no_errors({:ok, result}) do
-    refute Map.has_key?(result, :errors), 
+    refute Map.has_key?(result, :errors),
            "Expected no errors but got: #{inspect(Map.get(result, :errors))}"
     result.data
   end
@@ -79,11 +79,11 @@ defmodule ElixirCqrs.GraphQLHelpers do
   """
   def assert_has_error({:ok, result}, expected_message) do
     assert Map.has_key?(result, :errors), "Expected errors but got none"
-    
+
     messages = Enum.map(result.errors, & &1.message)
     assert expected_message in messages,
            "Expected error message '#{expected_message}' not found in: #{inspect(messages)}"
-    
+
     result.errors
   end
 

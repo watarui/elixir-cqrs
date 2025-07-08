@@ -3,19 +3,20 @@ defmodule ElixirCqrs.TestHelpers do
   Common test helpers for CQRS testing.
   """
 
-  alias ElixirCqrs.Factory
+  alias ClientService.GraphQL.Schema
   alias CommandService.Application.CommandBus
   alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
   alias CommandService.Infrastructure.EventStore.PostgresEventStore
+  alias Ecto.Adapters.SQL.Sandbox
+  alias ElixirCqrs.Factory
   alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
-  alias QueryService.Infrastructure.Repositories.{ProductRepository, CategoryRepository}
-  alias ClientService.GraphQL.Schema
+  alias QueryService.Infrastructure.Repositories.{CategoryRepository, ProductRepository}
 
   @doc """
   Sets up the test database for CommandService.
   """
   def setup_command_db(_context) do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandRepo)
+    :ok = Sandbox.checkout(CommandRepo)
     :ok
   end
 
@@ -23,7 +24,7 @@ defmodule ElixirCqrs.TestHelpers do
   Sets up the test database for QueryService.
   """
   def setup_query_db(_context) do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryRepo)
+    :ok = Sandbox.checkout(QueryRepo)
     :ok
   end
 

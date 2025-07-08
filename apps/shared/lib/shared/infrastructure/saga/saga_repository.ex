@@ -54,32 +54,30 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   @spec list_active() :: {:ok, [map()]} | {:error, any()}
   def list_active do
     # アクティブな（完了・失敗していない）サガを取得
-    try do
-      # EventStoreからすべてのストリームIDを取得
-      # まずは既知のサガストリームをチェック
-      case get_all_saga_streams() do
-        {:ok, stream_ids} ->
-          # 各ストリームから最新のサガ状態を構築
-          active_sagas =
-            stream_ids
-            |> Enum.map(&get_saga_from_stream/1)
-            |> Enum.filter(fn
-              {:ok, saga} -> saga.state not in [:completed, :failed, :compensated]
-              _ -> false
-            end)
-            |> Enum.map(fn {:ok, saga} -> saga end)
+    # EventStoreからすべてのストリームIDを取得
+    # まずは既知のサガストリームをチェック
+    case get_all_saga_streams() do
+      {:ok, stream_ids} ->
+        # 各ストリームから最新のサガ状態を構築
+        active_sagas =
+          stream_ids
+          |> Enum.map(&get_saga_from_stream/1)
+          |> Enum.filter(fn
+            {:ok, saga} -> saga.state not in [:completed, :failed, :compensated]
+            _ -> false
+          end)
+          |> Enum.map(fn {:ok, saga} -> saga end)
 
-          {:ok, active_sagas}
+        {:ok, active_sagas}
 
-        {:error, reason} ->
-          Logger.error("Failed to list active sagas: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Exception in list_active: #{inspect(error)}")
-        {:error, error}
+      {:error, reason} ->
+        Logger.error("Failed to list active sagas: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Exception in list_active: #{inspect(error)}")
+      {:error, error}
   end
 
   @doc """
@@ -277,29 +275,27 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   defp get_all_saga_streams do
     # EventStoreから全ストリーム名を取得して、sagaプレフィックスでフィルタリング
     # 注: list_snapshotsが実装されていないため、イベントから推測
-    try do
-      # 最近のイベントから推測
-      case EventStore.read_all_events(0) do
-        {:ok, events} ->
-          stream_ids =
-            events
-            |> Enum.filter(fn event ->
-              Map.get(event, :aggregate_id, "") |> String.starts_with?("saga-")
-            end)
-            |> Enum.map(& &1.aggregate_id)
-            |> Enum.uniq()
+    # 最近のイベントから推測
+    case EventStore.read_all_events(0) do
+      {:ok, events} ->
+        stream_ids =
+          events
+          |> Enum.filter(fn event ->
+            Map.get(event, :aggregate_id, "") |> String.starts_with?("saga-")
+          end)
+          |> Enum.map(& &1.aggregate_id)
+          |> Enum.uniq()
 
-          {:ok, stream_ids}
+        {:ok, stream_ids}
 
-        error ->
-          Logger.error("Failed to read events: #{inspect(error)}")
-          # エラーの場合は空リストを返す
-          {:ok, []}
-      end
-    rescue
       error ->
-        {:error, error}
+        Logger.error("Failed to read events: #{inspect(error)}")
+        # エラーの場合は空リストを返す
+        {:ok, []}
     end
+  rescue
+    error ->
+      {:error, error}
   end
 
   defp get_saga_from_stream(stream_id) do

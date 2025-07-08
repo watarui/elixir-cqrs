@@ -202,8 +202,7 @@ defmodule ClientService.Application.CqrsFacade do
   end
 
   defp call_command_service(channel, operation, request) do
-    try do
-      case operation do
+    case operation do
         :category ->
           case CategoryCommand.Stub.update_category(channel, request) do
             {:ok, response} ->
@@ -241,17 +240,15 @@ defmodule ClientService.Application.CqrsFacade do
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
           end
-      end
-    catch
-      error ->
-        Logger.error("Exception in command service call: #{inspect(error)}")
-        {:error, :internal_error}
     end
+  catch
+    error ->
+      Logger.error("Exception in command service call: #{inspect(error)}")
+      {:error, :internal_error}
   end
 
   defp call_query_service(channel, operation, request) do
-    try do
-      case operation do
+    case operation do
         :get_category ->
           case CategoryQuery.Stub.get_category(channel, request) do
             {:ok, response} ->
@@ -297,12 +294,11 @@ defmodule ClientService.Application.CqrsFacade do
               Logger.error("gRPC call failed: #{inspect(reason)}")
               {:error, :grpc_error}
           end
-      end
-    catch
-      error ->
-        Logger.error("Exception in query service call: #{inspect(error)}")
-        {:error, :internal_error}
     end
+  catch
+    error ->
+      Logger.error("Exception in query service call: #{inspect(error)}")
+      {:error, :internal_error}
   end
 
   defp category_to_map(nil), do: nil

@@ -11,13 +11,14 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
   }
 
   alias QueryService.Domain.ReadModels.Category
+  alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Repositories.CategoryRepository
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
 
     # Create test category hierarchy
     categories = create_test_categories()
@@ -426,6 +427,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
   defp create_product(attrs) do
     product_attrs = build(:product, attrs)
-    QueryService.Infrastructure.Repositories.ProductRepository.create(product_attrs)
+    alias QueryService.Infrastructure.Repositories.ProductRepository
+    ProductRepository.create(product_attrs)
   end
 end

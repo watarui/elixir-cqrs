@@ -2,6 +2,8 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
   use ExUnit.Case, async: false
   use ClientService.ConnCase
 
+  alias QueryService.Infrastructure.Repositories.OrderRepository
+
   import ElixirCqrs.GraphQLHelpers
   import ElixirCqrs.TestHelpers
 
@@ -650,7 +652,7 @@ defmodule ClientService.GraphQL.OrderIntegrationTest do
 
     # This would actually create through command service and wait for projection
     # For testing, we'll simulate direct creation
-    {:ok, order} = QueryService.Infrastructure.Repositories.OrderRepository.create(order_attrs)
+    {:ok, order} = OrderRepository.create(order_attrs)
     order
   end
 end

@@ -15,7 +15,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
     UpdateProduct
   }
 
-  alias Shared.Infrastructure.{EventStore, EventBus}
+  alias Shared.Infrastructure.{EventBus, EventStore}
 
   @impl true
   def command_types do
@@ -51,7 +51,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       Enum.each(new_events, &Shared.EventLogger.log_domain_event/1)
 
       # イベントバスに発行
-      Enum.each(new_events, &Shared.Infrastructure.EventBus.publish/1)
+      Enum.each(new_events, &EventBus.publish/1)
 
       {:ok, %{aggregate_id: command.id, events: new_events}}
     else
@@ -72,7 +72,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       Enum.each(new_events, &Shared.EventLogger.log_domain_event/1)
 
       # イベントバスに発行
-      Enum.each(new_events, &Shared.Infrastructure.EventBus.publish/1)
+      Enum.each(new_events, &EventBus.publish/1)
 
       {:ok, %{aggregate_id: command.id, events: new_events}}
     else

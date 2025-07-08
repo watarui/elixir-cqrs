@@ -3,9 +3,13 @@ Code.require_file("../../../test/support/factory.ex", __DIR__)
 Code.require_file("../../../test/support/test_helpers.ex", __DIR__)
 Code.require_file("../../../test/support/graphql_helpers.ex", __DIR__)
 
+alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
+alias Ecto.Adapters.SQL.Sandbox
+alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
+
 # Ecto Sandboxの設定（両方のRepoに対して）
-Ecto.Adapters.SQL.Sandbox.mode(CommandService.Infrastructure.Database.Repo, :manual)
-Ecto.Adapters.SQL.Sandbox.mode(QueryService.Infrastructure.Database.Repo, :manual)
+Sandbox.mode(CommandRepo, :manual)
+Sandbox.mode(QueryRepo, :manual)
 
 # Moxの設定（使用する場合）
 # Mox.defmock(ClientService.CQRSFacadeMock, for: ClientService.Application.CQRSFacade)

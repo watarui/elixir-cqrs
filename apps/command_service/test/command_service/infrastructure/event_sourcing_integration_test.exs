@@ -1,24 +1,25 @@
 defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias CommandService.Infrastructure.EventStore.PostgresEventStore
   alias CommandService.Application.CommandBus
+  alias CommandService.Infrastructure.Database.Repo
+  alias CommandService.Infrastructure.EventStore.PostgresEventStore
 
   alias CommandService.Application.Commands.{
-    CreateProductCommand,
-    UpdateProductCommand,
     CreateCategoryCommand,
-    CreateOrderCommand
+    CreateOrderCommand,
+    CreateProductCommand,
+    UpdateProductCommand
   }
 
-  alias CommandService.Domain.Aggregates.{Product, Category, Order}
+  alias CommandService.Domain.Aggregates.{Category, Order, Product}
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
   import ElixirCqrs.EventStoreHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
 
     # Clear event store for clean test
     clear_event_store()

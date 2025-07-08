@@ -11,14 +11,16 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
     ListOrdersQuery
   }
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias QueryService.Domain.ReadModels.Order
+  alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Repositories.OrderRepository
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
 
     # Create test orders
     orders = create_test_orders()

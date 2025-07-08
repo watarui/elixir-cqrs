@@ -10,8 +10,10 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
   }
 
   alias CommandService.Domain.Aggregates.Product
+  alias CommandService.Infrastructure.Database.Repo
   alias CommandService.Infrastructure.EventStore.PostgresEventStore
   alias CommandService.Infrastructure.Repositories.ProductRepository
+  alias Ecto.Adapters.SQL.Sandbox
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
@@ -19,7 +21,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
 
   setup do
     # Setup test database connections
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
 
     # Optionally setup mocks if using Mox
     # Mox.stub_with(...)

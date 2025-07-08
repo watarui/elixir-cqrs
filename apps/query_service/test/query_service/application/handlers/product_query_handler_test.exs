@@ -10,14 +10,16 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
     SearchProductsQuery
   }
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias QueryService.Domain.ReadModels.Product
+  alias QueryService.Infrastructure.Database.Repo
   alias QueryService.Infrastructure.Repositories.ProductRepository
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(QueryService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
 
     # Create test products
     products = create_test_products()

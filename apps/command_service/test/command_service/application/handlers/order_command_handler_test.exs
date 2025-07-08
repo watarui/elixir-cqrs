@@ -10,6 +10,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
   }
 
   alias CommandService.Domain.Aggregates.Order
+  alias CommandService.Infrastructure.Database.Repo
+  alias Ecto.Adapters.SQL.Sandbox
   alias Shared.Infrastructure.Saga.OrderSaga
 
   import ElixirCqrs.Factory
@@ -17,7 +19,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
   import ElixirCqrs.EventStoreHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
     :ok
   end
 

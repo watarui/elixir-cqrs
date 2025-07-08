@@ -10,13 +10,15 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
   }
 
   alias CommandService.Domain.Aggregates.Category
+  alias CommandService.Infrastructure.Database.Repo
+  alias Ecto.Adapters.SQL.Sandbox
 
   import ElixirCqrs.Factory
   import ElixirCqrs.TestHelpers
   import ElixirCqrs.EventStoreHelpers
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(CommandService.Infrastructure.Database.Repo)
+    :ok = Sandbox.checkout(Repo)
     :ok
   end
 

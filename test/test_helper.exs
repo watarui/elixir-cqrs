@@ -10,6 +10,10 @@ ExUnit.start()
 {:ok, _} = Application.ensure_all_started(:query_service)
 {:ok, _} = Application.ensure_all_started(:client_service)
 
+alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
+alias Ecto.Adapters.SQL.Sandbox
+alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
+
 # Setup Ecto sandboxes for test isolation
-Ecto.Adapters.SQL.Sandbox.mode(CommandService.Infrastructure.Database.Repo, :manual)
-Ecto.Adapters.SQL.Sandbox.mode(QueryService.Infrastructure.Database.Repo, :manual)
+Sandbox.mode(CommandRepo, :manual)
+Sandbox.mode(QueryRepo, :manual)

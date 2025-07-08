@@ -9,7 +9,7 @@ defmodule QueryService.Application.ProjectionManager do
   use GenServer
   require Logger
 
-  alias Shared.Infrastructure.{EventStore, EventBus}
+  alias Shared.Infrastructure.{EventBus, EventStore}
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
