@@ -83,36 +83,42 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     saga_id = UUID.uuid4()
 
     # サガを初期化
-    saga = saga_module.start(saga_id, initial_data)
+    try do
+      saga = saga_module.start(saga_id, initial_data)
 
-    # 開始イベントを発行
-    event = SagaEvents.SagaStarted.new(saga_id, saga.saga_type, initial_data, metadata)
+      # 開始イベントを発行
+      event = SagaEvents.SagaStarted.new(saga_id, saga.saga_type, initial_data, metadata)
 
-    case persist_saga_event(event) do
-      {:ok, _version} ->
-        # サガを永続化
-        case SagaRepository.save(saga) do
-          {:ok, _} ->
-            # アクティブなサガとして登録
-            new_state =
-              put_in(state.active_sagas[saga_id], %{
-                module: saga_module,
-                saga: saga
-              })
+      case persist_saga_event(event) do
+        :ok ->
+          # サガを永続化
+          case SagaRepository.save(saga) do
+            {:ok, _} ->
+              # アクティブなサガとして登録
+              new_state =
+                put_in(state.active_sagas[saga_id], %{
+                  module: saga_module,
+                  saga: saga
+                })
 
-            # 初期コマンドを処理
-            handle_initial_commands(saga_module, saga)
+              # 初期コマンドを処理
+              handle_initial_commands(saga_module, saga)
 
-            {:reply, {:ok, saga_id}, new_state}
+              {:reply, {:ok, saga_id}, new_state}
 
-          {:error, reason} = error ->
-            Logger.error("Failed to save saga: #{inspect(reason)}")
-            {:reply, error, state}
-        end
+            {:error, reason} = error ->
+              Logger.error("Failed to save saga: #{inspect(reason)}")
+              {:reply, error, state}
+          end
 
-      {:error, reason} = error ->
-        Logger.error("Failed to persist saga started event: #{inspect(reason)}")
-        {:reply, error, state}
+        {:error, reason} = error ->
+          Logger.error("Failed to persist saga started event: #{inspect(reason)}")
+          {:reply, error, state}
+      end
+    rescue
+      error ->
+        Logger.error("Failed to start saga: #{inspect(error)}")
+        {:reply, {:error, :saga_start_failed}, state}
     end
   end
 
@@ -239,16 +245,16 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
                  saga_id,
                  initial_data,
                  %{triggered_by: event.event_id},
-                 state
+                 acc
                ) do
-            {:ok, _new_state} ->
+            {:ok, new_state} ->
               Logger.info("Saga automatically triggered",
                 saga_type: saga_type,
                 saga_id: saga_id,
                 trigger_event: event_type
               )
 
-              acc
+              new_state
 
             {:error, reason} ->
               Logger.error("Failed to trigger saga",
@@ -304,7 +310,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
         SagaRepository.save(saga)
 
         # 最初のステップを実行
-        process_next_step(saga_id, saga, saga_module, new_state)
+        updated_state = process_next_step(saga_id, saga, saga_module, new_state)
+        {:ok, updated_state}
 
       {:error, reason} ->
         {:error, reason}
