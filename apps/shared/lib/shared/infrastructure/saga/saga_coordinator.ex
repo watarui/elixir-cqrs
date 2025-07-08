@@ -240,27 +240,36 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
           saga_id = UUID.uuid4()
           initial_data = extract_initial_data(event, saga_module)
 
-          case start_saga_internal(
-                 saga_module,
-                 saga_id,
-                 initial_data,
-                 %{triggered_by: event.event_id},
-                 acc
-               ) do
-            {:ok, new_state} ->
-              Logger.info("Saga automatically triggered",
-                saga_type: saga_type,
-                saga_id: saga_id,
-                trigger_event: event_type
+          # 新しいサガを作成してstateに保存し、対象サガのリストに追加
+          try do
+            saga = saga_module.start(saga_id, initial_data)
+
+            # サガ開始イベントを発行
+            start_event =
+              SagaEvents.SagaStarted.new(
+                saga_id,
+                saga_module |> Module.split() |> List.last(),
+                initial_data,
+                %{triggered_by: event.event_id}
               )
 
-              new_state
+            persist_saga_event(start_event)
 
-            {:error, reason} ->
+            # サガ情報を作成
+            saga_info = %{
+              module: saga_module,
+              saga: saga,
+              started_at: DateTime.utc_now()
+            }
+
+            # stateを更新（handle_castで行うため、ここでは単にリストに追加）
+            [{saga_id, saga_info} | acc]
+          rescue
+            error ->
               Logger.error("Failed to trigger saga",
                 saga_type: saga_type,
                 trigger_event: event_type,
-                error: inspect(reason)
+                error: inspect(error)
               )
 
               acc
@@ -341,10 +350,20 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     end
   end
 
-  defp process_event_for_saga(event, saga_id, %{module: saga_module, saga: saga}, state) do
+  defp process_event_for_saga(event, saga_id, saga_info, state) do
+    %{module: saga_module, saga: saga} = saga_info
+
+    # 新しく作成されたサガの場合、まずstateに追加
+    state_with_saga =
+      if Map.has_key?(state.active_sagas, saga_id) do
+        state
+      else
+        put_in(state, [:active_sagas, saga_id], saga_info)
+      end
+
     # 既に処理済みのイベントかチェック
     if already_processed?(saga, event) do
-      state
+      state_with_saga
     else
       case saga_module.handle_event(event, saga) do
         {:ok, commands} ->
@@ -363,16 +382,27 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
           # サガを永続化
           case SagaRepository.save(updated_saga) do
             {:ok, _} ->
+              # stateのサガ情報を更新
+              updated_state =
+                put_in(state_with_saga, [:active_sagas, saga_id, :saga], updated_saga)
+
               # サガが完了または失敗したかチェック
-              handle_saga_completion(updated_saga, saga_module, saga_id, state)
+              handle_saga_completion(updated_saga, saga_module, saga_id, updated_state)
 
             {:error, reason} ->
               Logger.error("Failed to save saga: #{inspect(reason)}")
-              state
+              state_with_saga
           end
 
         {:error, reason} ->
-          handle_saga_failure(saga, saga_module, saga_id, event.event_type, reason, state)
+          handle_saga_failure(
+            saga,
+            saga_module,
+            saga_id,
+            event.event_type,
+            reason,
+            state_with_saga
+          )
       end
     end
   end
