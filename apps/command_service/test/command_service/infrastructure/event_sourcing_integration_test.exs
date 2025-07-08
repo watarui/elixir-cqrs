@@ -14,9 +14,9 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
 
   alias CommandService.Domain.Aggregates.{Category, Order, Product}
 
-  import ElixirCqrs.Factory
-  import ElixirCqrs.TestHelpers
-  import ElixirCqrs.EventStoreHelpers
+  # import ElixirCqrs.Factory
+  # import ElixirCqrs.TestHelpers
+  # import ElixirCqrs.EventStoreHelpers
 
   setup do
     :ok = Sandbox.checkout(Repo)

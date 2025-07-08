@@ -15,9 +15,9 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
   alias CommandService.Infrastructure.Repositories.ProductRepository
   alias Ecto.Adapters.SQL.Sandbox
 
-  import ElixirCqrs.Factory
-  import ElixirCqrs.TestHelpers
-  import ElixirCqrs.EventStoreHelpers
+  # import ElixirCqrs.Factory
+  # import ElixirCqrs.TestHelpers
+  # import ElixirCqrs.EventStoreHelpers
 
   setup do
     # Setup test database connections

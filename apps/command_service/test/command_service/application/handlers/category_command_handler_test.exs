@@ -13,13 +13,21 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
   alias CommandService.Infrastructure.Database.Repo
   alias Ecto.Adapters.SQL.Sandbox
 
-  import ElixirCqrs.Factory
-  import ElixirCqrs.TestHelpers
-  import ElixirCqrs.EventStoreHelpers
+  # # import ElixirCqrs.Factory
+  # # import ElixirCqrs.TestHelpers
+  # # import ElixirCqrs.EventStoreHelpers
 
   setup do
     :ok = Sandbox.checkout(Repo)
     :ok
+  end
+
+  defp test_metadata do
+    %{
+      user_id: Ecto.UUID.generate(),
+      request_id: Ecto.UUID.generate(),
+      timestamp: DateTime.utc_now()
+    }
   end
 
   describe "handle CreateCategoryCommand" do
