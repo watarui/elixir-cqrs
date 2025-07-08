@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: elixir-cqrs
-  labels:
-    app.kubernetes.io/name: elixir-cqrs
-    app.kubernetes.io/part-of: elixir-cqrs
