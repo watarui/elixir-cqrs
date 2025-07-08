@@ -45,7 +45,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
     test "returns error for non-existent order" do
       # Arrange
-      query = GetOrderQuery.new(%{id: UUID.uuid4()})
+      query = GetOrderQuery.new(%{id: Ecto.UUID.generate()})
 
       # Act
       result = OrderQueryHandler.handle(query)
@@ -161,10 +161,10 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   describe "handle GetOrdersByCustomerQuery" do
     test "retrieves all orders for a specific customer" do
       # Arrange
-      customer_id = UUID.uuid4()
+      customer_id = Ecto.UUID.generate()
       create_order(%{customer_id: customer_id, status: "completed"})
       create_order(%{customer_id: customer_id, status: "pending"})
-      create_order(%{customer_id: UUID.uuid4(), status: "pending"})
+      create_order(%{customer_id: Ecto.UUID.generate(), status: "pending"})
 
       query = GetOrdersByCustomerQuery.new(%{customer_id: customer_id})
 
@@ -179,7 +179,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
     test "includes order summary statistics", %{orders: _} do
       # Arrange
-      customer_id = UUID.uuid4()
+      customer_id = Ecto.UUID.generate()
 
       create_order(%{
         customer_id: customer_id,
@@ -210,7 +210,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
     test "filters customer orders by status" do
       # Arrange
-      customer_id = UUID.uuid4()
+      customer_id = Ecto.UUID.generate()
       create_order(%{customer_id: customer_id, status: "completed"})
       create_order(%{customer_id: customer_id, status: "pending"})
       create_order(%{customer_id: customer_id, status: "cancelled"})
@@ -231,7 +231,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
     test "returns empty list for customer with no orders" do
       # Arrange
-      query = GetOrdersByCustomerQuery.new(%{customer_id: UUID.uuid4()})
+      query = GetOrdersByCustomerQuery.new(%{customer_id: Ecto.UUID.generate()})
 
       # Act
       result = OrderQueryHandler.handle(query)
@@ -450,7 +450,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
 
   # Helper functions
   defp create_test_orders do
-    customer_id = UUID.uuid4()
+    customer_id = Ecto.UUID.generate()
 
     [
       create_order(%{
@@ -464,7 +464,7 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
         total_amount: Decimal.new("199.99")
       }),
       create_order(%{
-        customer_id: UUID.uuid4(),
+        customer_id: Ecto.UUID.generate(),
         status: "completed",
         total_amount: Decimal.new("299.99")
       })

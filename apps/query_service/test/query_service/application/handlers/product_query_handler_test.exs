@@ -44,7 +44,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "returns error for non-existent product" do
       # Arrange
-      query = GetProductQuery.new(%{id: UUID.uuid4()})
+      query = GetProductQuery.new(%{id: Ecto.UUID.generate()})
 
       # Act
       result = ProductQueryHandler.handle(query)
@@ -245,10 +245,10 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
   describe "handle GetProductsByCategoryQuery" do
     test "retrieves all products in a category", %{products: _} do
       # Arrange
-      category_id = UUID.uuid4()
+      category_id = Ecto.UUID.generate()
       create_product(%{name: "Cat Product 1", category_id: category_id})
       create_product(%{name: "Cat Product 2", category_id: category_id})
-      create_product(%{name: "Other Product", category_id: UUID.uuid4()})
+      create_product(%{name: "Other Product", category_id: Ecto.UUID.generate()})
 
       query = GetProductsByCategoryQuery.new(%{category_id: category_id})
 
@@ -263,8 +263,8 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "includes subcategory products when specified" do
       # Arrange
-      parent_category_id = UUID.uuid4()
-      sub_category_id = UUID.uuid4()
+      parent_category_id = Ecto.UUID.generate()
+      sub_category_id = Ecto.UUID.generate()
 
       # Simulate category hierarchy
       create_product(%{
@@ -294,7 +294,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
     test "returns empty list for category with no products" do
       # Arrange
-      query = GetProductsByCategoryQuery.new(%{category_id: UUID.uuid4()})
+      query = GetProductsByCategoryQuery.new(%{category_id: Ecto.UUID.generate()})
 
       # Act
       result = ProductQueryHandler.handle(query)
@@ -362,7 +362,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
 
   # Helper functions
   defp create_test_products do
-    category_id = UUID.uuid4()
+    category_id = Ecto.UUID.generate()
 
     [
       create_product(%{

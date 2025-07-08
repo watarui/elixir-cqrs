@@ -163,7 +163,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
 
     test "成功イベントを処理できる", %{saga_id: saga_id} do
       event = %{
-        event_id: UUID.uuid4(),
+        event_id: Ecto.UUID.generate(),
         event_type: "test_event_success",
         aggregate_id: saga_id,
         occurred_at: DateTime.utc_now(),
@@ -178,7 +178,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
 
     test "失敗イベントで補償処理が開始される", %{saga_id: saga_id} do
       event = %{
-        event_id: UUID.uuid4(),
+        event_id: Ecto.UUID.generate(),
         event_type: "test_event_failure",
         aggregate_id: saga_id,
         occurred_at: DateTime.utc_now(),
@@ -195,7 +195,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
   describe "trigger_events" do
     test "トリガーイベントで新しいサガが開始される" do
       trigger_event = %{
-        event_id: UUID.uuid4(),
+        event_id: Ecto.UUID.generate(),
         event_type: "trigger_test_saga",
         aggregate_id: "test_aggregate",
         occurred_at: DateTime.utc_now(),
@@ -224,7 +224,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
 
       # 2. 成功イベントを送信
       success_event = %{
-        event_id: UUID.uuid4(),
+        event_id: Ecto.UUID.generate(),
         event_type: "test_event_success",
         aggregate_id: saga_id,
         occurred_at: DateTime.utc_now(),

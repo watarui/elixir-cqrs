@@ -24,6 +24,84 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
     ReserveInventoryCommand
   }
 
+  # Public API
+  def new(saga_id, initial_data) do
+    %{
+      saga_id: saga_id,
+      order_id: initial_data[:order_id],
+      user_id: initial_data[:user_id] || initial_data[:customer_id],
+      customer_id: initial_data[:customer_id] || initial_data[:user_id],
+      items: initial_data[:items] || [],
+      total_amount: initial_data[:total_amount],
+      shipping_address: initial_data[:shipping_address],
+      state: :started,
+      current_step: :reserve_inventory,
+      processed_events: [],
+      # サガ固有の状態
+      inventory_reserved: false,
+      payment_processed: false,
+      shipping_arranged: false,
+      order_confirmed: false
+    }
+  end
+
+  def next_step(saga) do
+    cond do
+      saga.state == :completed ->
+        {:ok, []}
+
+      saga.state == :failed ->
+        {:ok, []}
+
+      true ->
+        case saga.current_step do
+          :reserve_inventory ->
+            commands = [
+              ReserveInventoryCommand.new(%{
+                order_id: saga.order_id,
+                items: saga.items
+              })
+            ]
+
+            {:ok, commands}
+
+          :process_payment ->
+            commands = [
+              ProcessPaymentCommand.new(%{
+                order_id: saga.order_id,
+                customer_id: saga.customer_id || saga.user_id,
+                amount: saga.total_amount
+              })
+            ]
+
+            {:ok, commands}
+
+          :arrange_shipping ->
+            commands = [
+              ArrangeShippingCommand.new(%{
+                order_id: saga.order_id,
+                shipping_address: saga.shipping_address,
+                items: saga.items
+              })
+            ]
+
+            {:ok, commands}
+
+          :confirm_order ->
+            commands = [
+              ConfirmOrderCommand.new(%{
+                order_id: saga.order_id
+              })
+            ]
+
+            {:ok, commands}
+
+          _ ->
+            {:ok, []}
+        end
+    end
+  end
+
   @impl true
   def start(saga_id, initial_data) do
     saga = super(saga_id, initial_data)
@@ -44,35 +122,24 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
   @impl true
   def handle_event(event, saga) do
-    case {event.event_type, saga.state} do
-      {"saga_started", :started} ->
-        # 最初のステップ: 在庫予約
-        commands = [
-          ReserveInventoryCommand.new(%{
-            order_id: saga.order_id,
-            items: saga.items
-          })
-        ]
-
-        {:ok, commands}
-
-      {"inventory_reserved", :started} ->
+    case event.event_type do
+      "inventory_reserved" ->
         # 在庫予約成功 -> 支払い処理へ
-        _updated_saga = %{saga | inventory_reserved: true}
+        updated_saga = %{saga | inventory_reserved: true, current_step: :process_payment}
 
         commands = [
           ProcessPaymentCommand.new(%{
             order_id: saga.order_id,
-            customer_id: saga.customer_id,
+            customer_id: saga.customer_id || saga.user_id,
             amount: saga.total_amount
           })
         ]
 
         {:ok, commands}
 
-      {"payment_processed", :started} ->
+      "payment_processed" ->
         # 支払い成功 -> 配送手配へ
-        _updated_saga = %{saga | payment_processed: true}
+        updated_saga = %{saga | payment_processed: true, current_step: :arrange_shipping}
 
         commands = [
           ArrangeShippingCommand.new(%{
@@ -84,9 +151,9 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
         {:ok, commands}
 
-      {"shipping_arranged", :started} ->
+      "shipping_arranged" ->
         # 配送手配成功 -> 注文確定
-        _updated_saga = %{saga | shipping_arranged: true}
+        updated_saga = %{saga | shipping_arranged: true, current_step: :confirm_order}
 
         commands = [
           ConfirmOrderCommand.new(%{
@@ -96,34 +163,34 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
         {:ok, commands}
 
-      {"order_confirmed", :started} ->
+      "order_confirmed" ->
         # すべて成功 -> サガ完了
-        _updated_saga = %{saga | order_confirmed: true, state: :completed}
+        updated_saga = %{saga | order_confirmed: true, state: :completed}
         {:ok, []}
 
       # 失敗ケース
-      {"inventory_reservation_failed", _} ->
+      "inventory_reservation_failed" ->
         # 在庫予約失敗 -> 注文キャンセル
         {:error, "Insufficient inventory"}
 
-      {"payment_failed", _} ->
+      "payment_failed" ->
         # 支払い失敗 -> 補償処理開始
         {:error, "Payment processing failed"}
 
-      {"shipping_failed", _} ->
+      "shipping_failed" ->
         # 配送手配失敗 -> 補償処理開始
         {:error, "Shipping arrangement failed"}
 
       # 補償処理のイベント
-      {"inventory_released", :compensating} ->
+      "inventory_released" when saga.state == :compensating ->
         # 在庫解放完了
         check_compensation_completion(saga)
 
-      {"payment_refunded", :compensating} ->
+      "payment_refunded" when saga.state == :compensating ->
         # 返金完了
         check_compensation_completion(saga)
 
-      {"shipping_cancelled", :compensating} ->
+      "shipping_cancelled" when saga.state == :compensating ->
         # 配送キャンセル完了
         check_compensation_completion(saga)
 
@@ -177,7 +244,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
   @impl true
   def completed?(saga) do
-    saga.state == :completed && saga.order_confirmed
+    saga.state == :completed
   end
 
   @impl true

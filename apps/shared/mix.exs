@@ -44,6 +44,8 @@ defmodule Shared.MixProject do
 
       # PostgreSQL（イベントストア用）
       {:postgrex, "~> 0.19"},
+      {:ecto, "~> 3.12"},
+      {:ecto_sql, "~> 3.12"},
 
       # OpenTelemetry
       {:opentelemetry, "~> 1.3"},

@@ -223,7 +223,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "successfully updates shipping address before processing", %{order: order} do
       # Arrange
       new_address =
-        build(:shipping_address, %{
+        build_shipping_address(%{
           street: "123 New Street",
           city: "New City"
         })
@@ -454,13 +454,19 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
 
   # Helper functions
   defp create_test_order(attrs \\ %{}) do
-    order_attrs = build(:order, attrs)
+    default_attrs = %{
+      customer_id: Ecto.UUID.generate(),
+      items: [build_order_item()],
+      shipping_address: build_shipping_address()
+    }
+
+    order_attrs = Map.merge(default_attrs, attrs)
     command = CreateOrderCommand.new(Map.merge(order_attrs, %{metadata: test_metadata()}))
 
     {:ok, events} = OrderCommandHandler.handle(command)
     event = hd(events)
 
-    %Order{
+    %{
       id: event.aggregate_id,
       customer_id: event.event_data.customer_id,
       items: event.event_data.items,

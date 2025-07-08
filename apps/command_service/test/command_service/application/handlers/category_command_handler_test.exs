@@ -194,7 +194,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # Arrange
       command =
         UpdateCategoryCommand.new(%{
-          id: UUID.uuid4(),
+          id: Ecto.UUID.generate(),
           name: "Should Fail",
           metadata: test_metadata()
         })
@@ -293,7 +293,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # Arrange
       command =
         DeleteCategoryCommand.new(%{
-          id: UUID.uuid4(),
+          id: Ecto.UUID.generate(),
           metadata: test_metadata()
         })
 
@@ -366,13 +366,23 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
   # Helper functions
   defp create_test_category(attrs \\ %{}) do
-    category_attrs = build(:category, attrs)
+    category_attrs =
+      Map.merge(
+        %{
+          name: "Test Category",
+          description: "Test Description",
+          parent_id: nil,
+          path: []
+        },
+        attrs
+      )
+
     command = CreateCategoryCommand.new(Map.merge(category_attrs, %{metadata: test_metadata()}))
 
     {:ok, events} = CategoryCommandHandler.handle(command)
     event = hd(events)
 
-    %Category{
+    %{
       id: event.aggregate_id,
       name: event.event_data.name,
       description: event.event_data.description,

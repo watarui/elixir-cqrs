@@ -42,7 +42,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "returns error for non-existent category" do
       # Arrange
-      query = GetCategoryQuery.new(%{id: UUID.uuid4()})
+      query = GetCategoryQuery.new(%{id: Ecto.UUID.generate()})
 
       # Act
       result = CategoryQueryHandler.handle(query)
@@ -129,10 +129,10 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "filters by parent category" do
       # Arrange
-      parent_id = UUID.uuid4()
+      parent_id = Ecto.UUID.generate()
       create_category(%{name: "Child 1", parent_id: parent_id})
       create_category(%{name: "Child 2", parent_id: parent_id})
-      create_category(%{name: "Other", parent_id: UUID.uuid4()})
+      create_category(%{name: "Other", parent_id: Ecto.UUID.generate()})
 
       query = ListCategoriesQuery.new(%{parent_id: parent_id})
 
@@ -296,7 +296,7 @@ defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
 
     test "returns error for non-existent category" do
       # Arrange
-      query = GetCategoryPathQuery.new(%{id: UUID.uuid4()})
+      query = GetCategoryPathQuery.new(%{id: Ecto.UUID.generate()})
 
       # Act
       result = CategoryQueryHandler.handle(query)
