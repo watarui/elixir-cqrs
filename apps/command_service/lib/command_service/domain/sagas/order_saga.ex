@@ -102,9 +102,9 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
     end
   end
 
-  @impl true
+  # SagaBase behavior implementation
   def start(saga_id, initial_data) do
-    saga = super(saga_id, initial_data)
+    saga = %{saga_id: saga_id}
 
     Map.merge(saga, %{
       order_id: initial_data.order_id,

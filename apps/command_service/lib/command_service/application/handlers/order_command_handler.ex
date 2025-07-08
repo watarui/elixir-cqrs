@@ -167,10 +167,10 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   defp publish_event(event) do
     stream_name = "order-#{event.order_id}"
 
-    EventStore.append_to_stream(
+    Shared.Infrastructure.EventStore.append_to_stream(
       stream_name,
       [event],
-      expected_version: :any
+      :any
     )
   end
 end

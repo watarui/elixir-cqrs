@@ -75,6 +75,20 @@ defmodule CommandService.Infrastructure.CommandBus do
     module = command.__struct__
 
     module in [
+      # Order-related commands
+      CommandService.Application.Commands.CreateOrderCommand,
+      CommandService.Application.Commands.UpdateOrderCommand,
+      CommandService.Application.Commands.CancelOrderCommand,
+      # OrderCommands module commands
+      CommandService.Application.Commands.OrderCommands.ReserveInventoryCommand,
+      CommandService.Application.Commands.OrderCommands.ReleaseInventoryCommand,
+      CommandService.Application.Commands.OrderCommands.ProcessPaymentCommand,
+      CommandService.Application.Commands.OrderCommands.RefundPaymentCommand,
+      CommandService.Application.Commands.OrderCommands.ArrangeShippingCommand,
+      CommandService.Application.Commands.OrderCommands.CancelShippingCommand,
+      CommandService.Application.Commands.OrderCommands.ConfirmOrderCommand,
+      CommandService.Application.Commands.OrderCommands.CancelOrderCommand,
+      # Legacy commands (if they exist)
       CommandService.Domain.Commands.ReserveInventory,
       CommandService.Domain.Commands.ReleaseInventory,
       CommandService.Domain.Commands.ProcessPayment,

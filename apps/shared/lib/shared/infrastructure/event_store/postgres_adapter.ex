@@ -62,7 +62,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     db_config =
       if opts[:url] do
         # URLから基本設定を取得し、database設定で上書き
-        base_config = Ecto.Repo.Supervisor.parse_url(opts[:url])
+        base_config = parse_database_url(opts[:url])
         Logger.info("Parsed URL config: #{inspect(base_config |> Keyword.delete(:password))}")
 
         final_config = Keyword.merge(base_config, Keyword.take(opts, [:database, :pool_size]))
@@ -419,5 +419,25 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       "SagaCompensationStarted" -> Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
       _ -> raise "Unknown event type: #{event_type}"
     end
+  end
+
+  # データベースURLをパースする
+  defp parse_database_url(url) do
+    uri = URI.parse(url)
+
+    [username, password] =
+      case uri.userinfo do
+        nil -> [nil, nil]
+        userinfo -> String.split(userinfo, ":", parts: 2)
+      end
+
+    [
+      hostname: uri.host || "localhost",
+      port: uri.port || 5432,
+      database: String.trim_leading(uri.path || "", "/"),
+      username: username,
+      password: password
+    ]
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
   end
 end
