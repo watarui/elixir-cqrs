@@ -265,7 +265,12 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
 
       _ ->
         # その他のイベントは処理済みとして記録
-        processed = [{event.event_id, event.occurred_at} | saga.processed_events]
+        processed_event = %{
+          event_id: event.event_id,
+          processed_at: event.occurred_at
+        }
+
+        processed = [processed_event | saga.processed_events]
         %{saga | processed_events: processed, updated_at: event.occurred_at}
     end
   end

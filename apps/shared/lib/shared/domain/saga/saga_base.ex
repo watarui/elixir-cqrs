@@ -50,7 +50,12 @@ defmodule Shared.Domain.Saga.SagaBase do
       イベントを処理済みとして記録する
       """
       def mark_event_processed(saga, event) do
-        processed_events = [{event.event_id, DateTime.utc_now()} | saga.processed_events]
+        processed_event = %{
+          event_id: event.event_id,
+          processed_at: DateTime.utc_now()
+        }
+
+        processed_events = [processed_event | saga.processed_events]
         update_state(saga, %{processed_events: processed_events})
       end
 

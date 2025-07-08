@@ -408,7 +408,11 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   end
 
   defp already_processed?(saga, event) do
-    Enum.any?(saga.processed_events, fn {event_id, _} -> event_id == event.event_id end)
+    Enum.any?(saga.processed_events, fn
+      %{event_id: event_id} -> event_id == event.event_id
+      # 後方互換性のため
+      {event_id, _} -> event_id == event.event_id
+    end)
   end
 
   defp update_saga_state_from_event(saga, event, saga_module) do
