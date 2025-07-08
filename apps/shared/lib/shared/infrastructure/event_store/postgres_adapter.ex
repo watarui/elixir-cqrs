@@ -56,12 +56,22 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl GenServer
   def init(opts) do
+    Logger.info("PostgresAdapter init with opts: #{inspect(opts)}")
+
     # URLが指定されている場合はそちらを優先
     db_config =
       if opts[:url] do
         # URLから基本設定を取得し、database設定で上書き
         base_config = Ecto.Repo.Supervisor.parse_url(opts[:url])
-        Keyword.merge(base_config, Keyword.take(opts, [:database, :pool_size]))
+        Logger.info("Parsed URL config: #{inspect(base_config |> Keyword.delete(:password))}")
+
+        final_config = Keyword.merge(base_config, Keyword.take(opts, [:database, :pool_size]))
+        # databaseが指定されていればそれを使用
+        if opts[:database] do
+          Keyword.put(final_config, :database, opts[:database])
+        else
+          final_config
+        end
       else
         [
           hostname: opts[:hostname] || System.get_env("EVENT_STORE_HOST", "postgres-event"),

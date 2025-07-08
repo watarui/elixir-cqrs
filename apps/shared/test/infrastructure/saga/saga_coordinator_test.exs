@@ -109,7 +109,10 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
     # Start EventStore if not already started
     case Process.whereis(Shared.Infrastructure.EventStore.PostgresAdapter) do
       nil ->
-        {:ok, _} = Shared.Infrastructure.EventStore.PostgresAdapter.start_link([])
+        {:ok, _} =
+          Shared.Infrastructure.EventStore.PostgresAdapter.start_link(
+            Application.get_env(:shared, :event_store_repo, [])
+          )
 
       _ ->
         :ok

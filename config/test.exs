@@ -59,8 +59,11 @@ config :grpc, start_server: false
 if database_url do
   # CI環境ではDATABASE_URLから設定を取得
   config :shared, :event_store_repo,
-    url: database_url,
+    username: "postgres",
+    password: "postgres",
+    hostname: "localhost",
     database: "event_store_test#{System.get_env("MIX_TEST_PARTITION")}",
+    port: 5432,
     pool_size: 10
 else
   # ローカル環境では明示的な設定を使用
