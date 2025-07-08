@@ -63,6 +63,9 @@ jobs:
         PGPASSWORD: postgres
         DATABASE_URL: ecto://postgres:postgres@localhost:5432/test_db
       run: |
+        # Create event store database
+        PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE event_store_test;" || true
+        # Create regular test databases
         mix ecto.create
         mix ecto.migrate
     
@@ -70,6 +73,11 @@ jobs:
       env:
         MIX_ENV: test
         DATABASE_URL: ecto://postgres:postgres@localhost:5432/test_db
+        EVENT_STORE_DB_HOST: localhost
+        EVENT_STORE_DB_USER: postgres
+        EVENT_STORE_DB_PASSWORD: postgres
+        EVENT_STORE_DB_NAME: event_store_test
+        EVENT_STORE_DB_PORT: 5432
       run: mix test
     
     - name: Run dialyzer
