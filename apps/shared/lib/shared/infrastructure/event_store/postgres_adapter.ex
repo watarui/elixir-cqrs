@@ -466,7 +466,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       "SagaCompensationStarted" ->
         Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
 
-      # Other test events
+      # Other events
       _ ->
         # For unknown event types, return a generic map module
         Logger.warning("Unknown event type: #{event_type}, using Map")
