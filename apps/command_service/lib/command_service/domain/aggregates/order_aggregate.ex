@@ -100,7 +100,11 @@ defmodule CommandService.Domain.Aggregates.OrderAggregate do
           status: "pending",
           shipping_address: params.shipping_address
         },
-        event_metadata: params[:metadata] || %{},
+        event_metadata:
+          Map.merge(params[:metadata] || %{}, %{
+            saga_trigger: true,
+            saga_type: Shared.Infrastructure.Saga.OrderSaga
+          }),
         event_version: 1,
         occurred_at: DateTime.utc_now()
       }
