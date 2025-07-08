@@ -76,7 +76,7 @@ defmodule CommandService.Application do
         [
           # gRPC サーバー
           {GRPC.Server.Supervisor,
-           endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50_051, start_server: true}
+           endpoint: CommandService.Presentation.Grpc.Endpoint, port: 50_051}
         ]
       else
         []

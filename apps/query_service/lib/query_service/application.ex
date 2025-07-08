@@ -21,36 +21,38 @@ defmodule QueryService.Application do
       :opentelemetry_ecto.setup([:query_service, :repo])
     end
 
-    children = [
+    base_children = [
       # データベース接続
       QueryService.Infrastructure.Database.Repo,
 
       # Telemetry監視
       {Telemetry.Metrics.ConsoleReporter, metrics: Metrics.metrics()},
 
-      # Prometheusエクスポーター
-      {
-        TelemetryMetricsPrometheus,
-        # Prometheusエクスポーターは内部でPlugを使用するため、
-        # 別のPlug.Cowboyは不要
-        metrics: Metrics.metrics(), port: 9570, plug_cowboy_opts: []
-      },
-
       # ETSキャッシュ
       QueryService.Infrastructure.Cache.EtsCache,
 
-      # イベントストア (PostgreSQL) - ProjectionManagerがイベントを読むため
-      {Shared.Infrastructure.EventStore.PostgresAdapter,
-       Application.get_env(:shared, :event_store_repo, [])},
-
       # プロジェクションマネージャー（イベント→Read Model投影）
+      # イベントストアはsharedアプリケーションで起動されているため、ここでは起動しない
       {QueryService.Application.ProjectionManager,
-       query_repo: QueryService.Infrastructure.Database.Repo},
-
-      # gRPC サーバー
-      {GRPC.Server.Supervisor,
-       endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50_052, start_server: true}
+       query_repo: QueryService.Infrastructure.Database.Repo}
     ]
+
+    # Prometheusエクスポーターとgはは本番環境でのみ起動
+    children =
+      if Mix.env() != :test do
+        base_children ++
+          [
+            {
+              TelemetryMetricsPrometheus,
+              metrics: Metrics.metrics(), port: 9570, plug_cowboy_opts: []
+            },
+            # gRPC サーバー
+            {GRPC.Server.Supervisor,
+             endpoint: QueryService.Presentation.Grpc.Endpoint, port: 50_052}
+          ]
+      else
+        base_children
+      end
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
