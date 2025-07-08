@@ -13,7 +13,7 @@ defmodule Shared.Infrastructure.Saga.TestCommandDispatcher do
     {:ok, results}
   end
 
-  def dispatch_compensation(command) do
+  def dispatch_compensation(_command) do
     # In tests, compensations always succeed
     {:ok, %{compensated: true}}
   end

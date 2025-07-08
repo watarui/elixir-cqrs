@@ -19,13 +19,9 @@ defmodule ClientService.Application.CqrsFacade do
   }
 
   alias Query.{
-    CategoryListResponse,
     CategoryQuery,
     CategoryQueryRequest,
     Empty,
-    ListCategoriesQuery,
-    ListProductsQuery,
-    ProductListResponse,
     ProductQuery,
     ProductQueryRequest
   }
@@ -407,21 +403,21 @@ defmodule ClientService.Application.CqrsFacade do
     # end
   end
 
-  defp saga_item_to_proto(item) do
-    %{
-      productId: Map.get(item, :product_id, ""),
-      productName: Map.get(item, :product_name, ""),
-      quantity: Map.get(item, :quantity, 0),
-      unitPrice: Map.get(item, :unit_price, 0.0),
-      subtotal: Map.get(item, :subtotal, 0.0)
-    }
-  end
+  # defp saga_item_to_proto(item) do
+  #   %{
+  #     productId: Map.get(item, :product_id, ""),
+  #     productName: Map.get(item, :product_name, ""),
+  #     quantity: Map.get(item, :quantity, 0),
+  #     unitPrice: Map.get(item, :unit_price, 0.0),
+  #     subtotal: Map.get(item, :subtotal, 0.0)
+  #   }
+  # end
 
-  defp timestamp_to_datetime(nil), do: nil
-
-  defp timestamp_to_datetime(timestamp) do
-    DateTime.from_unix!(timestamp.seconds)
-  end
+  # defp timestamp_to_datetime(nil), do: nil
+  #
+  # defp timestamp_to_datetime(timestamp) do
+  #   DateTime.from_unix!(timestamp.seconds)
+  # end
 
   defp build_shipping_address(saga_context) do
     case Map.get(saga_context, :shipping_address) do

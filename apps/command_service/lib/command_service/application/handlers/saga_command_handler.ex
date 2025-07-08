@@ -71,7 +71,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
     EventBus.publish(event)
 
     # SAGAコーディネーターにも直接通知
-    if saga_id = Map.get(metadata, :saga_id) do
+    if _saga_id = Map.get(metadata, :saga_id) do
       GenServer.cast(Shared.Infrastructure.Saga.SagaCoordinator, {:process_event, event})
     end
 
@@ -104,7 +104,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
 
     EventBus.publish(event)
 
-    if saga_id = Map.get(metadata, :saga_id) do
+    if _saga_id = Map.get(metadata, :saga_id) do
       GenServer.cast(Shared.Infrastructure.Saga.SagaCoordinator, {:process_event, event})
     end
 
@@ -136,7 +136,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
 
     EventBus.publish(event)
 
-    if saga_id = Map.get(metadata, :saga_id) do
+    if _saga_id = Map.get(metadata, :saga_id) do
       GenServer.cast(Shared.Infrastructure.Saga.SagaCoordinator, {:process_event, event})
     end
 
@@ -165,7 +165,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
 
     EventBus.publish(event)
 
-    if saga_id = Map.get(metadata, :saga_id) do
+    if _saga_id = Map.get(metadata, :saga_id) do
       GenServer.cast(Shared.Infrastructure.Saga.SagaCoordinator, {:process_event, event})
     end
 
@@ -173,7 +173,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
   end
 
   # 在庫予約キャンセル（補償処理）
-  defp handle_cancel_inventory(payload, metadata) do
+  defp handle_cancel_inventory(payload, _metadata) do
     Logger.info("Cancelling inventory reservation for order #{payload.order_id}")
 
     Process.sleep(100)
@@ -182,7 +182,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
   end
 
   # 支払い返金（補償処理）
-  defp handle_refund_payment(payload, metadata) do
+  defp handle_refund_payment(payload, _metadata) do
     Logger.info("Refunding payment for order #{payload.order_id}")
 
     Process.sleep(150)
@@ -191,7 +191,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
   end
 
   # 配送キャンセル（補償処理）
-  defp handle_cancel_shipping(payload, metadata) do
+  defp handle_cancel_shipping(payload, _metadata) do
     Logger.info("Cancelling shipping for order #{payload.order_id}")
 
     Process.sleep(100)

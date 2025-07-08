@@ -228,7 +228,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolver do
             }
 
           {:error, reason} ->
-            Logger.warn("Product not found, using fallback: #{inspect(reason)}")
+            Logger.warning("Product not found, using fallback: #{inspect(reason)}")
             # フォールバック: 商品情報が取得できない場合でも処理を続行
             %{
               product_id: item.product_id,

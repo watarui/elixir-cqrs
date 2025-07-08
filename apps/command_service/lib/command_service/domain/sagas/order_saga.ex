@@ -58,7 +58,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       {"inventory_reserved", :started} ->
         # 在庫予約成功 -> 支払い処理へ
-        updated_saga = %{saga | inventory_reserved: true}
+        _updated_saga = %{saga | inventory_reserved: true}
 
         commands = [
           ProcessPaymentCommand.new(%{
@@ -72,7 +72,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       {"payment_processed", :started} ->
         # 支払い成功 -> 配送手配へ
-        updated_saga = %{saga | payment_processed: true}
+        _updated_saga = %{saga | payment_processed: true}
 
         commands = [
           ArrangeShippingCommand.new(%{
@@ -86,7 +86,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       {"shipping_arranged", :started} ->
         # 配送手配成功 -> 注文確定
-        updated_saga = %{saga | shipping_arranged: true}
+        _updated_saga = %{saga | shipping_arranged: true}
 
         commands = [
           ConfirmOrderCommand.new(%{
@@ -98,7 +98,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       {"order_confirmed", :started} ->
         # すべて成功 -> サガ完了
-        updated_saga = %{saga | order_confirmed: true, state: :completed}
+        _updated_saga = %{saga | order_confirmed: true, state: :completed}
         {:ok, []}
 
       # 失敗ケース

@@ -20,7 +20,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
 
       %{handler: handler} ->
         case handler.(saga.context) do
-          {:ok, result} ->
+          {:ok, _result} ->
             commands = build_reserve_inventory_commands(saga.context)
             {:ok, commands}
 
@@ -45,7 +45,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
     {:ok, build_order_confirmation_commands(saga.context)}
   end
 
-  def handle_event(%{event_type: "order_confirmed"}, saga) do
+  def handle_event(%{event_type: "order_confirmed"}, _saga) do
     # すべて完了
     {:ok, []}
   end
@@ -178,7 +178,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
 
     # 複数の在庫予約コマンドを並列実行
     case dispatch_parallel(commands) do
-      {:ok, results} ->
+      {:ok, _results} ->
         {:ok, %{reserved_items: context.items}}
 
       {:error, errors} ->
@@ -198,7 +198,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
     }
 
     case dispatch(command) do
-      {:ok, result} -> {:ok, %{payment_id: result[:payment_id] || generate_id()}}
+      {:ok, _result} -> {:ok, %{payment_id: generate_id()}}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -213,7 +213,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
     }
 
     case dispatch(command) do
-      {:ok, result} -> {:ok, %{shipping_id: result[:shipping_id] || generate_id()}}
+      {:ok, _result} -> {:ok, %{shipping_id: generate_id()}}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -227,7 +227,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
     }
 
     case dispatch(command) do
-      {:ok, result} -> {:ok, %{confirmed_at: DateTime.utc_now()}}
+      {:ok, _result} -> {:ok, %{confirmed_at: DateTime.utc_now()}}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -251,7 +251,7 @@ defmodule Shared.Infrastructure.Saga.OrderSaga do
     %{saga | processed_events: [{event.event_id, DateTime.utc_now()} | processed_events]}
   end
 
-  def mark_step_completed(saga, step_name, result) do
+  def mark_step_completed(saga, step_name, _result) do
     completed_steps = Map.get(saga, :completed_steps, [])
     %{saga | completed_steps: [step_name | completed_steps], updated_at: DateTime.utc_now()}
   end

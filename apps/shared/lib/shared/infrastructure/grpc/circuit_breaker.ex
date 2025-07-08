@@ -161,11 +161,11 @@ defmodule Shared.Infrastructure.Grpc.CircuitBreaker do
 
   # Private functions
 
-  defp execute_with_circuit(name, func, state) do
+  defp execute_with_circuit(name, func, _state) do
     start_time = System.monotonic_time(:millisecond)
 
     case func.() do
-      {:ok, result} = success ->
+      {:ok, _result} = success ->
         latency = System.monotonic_time(:millisecond) - start_time
         GenServer.call(name, {:record_success, latency})
         record_metrics(name, :success, latency)
@@ -178,7 +178,7 @@ defmodule Shared.Infrastructure.Grpc.CircuitBreaker do
     end
   end
 
-  defp handle_success(state, latency) do
+  defp handle_success(state, _latency) do
     circuit_state = state.circuit_state
 
     new_circuit_state =
@@ -218,7 +218,7 @@ defmodule Shared.Infrastructure.Grpc.CircuitBreaker do
     %{state | circuit_state: new_circuit_state}
   end
 
-  defp handle_failure(state, reason) do
+  defp handle_failure(state, _reason) do
     circuit_state = state.circuit_state
     now = System.monotonic_time(:millisecond)
 
@@ -229,7 +229,7 @@ defmodule Shared.Infrastructure.Grpc.CircuitBreaker do
 
           if failure_count >= state.options.failure_threshold do
             Logger.warning("Circuit breaker opening after #{failure_count} failures")
-            timer_ref = Process.send_after(self(), {:timeout, :half_open}, state.options.timeout)
+            _timer_ref = Process.send_after(self(), {:timeout, :half_open}, state.options.timeout)
 
             %{
               circuit_state
@@ -244,7 +244,7 @@ defmodule Shared.Infrastructure.Grpc.CircuitBreaker do
 
         :half_open ->
           Logger.warning("Circuit breaker reopening after failure in half-open state")
-          timer_ref = Process.send_after(self(), {:timeout, :half_open}, state.options.timeout)
+          _timer_ref = Process.send_after(self(), {:timeout, :half_open}, state.options.timeout)
 
           %{
             circuit_state

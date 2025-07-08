@@ -9,7 +9,7 @@ defmodule Shared.Infrastructure.Saga.CommandDispatcher do
   require Logger
 
   @impl true
-  def dispatch(command) do
+  def dispatch(_command) do
     # この実装はデフォルトのエラーを返す
     # 実際のディスパッチは各アプリケーションで設定する必要がある
     Logger.error(

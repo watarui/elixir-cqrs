@@ -172,7 +172,11 @@ defmodule CommandService.Presentation.Grpc.ProductCommandServer do
           id: ProductAggregate.id(aggregate),
           name: ProductAggregate.name(aggregate),
           price: ProductAggregate.price(aggregate) |> Decimal.to_float() |> trunc(),
-          categoryId: ProductAggregate.category_id(aggregate)
+          category: %Proto.Category{
+            id: ProductAggregate.category_id(aggregate),
+            # カテゴリ名は別途取得が必要
+            name: ""
+          }
         }
 
       _ ->

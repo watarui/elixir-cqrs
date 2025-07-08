@@ -197,14 +197,6 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     end
   end
 
-  defp persist_saga_event(event) do
-    EventStore.append_to_stream(
-      "saga-#{event.aggregate_id}",
-      [event],
-      :any_version
-    )
-  end
-
   defp handle_initial_commands(saga_module, saga) do
     # サガの初期イベントを処理
     case saga_module.handle_event(%{event_type: "saga_started"}, saga) do
@@ -249,7 +241,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
                  %{triggered_by: event.event_id},
                  state
                ) do
-            {:ok, new_state} ->
+            {:ok, _new_state} ->
               Logger.info("Saga automatically triggered",
                 saga_type: saga_type,
                 saga_id: saga_id,
@@ -483,7 +475,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     start_compensation(failed_saga, saga_module, saga_id, state)
   end
 
-  defp complete_saga(saga_id, saga, saga_module, state) do
+  defp complete_saga(saga_id, saga, _saga_module, state) do
     # 完了イベントを発行
     event = SagaEvents.SagaCompleted.new(saga_id, saga.data)
     persist_saga_event(event)

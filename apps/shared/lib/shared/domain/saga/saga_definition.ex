@@ -52,7 +52,7 @@ defmodule Shared.Domain.Saga.SagaDefinition do
       end
 
       defp dispatch_compensation(command) do
-        @command_dispatcher.dispatch_compensation(command)
+        get_command_dispatcher().dispatch_compensation(command)
       end
     end
   end

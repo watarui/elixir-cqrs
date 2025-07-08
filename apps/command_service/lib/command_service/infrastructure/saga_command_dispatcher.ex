@@ -97,53 +97,53 @@ defmodule CommandService.Infrastructure.SagaCommandDispatcher do
     end
   end
 
-  defp enrich_command_with_saga_metadata(command) do
-    # 既存のmetadataを保持しつつ、saga関連の情報を追加
-    existing_metadata = Map.get(command, :metadata, %{})
+  # defp enrich_command_with_saga_metadata(command) do
+  #   # 既存のmetadataを保持しつつ、saga関連の情報を追加
+  #   existing_metadata = Map.get(command, :metadata, %{})
+  #
+  #   enriched_metadata =
+  #     Map.merge(existing_metadata, %{
+  #       dispatched_at: DateTime.utc_now(),
+  #       dispatcher: "SagaCommandDispatcher"
+  #     })
+  #
+  #   Map.put(command, :metadata, enriched_metadata)
+  # end
 
-    enriched_metadata =
-      Map.merge(existing_metadata, %{
-        dispatched_at: DateTime.utc_now(),
-        dispatcher: "SagaCommandDispatcher"
-      })
+  # defp publish_command_result_event(command, status, result) do
+  #   saga_id = get_in(command, [:metadata, :saga_id])
+  #
+  #   if saga_id do
+  #     event_type =
+  #       case status do
+  #         :success -> "#{get_command_type(command)}_succeeded"
+  #         :failure -> "#{get_command_type(command)}_failed"
+  #       end
+  #
+  #     event = %{
+  #       event_id: UUID.uuid4(),
+  #       event_type: event_type,
+  #       aggregate_id: saga_id,
+  #       occurred_at: DateTime.utc_now(),
+  #       payload: %{
+  #         command: sanitize_command(command),
+  #         result: result
+  #       },
+  #       metadata: %{
+  #         saga_id: saga_id
+  #       }
+  #     }
+  #
+  #     EventBus.publish(event)
+  #   end
+  # end
 
-    Map.put(command, :metadata, enriched_metadata)
-  end
-
-  defp publish_command_result_event(command, status, result) do
-    saga_id = get_in(command, [:metadata, :saga_id])
-
-    if saga_id do
-      event_type =
-        case status do
-          :success -> "#{get_command_type(command)}_succeeded"
-          :failure -> "#{get_command_type(command)}_failed"
-        end
-
-      event = %{
-        event_id: UUID.uuid4(),
-        event_type: event_type,
-        aggregate_id: saga_id,
-        occurred_at: DateTime.utc_now(),
-        payload: %{
-          command: sanitize_command(command),
-          result: result
-        },
-        metadata: %{
-          saga_id: saga_id
-        }
-      }
-
-      EventBus.publish(event)
-    end
-  end
-
-  defp sanitize_command(command) do
-    # センシティブな情報を除去
-    command
-    |> Map.drop([:password, :credit_card, :secret])
-    |> Map.update(:metadata, %{}, fn metadata ->
-      Map.drop(metadata, [:auth_token, :api_key])
-    end)
-  end
+  # defp sanitize_command(command) do
+  #   # センシティブな情報を除去
+  #   command
+  #   |> Map.drop([:password, :credit_card, :secret])
+  #   |> Map.update(:metadata, %{}, fn metadata ->
+  #     Map.drop(metadata, [:auth_token, :api_key])
+  #   end)
+  # end
 end

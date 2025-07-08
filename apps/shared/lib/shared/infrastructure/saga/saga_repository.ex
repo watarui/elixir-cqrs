@@ -8,8 +8,6 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   alias Shared.Infrastructure.EventStore
   require Logger
 
-  @saga_snapshot_prefix "saga-snapshot-"
-
   @doc """
   サガを保存する
   """
@@ -150,46 +148,46 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
 
   # Private functions
 
-  defp build_saga_state_from_events(saga_id, events) do
-    # イベントを時系列でソート
-    sorted_events = Enum.sort_by(events, & &1.occurred_at, DateTime)
-
-    # 初期状態を作成
-    initial_state = %{
-      saga_id: saga_id,
-      state: :unknown,
-      saga_type: nil,
-      data: %{},
-      started_at: nil,
-      completed_at: nil
-    }
-
-    # イベントを適用して状態を構築
-    Enum.reduce(sorted_events, initial_state, fn event, state ->
-      case event.event_type do
-        "saga_started" ->
-          %{
-            state
-            | state: :started,
-              saga_type: get_in(event, [:payload, :saga_type]),
-              data: get_in(event, [:payload, :initial_data]) || %{},
-              started_at: event.occurred_at
-          }
-
-        "saga_completed" ->
-          %{state | state: :completed, completed_at: event.occurred_at}
-
-        "saga_failed" ->
-          %{state | state: :failed}
-
-        "saga_compensated" ->
-          %{state | state: :compensated}
-
-        _ ->
-          state
-      end
-    end)
-  end
+  # defp build_saga_state_from_events(saga_id, events) do
+  #   # イベントを時系列でソート
+  #   sorted_events = Enum.sort_by(events, & &1.occurred_at, DateTime)
+  #
+  #   # 初期状態を作成
+  #   initial_state = %{
+  #     saga_id: saga_id,
+  #     state: :unknown,
+  #     saga_type: nil,
+  #     data: %{},
+  #     started_at: nil,
+  #     completed_at: nil
+  #   }
+  #
+  #   # イベントを適用して状態を構築
+  #   Enum.reduce(sorted_events, initial_state, fn event, state ->
+  #     case event.event_type do
+  #       "saga_started" ->
+  #         %{
+  #           state
+  #           | state: :started,
+  #             saga_type: get_in(event, [:payload, :saga_type]),
+  #             data: get_in(event, [:payload, :initial_data]) || %{},
+  #             started_at: event.occurred_at
+  #         }
+  #
+  #       "saga_completed" ->
+  #         %{state | state: :completed, completed_at: event.occurred_at}
+  #
+  #       "saga_failed" ->
+  #         %{state | state: :failed}
+  #
+  #       "saga_compensated" ->
+  #         %{state | state: :compensated}
+  #
+  #       _ ->
+  #         state
+  #     end
+  #   end)
+  # end
 
   defp rebuild_from_events(saga_id) do
     stream_id = "saga-#{saga_id}"
@@ -303,8 +301,8 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
     get(saga_id)
   end
 
-  defp list_saga_snapshots do
-    # EventStore.list_snapshotsが未実装のため、空リストを返す
-    {:ok, []}
-  end
+  # defp list_saga_snapshots do
+  #   # EventStore.list_snapshotsが未実装のため、空リストを返す
+  #   {:ok, []}
+  # end
 end
