@@ -203,43 +203,43 @@ defmodule ClientService.Application.CqrsFacade do
 
   defp call_command_service(channel, operation, request) do
     case operation do
-        :category ->
-          case CategoryCommand.Stub.update_category(channel, request) do
-            {:ok, response} ->
-              case response do
-                %{category: nil, error: %{message: message}} ->
-                  {:error, message}
+      :category ->
+        case CategoryCommand.Stub.update_category(channel, request) do
+          {:ok, response} ->
+            case response do
+              %{category: nil, error: %{message: message}} ->
+                {:error, message}
 
-                %{category: category} when not is_nil(category) ->
-                  {:ok, %{id: category.id}}
+              %{category: category} when not is_nil(category) ->
+                {:ok, %{id: category.id}}
 
-                _ ->
-                  {:error, "Unexpected response format"}
-              end
+              _ ->
+                {:error, "Unexpected response format"}
+            end
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
 
-        :product ->
-          case ProductCommand.Stub.update_product(channel, request) do
-            {:ok, response} ->
-              case response do
-                %{product: nil, error: %{message: message}} ->
-                  {:error, message}
+      :product ->
+        case ProductCommand.Stub.update_product(channel, request) do
+          {:ok, response} ->
+            case response do
+              %{product: nil, error: %{message: message}} ->
+                {:error, message}
 
-                %{product: product} when not is_nil(product) ->
-                  {:ok, %{id: product.id}}
+              %{product: product} when not is_nil(product) ->
+                {:ok, %{id: product.id}}
 
-                _ ->
-                  {:error, "Unexpected response format"}
-              end
+              _ ->
+                {:error, "Unexpected response format"}
+            end
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
     end
   catch
     error ->
@@ -249,51 +249,51 @@ defmodule ClientService.Application.CqrsFacade do
 
   defp call_query_service(channel, operation, request) do
     case operation do
-        :get_category ->
-          case CategoryQuery.Stub.get_category(channel, request) do
-            {:ok, response} ->
-              {:ok, category_to_map(response.category)}
+      :get_category ->
+        case CategoryQuery.Stub.get_category(channel, request) do
+          {:ok, response} ->
+            {:ok, category_to_map(response.category)}
 
-            {:error, %GRPC.RPCError{status: 5}} ->
-              {:error, :not_found}
+          {:error, %GRPC.RPCError{status: 5}} ->
+            {:error, :not_found}
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
 
-        :list_categories ->
-          case CategoryQuery.Stub.list_categories(channel, request) do
-            {:ok, response} ->
-              {:ok, Enum.map(response.categories, &category_to_map/1)}
+      :list_categories ->
+        case CategoryQuery.Stub.list_categories(channel, request) do
+          {:ok, response} ->
+            {:ok, Enum.map(response.categories, &category_to_map/1)}
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
 
-        :get_product ->
-          case ProductQuery.Stub.get_product(channel, request) do
-            {:ok, response} ->
-              {:ok, product_to_map(response.product)}
+      :get_product ->
+        case ProductQuery.Stub.get_product(channel, request) do
+          {:ok, response} ->
+            {:ok, product_to_map(response.product)}
 
-            {:error, %GRPC.RPCError{status: 5}} ->
-              {:error, :not_found}
+          {:error, %GRPC.RPCError{status: 5}} ->
+            {:error, :not_found}
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
 
-        :list_products ->
-          case ProductQuery.Stub.list_products(channel, request) do
-            {:ok, response} ->
-              {:ok, Enum.map(response.products, &product_to_map/1)}
+      :list_products ->
+        case ProductQuery.Stub.list_products(channel, request) do
+          {:ok, response} ->
+            {:ok, Enum.map(response.products, &product_to_map/1)}
 
-            {:error, reason} ->
-              Logger.error("gRPC call failed: #{inspect(reason)}")
-              {:error, :grpc_error}
-          end
+          {:error, reason} ->
+            Logger.error("gRPC call failed: #{inspect(reason)}")
+            {:error, :grpc_error}
+        end
     end
   catch
     error ->
