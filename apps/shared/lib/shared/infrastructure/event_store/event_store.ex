@@ -142,8 +142,17 @@ defmodule Shared.Infrastructure.EventStore do
         events
         |> Enum.filter(fn event ->
           case Map.get(event, :created_at) || Map.get(event, :occurred_at) do
-            nil -> false
-            event_time -> DateTime.compare(event_time, since_time) == :gt
+            nil ->
+              false
+
+            %NaiveDateTime{} = event_time ->
+              DateTime.compare(
+                DateTime.from_naive!(event_time, "Etc/UTC"),
+                since_time
+              ) == :gt
+
+            %DateTime{} = event_time ->
+              DateTime.compare(event_time, since_time) == :gt
           end
         end)
 

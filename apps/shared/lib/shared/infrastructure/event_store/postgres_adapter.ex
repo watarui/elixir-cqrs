@@ -495,6 +495,19 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       "valid_event" ->
         Map
 
+      # Category events (for test compatibility)
+      "category_created" ->
+        Map
+
+      "category_updated" ->
+        Map
+
+      "category_deleted" ->
+        Map
+
+      "category_moved" ->
+        Map
+
       # Other test events
       _ ->
         # For unknown event types, return a generic map module
