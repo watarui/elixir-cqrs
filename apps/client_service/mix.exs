@@ -63,7 +63,9 @@ defmodule ClientService.MixProject do
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:mox, "~> 1.0", only: :test},
-      {:stream_data, "~> 0.6", only: :test}
+      {:stream_data, "~> 0.6", only: :test},
+      {:ex_machina, "~> 2.7", only: :test},
+      {:faker, "~> 0.17", only: :test}
     ]
   end
 end
