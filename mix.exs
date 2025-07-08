@@ -1,0 +1,49 @@
+defmodule ElixirCqrs.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      apps_path: "apps",
+      version: "0.1.0",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      aliases: aliases(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ]
+    ]
+  end
+
+  # Dependencies listed here are available only for this
+  # project and cannot be accessed from applications inside
+  # the apps folder.
+  #
+  # Run "mix help deps" for examples and options.
+  defp deps do
+    [
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18", only: :test}
+    ]
+  end
+
+  defp aliases do
+    [
+      # Runs all checks
+      check: [
+        "format --check-formatted",
+        "compile --warnings-as-errors",
+        "credo --strict",
+        "dialyzer"
+      ],
+      # Setup all databases
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run apps/*/priv/repo/seeds.exs"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"]
+    ]
+  end
+end
