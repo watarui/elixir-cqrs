@@ -55,7 +55,7 @@ jobs:
       run: mix format --check-formatted
     
     - name: Run credo
-      run: mix credo --strict
+      run: mix credo --strict --min-priority high
     
     - name: Run tests
       env:

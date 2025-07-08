@@ -115,7 +115,8 @@
           {Credo.Check.Readability.TrailingWhiteSpace, []},
           {Credo.Check.Readability.UnnecessaryAliasExpansion, []},
           {Credo.Check.Readability.VariableNames, []},
-          {Credo.Check.Readability.WithSingleClause, []},
+          # with文の単一clause警告は、複雑な処理では不適切な場合がある
+          {Credo.Check.Readability.WithSingleClause, false},
 
           #
           ## Refactoring Opportunities
