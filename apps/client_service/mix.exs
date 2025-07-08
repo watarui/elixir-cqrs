@@ -58,7 +58,7 @@ defmodule ClientService.MixProject do
 
       # OpenTelemetry Phoenix instrumentation
       {:opentelemetry_phoenix, "~> 1.1"},
-      {:opentelemetry_absinthe, "~> 1.0"},
+      {:opentelemetry_absinthe, "~> 2.3"},
 
       # Prometheus メトリクス
       {:telemetry_metrics_prometheus, "~> 1.1"},
