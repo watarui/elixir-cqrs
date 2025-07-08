@@ -460,7 +460,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
     {:ok, events} = EventStore.read_aggregate_events(aggregate_id)
 
     initial_state = %{
-      id: aggregate_id,
+      id: nil,
       version: 0,
       name: nil,
       description: nil,
@@ -479,8 +479,9 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       "product_created" ->
         %{
           product
-          | name: event.event_data.name,
-            description: event.event_data.description,
+          | id: event.aggregate_id,
+            name: event.event_data.name,
+            description: Map.get(event.event_data, :description),
             price: event.event_data.price,
             category_id: event.event_data.category_id,
             version: event.event_version
@@ -524,7 +525,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
     {:ok, events} = EventStore.read_aggregate_events(aggregate_id)
 
     initial_state = %{
-      id: aggregate_id,
+      id: nil,
       items: [],
       version: 0,
       customer_id: nil,
@@ -543,7 +544,8 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       "order_created" ->
         %{
           order
-          | customer_id: event.event_data.customer_id,
+          | id: event.aggregate_id,
+            customer_id: event.event_data.customer_id,
             items: event.event_data.items,
             total_amount: event.event_data.total_amount,
             status: event.event_data.status,

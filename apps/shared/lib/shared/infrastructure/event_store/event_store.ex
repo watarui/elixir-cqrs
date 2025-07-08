@@ -125,6 +125,7 @@ defmodule Shared.Infrastructure.EventStore do
   def get_latest_snapshot(aggregate_id) do
     # アダプタの実装を直接呼び出す
     case adapter().get_snapshot(aggregate_id) do
+      {:ok, {snapshot, _version}} -> snapshot
       {:ok, snapshot} -> snapshot
       {:error, _} -> nil
       nil -> nil
@@ -153,6 +154,13 @@ defmodule Shared.Infrastructure.EventStore do
 
             %DateTime{} = event_time ->
               DateTime.compare(event_time, since_time) == :gt
+
+            event_time when is_binary(event_time) ->
+              # ISO8601形式の文字列をDateTimeに変換
+              case DateTime.from_iso8601(event_time) do
+                {:ok, dt, _} -> DateTime.compare(dt, since_time) == :gt
+                _ -> false
+              end
           end
         end)
 
