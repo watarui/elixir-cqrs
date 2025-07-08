@@ -58,8 +58,9 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
 
   def handle_command(%UpdateCategory{} = command) do
     with :ok <- command.__struct__.validate(command),
-         {:ok, events} <- EventStore.read_aggregate_events(command.id),
-         aggregate = CategoryAggregate.load_from_events(events) do
+         {:ok, events} <- EventStore.read_aggregate_events(command.id) do
+      aggregate = CategoryAggregate.load_from_events(events)
+
       # 削除済みチェック
       if aggregate.deleted do
         {:error, :category_not_found}
@@ -109,8 +110,9 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
 
   def handle_command(%DeleteCategory{} = command) do
     with :ok <- command.__struct__.validate(command),
-         {:ok, events} <- EventStore.read_aggregate_events(command.id),
-         aggregate = CategoryAggregate.load_from_events(events) do
+         {:ok, events} <- EventStore.read_aggregate_events(command.id) do
+      aggregate = CategoryAggregate.load_from_events(events)
+
       # 削除済みチェック
       if aggregate.deleted do
         {:error, :category_not_found}
@@ -226,7 +228,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
 
   defp check_circular_reference(new_parent_id, category_id) do
     # 実際の実装では、新しい親が現在のカテゴリの子孫でないかチェック
-    case CategoryProjection.is_descendant_of?(new_parent_id, category_id) do
+    case CategoryProjection.descendant_of?(new_parent_id, category_id) do
       true -> {:error, :circular_reference}
       false -> :ok
     end

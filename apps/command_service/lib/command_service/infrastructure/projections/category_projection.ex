@@ -54,7 +54,7 @@ defmodule CommandService.Infrastructure.Projections.CategoryProjection do
   end
 
   # 子孫チェック
-  def is_descendant_of?(category_id, ancestor_id) do
+  def descendant_of?(category_id, ancestor_id) do
     category = get_by_id(category_id)
 
     case category do
