@@ -110,7 +110,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
         current_version = get_stream_version(conn, stream_name)
         Logger.debug("Current version for stream #{stream_name}: #{current_version}")
 
-        if expected_version == :any_version || current_version == expected_version do
+        if expected_version == :any || expected_version == :any_version ||
+             current_version == expected_version do
           # イベントを挿入
           version =
             Enum.reduce(events, current_version, fn event, version ->
