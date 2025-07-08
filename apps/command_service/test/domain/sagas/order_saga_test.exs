@@ -52,7 +52,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ReserveInventory{} = command
+      assert %OrderCommands.ReserveInventoryCommand{} = command
       assert command.order_id == "order-456"
       assert length(command.items) == 1
     end
@@ -64,7 +64,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ProcessPayment{} = command
+      assert %OrderCommands.ProcessPaymentCommand{} = command
       assert command.order_id == "order-456"
       assert command.amount == 100.0
     end
@@ -81,7 +81,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ArrangeShipping{} = command
+      assert %OrderCommands.ArrangeShippingCommand{} = command
       assert command.order_id == "order-456"
     end
 
@@ -98,7 +98,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ConfirmOrder{} = command
+      assert %OrderCommands.ConfirmOrderCommand{} = command
       assert command.order_id == "order-456"
     end
 
@@ -133,7 +133,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ProcessPayment{} = command
+      assert %OrderCommands.ProcessPaymentCommand{} = command
     end
 
     test "在庫確保失敗イベントで補償処理を開始", %{saga: saga} do
@@ -159,7 +159,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert length(commands) == 1
 
       [command] = commands
-      assert %OrderCommands.ArrangeShipping{} = command
+      assert %OrderCommands.ArrangeShippingCommand{} = command
     end
   end
 
@@ -178,7 +178,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       commands = OrderSaga.get_compensation_commands(saga)
 
       assert Enum.any?(commands, fn cmd ->
-               match?(%OrderCommands.ReleaseInventory{}, cmd)
+               match?(%OrderCommands.ReleaseInventoryCommand{}, cmd)
              end)
 
       # 支払い処理済みの場合
@@ -186,7 +186,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       commands = OrderSaga.get_compensation_commands(saga)
 
       assert Enum.any?(commands, fn cmd ->
-               match?(%OrderCommands.RefundPayment{}, cmd)
+               match?(%OrderCommands.RefundPaymentCommand{}, cmd)
              end)
 
       # 配送手配済みの場合
@@ -194,7 +194,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       commands = OrderSaga.get_compensation_commands(saga)
 
       assert Enum.any?(commands, fn cmd ->
-               match?(%OrderCommands.CancelShipping{}, cmd)
+               match?(%OrderCommands.CancelShippingCommand{}, cmd)
              end)
     end
   end
