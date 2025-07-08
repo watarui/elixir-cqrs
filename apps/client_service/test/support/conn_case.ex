@@ -10,9 +10,10 @@ defmodule ClientService.ConnCase do
 
   use ExUnit.CaseTemplate
 
-  alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
-  alias Ecto.Adapters.SQL.Sandbox
-  alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
+  # Database setup removed to avoid cross-app dependencies
+  # alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
+  # alias Ecto.Adapters.SQL.Sandbox
+  # alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
 
   using do
     quote do
@@ -28,20 +29,9 @@ defmodule ClientService.ConnCase do
     end
   end
 
-  setup tags do
-    # Setup database sandbox if needed
-    if tags[:async] do
-      # For async tests, checkout sandbox
-      :ok = Sandbox.checkout(CommandRepo)
-      :ok = Sandbox.checkout(QueryRepo)
-    else
-      # For non-async tests, ensure clean state
-      :ok = Sandbox.checkout(CommandRepo)
-      :ok = Sandbox.checkout(QueryRepo)
-
-      Sandbox.mode(CommandRepo, {:shared, self()})
-      Sandbox.mode(QueryRepo, {:shared, self()})
-    end
+  setup _tags do
+    # Database setup removed to avoid cross-app dependencies
+    # Original database setup code commented out
 
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
