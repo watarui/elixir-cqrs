@@ -1,9 +1,6 @@
 defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   use ExUnit.Case, async: true
 
-  # Skip all tests in this module as OrderRepository doesn't exist
-  @moduletag :skip
-
   alias QueryService.Application.Handlers.OrderQueryHandler
 
   alias QueryService.Application.Queries.{
@@ -479,18 +476,39 @@ defmodule QueryService.Application.Handlers.OrderQueryHandlerTest do
   end
 
   defp create_order(attrs) do
-    # TODO: Replace with actual order creation logic
     order_attrs = %{
       id: attrs[:id] || Ecto.UUID.generate(),
       customer_id: attrs[:customer_id] || Ecto.UUID.generate(),
       status: attrs[:status] || "pending",
       total_amount: attrs[:total_amount] || Decimal.new("99.99"),
-      items: attrs[:items] || [],
-      created_at: attrs[:created_at] || DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
+      subtotal: attrs[:subtotal] || attrs[:total_amount] || Decimal.new("99.99"),
+      tax_amount: attrs[:tax_amount] || Decimal.new("0"),
+      shipping_cost: attrs[:shipping_cost] || Decimal.new("0"),
+      items:
+        attrs[:items] ||
+          [
+            %{
+              product_id: Ecto.UUID.generate(),
+              product_name: "Test Product",
+              quantity: 1,
+              unit_price: Decimal.new("99.99"),
+              subtotal: Decimal.new("99.99")
+            }
+          ],
+      shipping_address: attrs[:shipping_address],
+      payment_status: attrs[:payment_status],
+      saga_state: attrs[:saga_state]
     }
 
-    {:ok, order} = OrderRepository.create(order_attrs)
-    order
+    {:ok, order} =
+      QueryService.Infrastructure.Database.Schemas.OrderSchema
+      |> struct(order_attrs)
+      |> QueryService.Infrastructure.Database.Repo.insert()
+
+    OrderRepository.find_by_id_uncached(order.id)
+    |> case do
+      {:ok, order} -> order
+      _ -> raise "Failed to create order in test"
+    end
   end
 end

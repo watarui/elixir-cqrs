@@ -59,47 +59,46 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       aggregate_id = Ecto.UUID.generate()
 
       # Store events out of order (simulating race condition)
-      # TODO: Implement store_event helper
-      # event2 = store_event("event_2", aggregate_id, %{data: "second"}, version: 2)
-      # event1 = store_event("event_1", aggregate_id, %{data: "first"}, version: 1)
-      # event3 = store_event("event_3", aggregate_id, %{data: "third"}, version: 3)
+      event2 = store_event("event_2", aggregate_id, %{data: "second"}, version: 2)
+      event1 = store_event("event_1", aggregate_id, %{data: "first"}, version: 1)
+      event3 = store_event("event_3", aggregate_id, %{data: "third"}, version: 3)
 
       # Retrieve should be in version order
       {:ok, events} = EventStore.read_aggregate_events(aggregate_id)
 
-      # TODO: Add assertions when store_event is implemented
-      assert Enum.empty?(events)
+      assert length(events) == 3
+      assert Enum.at(events, 0).event_version == 1
+      assert Enum.at(events, 1).event_version == 2
+      assert Enum.at(events, 2).event_version == 3
     end
 
     test "prevents duplicate event versions for same aggregate" do
       aggregate_id = Ecto.UUID.generate()
 
       # Store first event
-      # TODO: Implement store_event helper
-      # event1 = store_event("event_1", aggregate_id, %{}, version: 1)
+      event1 = store_event("event_1", aggregate_id, %{}, version: 1)
 
       # Try to store another event with same version
-      # TODO: Implement this test when store_event helper is available
-      # assert_raise Ecto.ConstraintError, fn ->
-      #   store_event("event_2", aggregate_id, %{}, version: 1)
-      # end
+      assert_raise Ecto.ConstraintError, fn ->
+        store_event("event_2", aggregate_id, %{}, version: 1)
+      end
     end
 
     test "retrieves events after specific version" do
       aggregate_id = Ecto.UUID.generate()
 
       # Store 5 events
-      # TODO: Implement store_event helper
-      # for v <- 1..5 do
-      #   store_event("event_#{v}", aggregate_id, %{}, version: v)
-      # end
+      for v <- 1..5 do
+        store_event("event_#{v}", aggregate_id, %{}, version: v)
+      end
 
       # Get events after version 3
       {:ok, all_events} = EventStore.read_aggregate_events(aggregate_id)
       events = Enum.filter(all_events, fn e -> e.event_version > 3 end)
 
-      # TODO: Add assertions when store_event is implemented
-      assert Enum.empty?(events)
+      assert length(events) == 2
+      assert Enum.at(events, 0).event_version == 4
+      assert Enum.at(events, 1).event_version == 5
     end
 
     test "handles concurrent event appends safely" do
@@ -137,11 +136,15 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
 
       # Verify all events were stored
       {:ok, events} = EventStore.read_aggregate_events(aggregate_id)
-      # TODO: Fix concurrent append test
-      # assert length(events) == 10
+      assert length(events) == 10
+
       # Verify no duplicate versions
-      # versions = Enum.map(events, & &1.event_version)
-      # assert length(Enum.uniq(versions)) == 10
+      versions = Enum.map(events, & &1.event_version)
+      assert length(Enum.uniq(versions)) == 10
+
+      # Verify versions are sequential
+      sorted_versions = Enum.sort(versions)
+      assert sorted_versions == Enum.to_list(1..10)
     end
   end
 
@@ -583,5 +586,24 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
   defp apply_order_event(order, _event) do
     # 実際のイベント構造体を処理（今は未実装）
     order
+  end
+
+  # Helper function to store an event directly (for testing purposes)
+  defp store_event(event_type, aggregate_id, event_data, opts \\ []) do
+    version = Keyword.get(opts, :version, 1)
+    aggregate_type = Keyword.get(opts, :aggregate_type, "test_aggregate")
+
+    event = %{
+      event_type: event_type,
+      aggregate_id: aggregate_id,
+      aggregate_type: aggregate_type,
+      event_data: event_data,
+      event_metadata: %{},
+      event_version: version,
+      occurred_at: DateTime.utc_now()
+    }
+
+    {:ok, _} = EventStore.append_events([event])
+    event
   end
 end

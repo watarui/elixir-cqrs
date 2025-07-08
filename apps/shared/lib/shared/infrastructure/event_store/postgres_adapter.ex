@@ -466,48 +466,6 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       "SagaCompensationStarted" ->
         Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
 
-      # Order events (for test compatibility)
-      "order_created" ->
-        Map
-
-      "order_updated" ->
-        Map
-
-      "order_item_added" ->
-        Map
-
-      "order_cancelled" ->
-        Map
-
-      "order_completed" ->
-        Map
-
-      # Product events (for test compatibility)
-      "product_created" ->
-        Map
-
-      "product_updated" ->
-        Map
-
-      "invalid_event" ->
-        Map
-
-      "valid_event" ->
-        Map
-
-      # Category events (for test compatibility)
-      "category_created" ->
-        Map
-
-      "category_updated" ->
-        Map
-
-      "category_deleted" ->
-        Map
-
-      "category_moved" ->
-        Map
-
       # Other test events
       _ ->
         # For unknown event types, return a generic map module
