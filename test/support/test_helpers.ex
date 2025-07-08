@@ -3,12 +3,13 @@ defmodule ElixirCqrs.TestHelpers do
   Common test helpers for CQRS testing.
   """
 
+  import ExUnit.Assertions
+
   alias ClientService.GraphQL.Schema
   alias CommandService.Application.CommandBus
   alias CommandService.Infrastructure.Database.Repo, as: CommandRepo
   alias CommandService.Infrastructure.EventStore.PostgresEventStore
   alias Ecto.Adapters.SQL.Sandbox
-  alias ElixirCqrs.Factory
   alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
   alias QueryService.Infrastructure.Repositories.{CategoryRepository, ProductRepository}
 
@@ -41,10 +42,30 @@ defmodule ElixirCqrs.TestHelpers do
   Creates a product through the command service and waits for projection.
   """
   def create_product_with_projection(attrs \\ %{}) do
-    product = Factory.build(:product, attrs)
-    command = Factory.build(:create_product_command, payload: product)
+    product_id = Map.get(attrs, :id, Ecto.UUID.generate())
+    
+    product = Map.merge(%{
+      id: product_id,
+      name: "Test Product #{System.unique_integer([:positive])}",
+      description: "Test product description",
+      price: Decimal.new("99.99"),
+      category_id: Map.get(attrs, :category_id, Ecto.UUID.generate()),
+      metadata: %{
+        created_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
+      }
+    }, attrs)
+    
+    command = %{
+      type: "create_product",
+      payload: product,
+      metadata: %{
+        user_id: Ecto.UUID.generate(),
+        timestamp: DateTime.utc_now()
+      }
+    }
 
-    {:ok, event} = CommandBus.dispatch(command)
+    {:ok, _event} = CommandBus.dispatch(command)
 
     # Wait for projection to be updated
     wait_for_projection(fn ->
@@ -58,10 +79,30 @@ defmodule ElixirCqrs.TestHelpers do
   Creates a category through the command service and waits for projection.
   """
   def create_category_with_projection(attrs \\ %{}) do
-    category = Factory.build(:category, attrs)
-    command = Factory.build(:create_category_command, payload: category)
+    category_id = Map.get(attrs, :id, Ecto.UUID.generate())
+    
+    category = Map.merge(%{
+      id: category_id,
+      name: "Test Category #{System.unique_integer([:positive])}",
+      description: "Test category description",
+      parent_id: nil,
+      path: [],
+      metadata: %{
+        created_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
+      }
+    }, attrs)
+    
+    command = %{
+      type: "create_category",
+      payload: category,
+      metadata: %{
+        user_id: Ecto.UUID.generate(),
+        timestamp: DateTime.utc_now()
+      }
+    }
 
-    {:ok, event} = CommandBus.dispatch(command)
+    {:ok, _event} = CommandBus.dispatch(command)
 
     # Wait for projection to be updated
     wait_for_projection(fn ->
