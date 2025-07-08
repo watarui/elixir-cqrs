@@ -17,3 +17,13 @@ alias QueryService.Infrastructure.Database.Repo, as: QueryRepo
 # Setup Ecto sandboxes for test isolation
 Sandbox.mode(CommandRepo, :manual)
 Sandbox.mode(QueryRepo, :manual)
+
+# Setup Shared repo if it exists
+if Code.ensure_loaded?(Shared.Infrastructure.Database.Repo) do
+  Sandbox.mode(Shared.Infrastructure.Database.Repo, :manual)
+end
+
+# Start EventStore if needed
+if Code.ensure_loaded?(Shared.Infrastructure.EventStore.PostgresAdapter) do
+  {:ok, _} = Shared.Infrastructure.EventStore.PostgresAdapter.start_link([])
+end

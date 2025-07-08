@@ -57,8 +57,17 @@ jobs:
     - name: Run credo
       run: mix credo --strict --min-priority high
     
+    - name: Setup test databases
+      env:
+        MIX_ENV: test
+        PGPASSWORD: postgres
+      run: |
+        mix ecto.create
+        mix ecto.migrate
+    
     - name: Run tests
       env:
+        MIX_ENV: test
         DATABASE_URL: ecto://postgres:postgres@localhost:5432/test_db
       run: mix test
     
