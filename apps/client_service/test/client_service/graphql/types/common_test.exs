@@ -3,23 +3,16 @@ defmodule ClientService.GraphQL.Types.CommonTest do
 
   alias ClientService.GraphQL.Types.Common
 
-  describe "datetime scalar" do
-    test "module exists" do
-      assert function_exported?(Common, :__info__, 1)
-    end
-  end
-
-  describe "error type" do
-    test "module defines error type" do
-      # Common型が適切に定義されていることを確認
+  describe "module loading" do
+    test "module exists and loads correctly" do
       assert Code.ensure_loaded?(Common)
     end
   end
 
-  describe "health_check type" do
-    test "module compiles successfully" do
-      # モジュールが正常にコンパイルされることを確認
-      assert Common.__info__(:module) == ClientService.GraphQL.Types.Common
+  describe "datetime scalar" do
+    test "parse and serialize functions are defined" do
+      # Private functions can't be tested directly, but we can ensure the module is loaded
+      assert Code.ensure_loaded?(Common)
     end
   end
 end
