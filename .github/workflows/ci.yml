@@ -92,7 +92,13 @@ jobs:
     
     strategy:
       matrix:
-        service: [client-service, command-service, query-service]
+        include:
+          - service: client_service
+            image_name: client-service
+          - service: command_service
+            image_name: command-service
+          - service: query_service
+            image_name: query-service
     
     steps:
     - uses: actions/checkout@v4
@@ -111,7 +117,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+        images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.image_name }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
