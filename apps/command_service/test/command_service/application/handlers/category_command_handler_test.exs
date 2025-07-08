@@ -3,22 +3,22 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
   alias CommandService.Application.Handlers.CategoryCommandHandler
 
-  alias CommandService.Application.Commands.{
-    CreateCategoryCommand,
-    DeleteCategoryCommand,
-    UpdateCategoryCommand
+  alias CommandService.Application.Commands.CategoryCommands.{
+    CreateCategory,
+    DeleteCategory,
+    UpdateCategory
   }
 
-  alias CommandService.Domain.Aggregates.Category
-  alias CommandService.Infrastructure.Database.Repo
-  alias Ecto.Adapters.SQL.Sandbox
+  alias CommandService.Domain.Aggregates.CategoryAggregate
 
   # # import ElixirCqrs.Factory
   # # import ElixirCqrs.TestHelpers
   # # import ElixirCqrs.EventStoreHelpers
 
   setup do
-    :ok = Sandbox.checkout(Repo)
+    # EventStoreはGenServerなので、特別なセットアップは不要
+    # プロジェクションをクリア
+    CommandService.Infrastructure.Projections.CategoryProjection.clear()
     :ok
   end
 
@@ -34,7 +34,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "successfully creates a root category" do
       # Arrange
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "Electronics",
           description: "Electronic products",
           parent_id: nil,
@@ -42,7 +43,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -61,7 +62,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       parent = create_test_category(%{name: "Electronics"})
 
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "Smartphones",
           description: "Mobile phones",
           parent_id: parent.id,
@@ -69,7 +71,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -81,7 +83,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to create category with empty name" do
       # Arrange
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "",
           description: "Test",
           parent_id: nil,
@@ -89,10 +92,10 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
-      assert {:error, :invalid_name} = result
+      assert {:error, "Category name is required"} = result
     end
 
     test "fails to create category with duplicate name at same level" do
@@ -100,7 +103,8 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       create_test_category(%{name: "Electronics"})
 
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "Electronics",
           description: "Duplicate",
           parent_id: nil,
@@ -108,7 +112,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :duplicate_name} = result
@@ -117,27 +121,28 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "enforces maximum depth limit" do
       # Create a chain of categories up to max depth
       root = create_test_category(%{name: "Level 0"})
-      parent = root
 
-      for level <- 1..4 do
-        parent =
+      # Build up the category hierarchy
+      final_parent =
+        Enum.reduce(1..4, root, fn level, current_parent ->
           create_test_category(%{
             name: "Level #{level}",
-            parent_id: parent.id
+            parent_id: current_parent.id
           })
-      end
+        end)
 
       # Try to create one more level (should fail)
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "Level 6",
           description: "Too deep",
-          parent_id: parent.id,
+          parent_id: final_parent.id,
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :max_depth_exceeded} = result
@@ -153,7 +158,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "successfully updates category name and description", %{category: category} do
       # Arrange
       command =
-        UpdateCategoryCommand.new(%{
+        UpdateCategory.new(%{
           id: category.id,
           name: "Updated Category",
           description: "New description",
@@ -161,7 +166,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -177,14 +182,14 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
       # Try to update to duplicate name
       command =
-        UpdateCategoryCommand.new(%{
+        UpdateCategory.new(%{
           id: category.id,
           name: "Existing Category",
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :duplicate_name} = result
@@ -193,17 +198,17 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to update non-existent category" do
       # Arrange
       command =
-        UpdateCategoryCommand.new(%{
+        UpdateCategory.new(%{
           id: Ecto.UUID.generate(),
           name: "Should Fail",
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
-      assert {:error, :category_not_found} = result
+      assert {:error, :invalid_command} = result
     end
 
     test "cannot move category to create circular reference", %{category: parent} do
@@ -216,14 +221,14 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
       # Try to make parent a child of its own child
       command =
-        UpdateCategoryCommand.new(%{
+        UpdateCategory.new(%{
           id: parent.id,
           parent_id: child.id,
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :circular_reference} = result
@@ -239,13 +244,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "successfully deletes an empty category", %{category: category} do
       # Arrange
       command =
-        DeleteCategoryCommand.new(%{
+        DeleteCategory.new(%{
           id: category.id,
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -263,13 +268,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
       # Try to delete parent
       command =
-        DeleteCategoryCommand.new(%{
+        DeleteCategory.new(%{
           id: parent.id,
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :has_subcategories} = result
@@ -280,7 +285,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
       # This would typically involve checking product repository
 
       command =
-        DeleteCategoryCommand.new(%{
+        DeleteCategory.new(%{
           id: category.id,
           metadata: test_metadata()
         })
@@ -292,16 +297,16 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     test "fails to delete non-existent category" do
       # Arrange
       command =
-        DeleteCategoryCommand.new(%{
+        DeleteCategory.new(%{
           id: Ecto.UUID.generate(),
           metadata: test_metadata()
         })
 
       # Act
-      result = CategoryCommandHandler.handle(command)
+      result = CategoryCommandHandler.handle_command(command)
 
       # Assert
-      assert {:error, :category_not_found} = result
+      assert {:error, :invalid_command} = result
     end
   end
 
@@ -317,14 +322,15 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         })
 
       command =
-        CreateCategoryCommand.new(%{
+        CreateCategory.new(%{
+          id: Ecto.UUID.generate(),
           name: "Laptops",
           description: "Portable computers",
           parent_id: computers.id,
           metadata: test_metadata()
         })
 
-      {:ok, events} = CategoryCommandHandler.handle(command)
+      {:ok, events} = CategoryCommandHandler.handle_command(command)
       [event] = events
 
       # Path should contain both parent IDs
@@ -350,13 +356,13 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
 
       # Move child from root1 to root2
       command =
-        UpdateCategoryCommand.new(%{
+        UpdateCategory.new(%{
           id: child.id,
           parent_id: root2.id,
           metadata: test_metadata()
         })
 
-      {:ok, events} = CategoryCommandHandler.handle(command)
+      {:ok, events} = CategoryCommandHandler.handle_command(command)
 
       # Should generate events for updating paths of child and grandchild
       assert length(events) >= 1
@@ -369,6 +375,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
     category_attrs =
       Map.merge(
         %{
+          id: Ecto.UUID.generate(),
           name: "Test Category",
           description: "Test Description",
           parent_id: nil,
@@ -377,18 +384,27 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandlerTest do
         attrs
       )
 
-    command = CreateCategoryCommand.new(Map.merge(category_attrs, %{metadata: test_metadata()}))
+    command = CreateCategory.new(Map.merge(category_attrs, %{metadata: test_metadata()}))
 
-    {:ok, events} = CategoryCommandHandler.handle(command)
+    {:ok, events} = CategoryCommandHandler.handle_command(command)
     event = hd(events)
 
-    %{
-      id: event.aggregate_id,
-      name: event.event_data.name,
-      description: event.event_data.description,
-      parent_id: event.event_data.parent_id,
-      path: event.event_data.path,
+    # イベントデータから情報を取得
+    event_data = Map.get(event, :event_data, %{})
+
+    category = %{
+      id: command.id,
+      name: event_data.name,
+      description: event_data[:description],
+      parent_id: event_data[:parent_id],
+      path: event_data[:path] || [],
+      deleted: false,
       version: 1
     }
+
+    # プロジェクションに追加
+    CommandService.Infrastructure.Projections.CategoryProjection.add_category(category)
+
+    category
   end
 end

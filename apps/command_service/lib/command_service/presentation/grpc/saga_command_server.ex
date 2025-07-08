@@ -10,7 +10,6 @@ defmodule CommandService.Presentation.Grpc.SagaCommandServer do
   alias Shared.Infrastructure.Saga.OrderSaga
   alias Shared.Infrastructure.Saga.SagaCoordinator
 
-  @impl true
   def start_order_saga(request, _stream) do
     saga_id = "saga-#{request.orderId}-#{System.unique_integer([:positive])}"
 
@@ -78,7 +77,6 @@ defmodule CommandService.Presentation.Grpc.SagaCommandServer do
     end
   end
 
-  @impl true
   def get_saga_status(request, _stream) do
     # サガリポジトリから状態を取得
     alias Shared.Infrastructure.Saga.SagaRepository

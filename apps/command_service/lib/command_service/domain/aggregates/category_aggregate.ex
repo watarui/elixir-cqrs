@@ -1,155 +1,46 @@
 defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   @moduledoc """
-  カテゴリアグリゲート（イベントソーシング対応）
+  カテゴリアグリゲート
 
-  カテゴリに関するすべてのビジネスロジックとイベント処理を管理します
+  カテゴリの階層構造とビジネスロジックを管理します
   """
 
-  alias CommandService.Domain.ValueObjects.{CategoryId, CategoryName}
-
-  alias Shared.Domain.Events.CategoryEvents.{
-    CategoryCreated,
-    CategoryDeleted,
-    CategoryUpdated
-  }
-
-  defstruct [:id, :name, :deleted, :version, :pending_events]
+  defstruct [
+    :id,
+    :name,
+    :description,
+    :parent_id,
+    :path,
+    :depth,
+    :deleted,
+    :version,
+    :pending_events
+  ]
 
   @type t :: %__MODULE__{
-          id: CategoryId.t() | nil,
-          name: CategoryName.t() | nil,
+          id: String.t() | nil,
+          name: String.t() | nil,
+          description: String.t() | nil,
+          parent_id: String.t() | nil,
+          path: list(String.t()),
+          depth: non_neg_integer(),
           deleted: boolean(),
           version: non_neg_integer(),
-          pending_events: list(struct())
+          pending_events: list(map())
         }
 
-  use Shared.Domain.Aggregate.Base
+  @max_depth 5
 
-  @impl true
-  def aggregate_id(%__MODULE__{id: nil}), do: nil
-  def aggregate_id(%__MODULE__{id: id}), do: CategoryId.value(id)
-
-  # コマンドハンドラー
-
-  @impl true
-  def execute(%__MODULE__{id: nil}, {:create_category, params}) do
-    with {:ok, category_id} <- CategoryId.new(params.id),
-         {:ok, category_name} <- CategoryName.new(params.name) do
-      event =
-        CategoryCreated.new(
-          CategoryId.value(category_id),
-          CategoryName.value(category_name),
-          %{user_id: params[:user_id]}
-        )
-
-      {:ok, [event]}
-    end
-  end
-
-  def execute(%__MODULE__{deleted: true}, _command) do
-    {:error, "Cannot execute commands on deleted category"}
-  end
-
-  def execute(%__MODULE__{id: id} = aggregate, {:update_category, params}) when not is_nil(id) do
-    case params[:name] do
-      nil ->
-        {:ok, []}
-
-      "" ->
-        {:ok, []}
-
-      new_name ->
-        case CategoryName.new(new_name) do
-          {:ok, name} ->
-            # 現在の名前と比較
-            current_name = if aggregate.name, do: CategoryName.value(aggregate.name), else: ""
-            new_name_value = CategoryName.value(name)
-
-            if current_name != new_name_value do
-              event =
-                CategoryUpdated.new(
-                  CategoryId.value(id),
-                  current_name,
-                  new_name_value,
-                  %{user_id: params[:user_id]}
-                )
-
-              {:ok, [event]}
-            else
-              {:ok, []}
-            end
-
-          _ ->
-            {:ok, []}
-        end
-    end
-  end
-
-  def execute(%__MODULE__{id: id}, {:delete_category, params}) when not is_nil(id) do
-    event =
-      CategoryDeleted.new(
-        CategoryId.value(id),
-        params[:reason],
-        %{user_id: params[:user_id]}
-      )
-
-    {:ok, [event]}
-  end
-
-  def execute(_aggregate, _command) do
-    {:error, "Invalid command"}
-  end
-
-  # イベントハンドラー
-
-  @impl true
-  def apply_event(%__MODULE__{} = aggregate, %CategoryCreated{} = event) do
-    with {:ok, category_id} <- CategoryId.new(event.aggregate_id),
-         {:ok, category_name} <- CategoryName.new(event.name) do
-      %__MODULE__{
-        aggregate
-        | id: category_id,
-          name: category_name,
-          deleted: false
-      }
-    else
-      _ -> aggregate
-    end
-  end
-
-  def apply_event(%__MODULE__{} = aggregate, %CategoryUpdated{} = event) do
-    case CategoryName.new(event.new_name) do
-      {:ok, name} -> %{aggregate | name: name}
-      _ -> aggregate
-    end
-  end
-
-  def apply_event(%__MODULE__{} = aggregate, %CategoryDeleted{}) do
-    %{aggregate | deleted: true}
-  end
-
-  def apply_event(aggregate, _event), do: aggregate
-
-  # アクセサ
-
-  @spec id(t()) :: String.t() | nil
-  def id(%__MODULE__{id: nil}), do: nil
-  def id(%__MODULE__{id: id}), do: CategoryId.value(id)
-
-  @spec name(t()) :: String.t() | nil
-  def name(%__MODULE__{name: nil}), do: nil
-  def name(%__MODULE__{name: name}), do: CategoryName.value(name)
-
-  @spec deleted?(t()) :: boolean()
-  def deleted?(%__MODULE__{deleted: deleted}), do: deleted || false
-
-  # ファクトリー関数
-
+  # 新規作成
   @spec new() :: t()
   def new do
     %__MODULE__{
       id: nil,
       name: nil,
+      description: nil,
+      parent_id: nil,
+      path: [],
+      depth: 0,
       deleted: false,
       version: 0,
       pending_events: []
@@ -158,9 +49,258 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   @spec new(String.t()) :: t()
   def new(id) when is_binary(id) do
-    case CategoryId.new(id) do
-      {:ok, category_id} -> %__MODULE__{new() | id: category_id}
-      _ -> new()
+    %__MODULE__{new() | id: id}
+  end
+
+  # コマンド実行
+  @spec execute(t(), tuple()) :: {:ok, list(map())} | {:error, atom() | String.t()}
+  def execute(%__MODULE__{id: nil}, {:create_category, params}) do
+    # バリデーション
+    with :ok <- validate_name(params.name) do
+      category_id = params.id || Ecto.UUID.generate()
+
+      # CommandHandlerから渡されたparent_pathを使用
+      parent_path = params[:parent_path] || []
+
+      event = %{
+        event_type: "category_created",
+        aggregate_id: category_id,
+        aggregate_type: "category",
+        event_data: %{
+          name: params.name,
+          description: params[:description],
+          parent_id: params[:parent_id],
+          path: parent_path
+        },
+        event_metadata: params[:metadata] || %{},
+        event_version: 1,
+        occurred_at: DateTime.utc_now()
+      }
+
+      {:ok, [event]}
     end
+  end
+
+  def execute(%__MODULE__{deleted: true}, _command) do
+    {:error, :category_not_found}
+  end
+
+  def execute(%__MODULE__{id: id} = aggregate, {:update_category, params}) when not is_nil(id) do
+    changes = build_update_changes(aggregate, params)
+
+    if map_size(changes) == 0 do
+      {:ok, []}
+    else
+      # 名前変更の場合は重複チェック
+      with :ok <- validate_update_name(changes[:name], aggregate),
+           :ok <- validate_parent_change(changes[:parent_id], aggregate) do
+        events = []
+
+        # 通常の更新イベント
+        update_event = %{
+          event_type: "category_updated",
+          aggregate_id: id,
+          aggregate_type: "category",
+          event_data: changes,
+          event_metadata: params[:metadata] || %{},
+          event_version: aggregate.version + 1,
+          occurred_at: DateTime.utc_now()
+        }
+
+        events = [update_event | events]
+
+        # parent_idが変更された場合は移動イベントも生成
+        events =
+          if Map.has_key?(changes, :parent_id) do
+            # CommandHandlerから渡されたnew_pathを使用
+            new_path = params[:new_path] || build_new_path(changes.parent_id)
+
+            move_event = %{
+              event_type: "category_moved",
+              aggregate_id: id,
+              aggregate_type: "category",
+              event_data: %{
+                old_parent_id: aggregate.parent_id,
+                new_parent_id: changes.parent_id,
+                old_path: aggregate.path,
+                new_path: new_path
+              },
+              event_metadata: params[:metadata] || %{},
+              event_version: aggregate.version + 2,
+              occurred_at: DateTime.utc_now()
+            }
+
+            [move_event | events]
+          else
+            events
+          end
+
+        {:ok, Enum.reverse(events)}
+      end
+    end
+  end
+
+  def execute(%__MODULE__{id: id} = aggregate, {:delete_category, params}) when not is_nil(id) do
+    # サブカテゴリの存在チェック
+    with :ok <- check_no_subcategories(id),
+         :ok <- check_no_products(id) do
+      event = %{
+        event_type: "category_deleted",
+        aggregate_id: id,
+        aggregate_type: "category",
+        event_data: %{
+          reason: params[:reason]
+        },
+        event_metadata: params[:metadata] || %{},
+        event_version: aggregate.version + 1,
+        occurred_at: DateTime.utc_now()
+      }
+
+      {:ok, [event]}
+    end
+  end
+
+  def execute(_aggregate, _command) do
+    {:error, :invalid_command}
+  end
+
+  # イベントから状態を復元
+  @spec load_from_events(list(map())) :: t()
+  def load_from_events(events) do
+    Enum.reduce(events, new(), &apply_event(&2, &1))
+  end
+
+  # イベント適用
+  defp apply_event(aggregate, event) do
+    case event.event_type do
+      "category_created" ->
+        %__MODULE__{
+          aggregate
+          | id: event.aggregate_id,
+            name: event.event_data.name,
+            description: event.event_data[:description],
+            parent_id: event.event_data[:parent_id],
+            path: event.event_data[:path] || [],
+            depth: length(event.event_data[:path] || []),
+            deleted: false,
+            version: event.event_version
+        }
+
+      "category_updated" ->
+        aggregate
+        |> maybe_update(:name, event.event_data[:name])
+        |> maybe_update(:description, event.event_data[:description])
+        |> Map.put(:version, event.event_version)
+
+      "category_moved" ->
+        %__MODULE__{
+          aggregate
+          | parent_id: event.event_data.new_parent_id,
+            path: event.event_data.new_path,
+            depth: length(event.event_data.new_path),
+            version: event.event_version
+        }
+
+      "category_deleted" ->
+        %__MODULE__{
+          aggregate
+          | deleted: true,
+            version: event.event_version
+        }
+
+      _ ->
+        aggregate
+    end
+  end
+
+  defp maybe_update(aggregate, _field, nil), do: aggregate
+  defp maybe_update(aggregate, field, value), do: Map.put(aggregate, field, value)
+
+  # バリデーション関数
+  defp validate_name(nil), do: {:error, :invalid_name}
+  defp validate_name(""), do: {:error, :invalid_name}
+  defp validate_name(name) when is_binary(name), do: :ok
+  defp validate_name(_), do: {:error, :invalid_name}
+
+  defp validate_duplicate_name(_name, _parent_id, _exclude_id) do
+    # CommandHandlerでチェック済み
+    :ok
+  end
+
+  defp validate_parent_and_get_path(nil), do: {:ok, []}
+
+  defp validate_parent_and_get_path(_parent_id) do
+    # CommandHandlerでパス取得済み
+    {:ok, []}
+  end
+
+  defp validate_update_name(nil, _aggregate), do: :ok
+
+  defp validate_update_name(new_name, aggregate) do
+    if new_name != aggregate.name do
+      validate_duplicate_name(new_name, aggregate.parent_id, aggregate.id)
+    else
+      :ok
+    end
+  end
+
+  defp validate_parent_change(nil, _aggregate), do: :ok
+
+  defp validate_parent_change(new_parent_id, aggregate) do
+    cond do
+      new_parent_id == aggregate.id ->
+        {:error, :circular_reference}
+
+      new_parent_id == aggregate.parent_id ->
+        :ok
+
+      true ->
+        # CommandHandlerで循環参照チェック済み
+        :ok
+    end
+  end
+
+  defp check_no_subcategories(_category_id) do
+    # CommandHandlerでチェック済み
+    :ok
+  end
+
+  defp check_no_products(_category_id) do
+    # CommandHandlerでチェック済み
+    :ok
+  end
+
+  defp build_update_changes(aggregate, params) do
+    changes = %{}
+
+    changes =
+      if params[:name] && params[:name] != aggregate.name do
+        Map.put(changes, :name, params[:name])
+      else
+        changes
+      end
+
+    changes =
+      if Map.has_key?(params, :description) && params[:description] != aggregate.description do
+        Map.put(changes, :description, params[:description])
+      else
+        changes
+      end
+
+    changes =
+      if Map.has_key?(params, :parent_id) && params[:parent_id] != aggregate.parent_id do
+        Map.put(changes, :parent_id, params[:parent_id])
+      else
+        changes
+      end
+
+    changes
+  end
+
+  defp build_new_path(nil), do: []
+
+  defp build_new_path(_parent_id) do
+    # CommandHandlerでnew_pathが渡されることを想定
+    []
   end
 end

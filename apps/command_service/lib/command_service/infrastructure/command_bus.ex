@@ -76,9 +76,9 @@ defmodule CommandService.Infrastructure.CommandBus do
 
     module in [
       # Order-related commands
-      CommandService.Application.Commands.CreateOrderCommand,
-      CommandService.Application.Commands.UpdateOrderCommand,
-      CommandService.Application.Commands.CancelOrderCommand,
+      CommandService.Application.Commands.OrderCommands.CreateOrder,
+      CommandService.Application.Commands.OrderCommands.UpdateOrder,
+      CommandService.Application.Commands.OrderCommands.CancelOrder,
       # OrderCommands module commands
       CommandService.Application.Commands.OrderCommands.ReserveInventoryCommand,
       CommandService.Application.Commands.OrderCommands.ReleaseInventoryCommand,

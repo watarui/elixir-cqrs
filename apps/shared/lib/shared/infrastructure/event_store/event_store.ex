@@ -67,6 +67,30 @@ defmodule Shared.Infrastructure.EventStore do
   end
 
   @doc """
+  集約IDからイベントを取得する
+  """
+  @spec get_events(aggregate_id()) :: list(event())
+  def get_events(aggregate_id) do
+    case read_aggregate_events(aggregate_id) do
+      {:ok, events} -> events
+      {:error, _} -> []
+    end
+  end
+
+  @doc """
+  特定のバージョン以降のイベントを取得する
+  """
+  @spec get_events(aggregate_id(), after_version: version()) :: list(event())
+  def get_events(aggregate_id, after_version: version) do
+    stream_name = aggregate_stream_name(aggregate_id)
+
+    case read_stream_forward(stream_name, version + 1) do
+      {:ok, events} -> events
+      {:error, _} -> []
+    end
+  end
+
+  @doc """
   イベントストアのスナップショットを作成する
   """
   @spec create_snapshot(aggregate_id(), struct(), version()) :: :ok | error()
@@ -84,12 +108,48 @@ defmodule Shared.Infrastructure.EventStore do
   end
 
   @doc """
+  スナップショットを保存する
+  """
+  @spec save_snapshot(map()) :: {:ok, term()} | error()
+  def save_snapshot(snapshot) do
+    case create_snapshot(snapshot.aggregate_id, snapshot, snapshot.version) do
+      :ok -> {:ok, snapshot}
+      error -> error
+    end
+  end
+
+  @doc """
+  最新のスナップショットを取得する
+  """
+  @spec get_latest_snapshot(aggregate_id()) :: map() | nil
+  def get_latest_snapshot(aggregate_id) do
+    # アダプタの実装を直接呼び出す
+    case adapter().get_snapshot(aggregate_id) do
+      {:ok, snapshot} -> snapshot
+      {:error, _} -> nil
+      nil -> nil
+    end
+  end
+
+  @doc """
   特定の時間以降のイベントを取得する
   """
   @spec get_events_since(DateTime.t()) :: list(event())
   def get_events_since(since_time) do
-    # TODO: Implement in adapter
-    []
+    # 全イベントを取得してフィルタリング（簡易実装）
+    case adapter().read_all_events(0) do
+      {:ok, events} ->
+        events
+        |> Enum.filter(fn event ->
+          case Map.get(event, :created_at) || Map.get(event, :occurred_at) do
+            nil -> false
+            event_time -> DateTime.compare(event_time, since_time) == :gt
+          end
+        end)
+
+      _ ->
+        []
+    end
   end
 
   @doc """
@@ -110,46 +170,21 @@ defmodule Shared.Infrastructure.EventStore do
     end)
   end
 
-  @doc """
-  特定の集約の特定バージョン以降のイベントを取得する
-  """
-  @spec get_events(aggregate_id(), keyword()) :: list(event())
-  def get_events(aggregate_id, opts \\ []) do
-    after_version = Keyword.get(opts, :after_version, 0)
-
-    case read_aggregate_events(aggregate_id) do
-      {:ok, events} ->
-        Enum.filter(events, fn event ->
-          Map.get(event, :event_version, 0) > after_version
-        end)
-
-      {:error, _} ->
-        []
-    end
-  end
-
-  @doc """
-  スナップショットを保存する
-  """
-  @spec save_snapshot(map()) :: {:ok, term()} | error()
-  def save_snapshot(snapshot) do
-    # TODO: Implement snapshot storage
-    {:ok, snapshot}
-  end
-
-  @doc """
-  最新のスナップショットを取得する
-  """
-  @spec get_latest_snapshot(aggregate_id()) :: map() | nil
-  def get_latest_snapshot(aggregate_id) do
-    # TODO: Implement snapshot retrieval
-    %{version: 15, aggregate_id: aggregate_id}
-  end
-
   # プライベート関数
 
   defp aggregate_stream_name(aggregate_id) do
     "aggregate-#{aggregate_id}"
+  end
+
+  @doc """
+  すべてのイベントを取得する
+  """
+  @spec get_all_events() :: list(event())
+  def get_all_events do
+    case adapter().read_all_events(0) do
+      {:ok, events} -> events
+      _ -> []
+    end
   end
 
   defp adapter do

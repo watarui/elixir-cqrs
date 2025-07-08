@@ -48,15 +48,14 @@ defmodule CommandService.Application do
       base_children ++
         prometheus_children ++
         [
-          # イベントストア (PostgreSQL)
-          {Shared.Infrastructure.EventStore.PostgresAdapter,
-           Application.get_env(:shared, :event_store_repo, [])},
-
           # イベントバス
           {Shared.Infrastructure.EventBus, name: Shared.Infrastructure.EventBus},
 
           # コマンドバス
           {CommandService.Application.CommandBus, name: CommandService.Application.CommandBus},
+
+          # カテゴリプロジェクション（テスト用）
+          CommandService.Infrastructure.Projections.CategoryProjection,
 
           # サガコーディネーター
           {Shared.Infrastructure.Saga.SagaCoordinator,

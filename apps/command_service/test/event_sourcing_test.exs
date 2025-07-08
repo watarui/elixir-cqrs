@@ -6,13 +6,14 @@ defmodule CommandService.EventSourcingTest do
   use ExUnit.Case
 
   alias CommandService.Application.CommandBus
-  alias CommandService.Application.Commands.ProductCommands.CreateProductCommand
+  alias CommandService.Application.Commands.ProductCommands.CreateProduct
   alias Shared.Infrastructure.EventStore
 
   test "商品作成コマンドがイベントを生成し保存する" do
     # コマンドを作成
     command =
-      CreateProductCommand.new(%{
+      CreateProduct.new(%{
+        id: Ecto.UUID.generate(),
         name: "Test Product",
         price: "1999.99",
         category_id: "test-category-id",
@@ -24,20 +25,20 @@ defmodule CommandService.EventSourcingTest do
       })
 
     # コマンドを実行
-    assert {:ok, result} = CommandBus.execute(command)
+    assert {:ok, events} = CommandBus.execute(command)
 
     # イベントが生成されたことを確認
-    assert is_binary(result.aggregate_id)
-    assert length(result.events) > 0
+    assert length(events) > 0
+    [_first_event | _] = events
 
     # イベントストアからイベントを読み取る
-    assert {:ok, events} = EventStore.read_aggregate_events(result.aggregate_id)
-    assert length(events) > 0
+    assert {:ok, stored_events} = EventStore.read_aggregate_events(command.id)
+    assert length(stored_events) > 0
 
     # 最初のイベントがProductCreatedであることを確認
-    [first_event | _] = events
-    assert first_event.__struct__ == Shared.Domain.Events.ProductEvents.ProductCreated
-    assert first_event.aggregate_id == result.aggregate_id
-    assert first_event.name == "Test Product"
+    [stored_first_event | _] = stored_events
+    assert stored_first_event.__struct__ == Shared.Domain.Events.ProductEvents.ProductCreated
+    assert stored_first_event.aggregate_id == command.id
+    assert stored_first_event.name == "Test Product"
   end
 end

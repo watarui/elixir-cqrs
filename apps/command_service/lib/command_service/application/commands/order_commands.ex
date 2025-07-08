@@ -3,6 +3,85 @@ defmodule CommandService.Application.Commands.OrderCommands do
   注文関連のコマンド定義（サガ用）
   """
 
+  # CreateOrderコマンドの定義
+  defmodule CreateOrder do
+    @moduledoc """
+    注文作成コマンド
+    """
+    @type t :: %__MODULE__{
+            order_id: String.t(),
+            customer_id: String.t(),
+            items: [map()],
+            total_amount: Decimal.t() | String.t(),
+            shipping_address: map(),
+            metadata: map()
+          }
+
+    defstruct [:order_id, :customer_id, :items, :total_amount, :shipping_address, :metadata]
+
+    def new(params) do
+      %__MODULE__{
+        order_id: params[:order_id] || params[:id] || Ecto.UUID.generate(),
+        customer_id: params.customer_id,
+        items: params.items,
+        total_amount: to_decimal(params[:total_amount]),
+        shipping_address: params.shipping_address,
+        metadata: params[:metadata] || %{}
+      }
+    end
+
+    defp to_decimal(nil), do: nil
+    defp to_decimal(value) when is_binary(value), do: Decimal.new(value)
+    defp to_decimal(%Decimal{} = value), do: value
+    defp to_decimal(value) when is_number(value), do: Decimal.new(to_string(value))
+  end
+
+  # 注文更新コマンド
+  defmodule UpdateOrder do
+    @moduledoc """
+    注文更新コマンド
+    """
+    @type t :: %__MODULE__{
+            order_id: String.t(),
+            status: String.t() | nil,
+            shipping_address: map() | nil,
+            metadata: map()
+          }
+
+    defstruct [:order_id, :status, :shipping_address, :metadata]
+
+    def new(params) do
+      %__MODULE__{
+        order_id: params[:order_id] || params[:id],
+        status: params[:status],
+        shipping_address: params[:shipping_address],
+        metadata: params[:metadata] || %{}
+      }
+    end
+  end
+
+  # 注文キャンセルコマンド
+  defmodule CancelOrder do
+    @moduledoc """
+    注文キャンセルコマンド
+    """
+    @type t :: %__MODULE__{
+            order_id: String.t(),
+            reason: String.t(),
+            metadata: map()
+          }
+
+    defstruct [:order_id, :reason, :metadata]
+
+    def new(params) do
+      %__MODULE__{
+        order_id: params[:order_id] || params[:id],
+        reason: params[:reason] || "Customer requested cancellation",
+        metadata: params[:metadata] || %{}
+      }
+    end
+  end
+
   # 在庫予約コマンド
   defmodule ReserveInventoryCommand do
     @moduledoc """

@@ -13,13 +13,23 @@ defmodule Shared.Domain.Events.ProductEvents do
             event_id: String.t(),
             aggregate_id: String.t(),
             name: String.t(),
+            description: String.t() | nil,
             price: Decimal.t(),
             category_id: String.t(),
             occurred_at: DateTime.t(),
             metadata: map()
           }
 
-    defstruct [:event_id, :aggregate_id, :name, :price, :category_id, :occurred_at, :metadata]
+    defstruct [
+      :event_id,
+      :aggregate_id,
+      :name,
+      :description,
+      :price,
+      :category_id,
+      :occurred_at,
+      :metadata
+    ]
 
     @spec new(String.t(), String.t(), Decimal.t(), String.t(), map()) :: t()
     def new(product_id, name, price, category_id, metadata \\ %{}) do
@@ -27,6 +37,7 @@ defmodule Shared.Domain.Events.ProductEvents do
         event_id: generate_event_id(),
         aggregate_id: product_id,
         name: name,
+        description: metadata[:description],
         price: price,
         category_id: category_id,
         occurred_at: current_timestamp(),
@@ -40,6 +51,7 @@ defmodule Shared.Domain.Events.ProductEvents do
     defp payload_to_map(event) do
       %{
         name: event.name,
+        description: event.description,
         price: Decimal.to_string(event.price),
         category_id: event.category_id
       }

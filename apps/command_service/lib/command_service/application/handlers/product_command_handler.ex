@@ -35,7 +35,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       # イベントバスに発行
       Enum.each(events, &EventBus.publish/1)
 
-      {:ok, %{aggregate_id: command.id, events: events}}
+      {:ok, events}
     end
   end
 
@@ -53,7 +53,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       # イベントバスに発行
       Enum.each(new_events, &EventBus.publish/1)
 
-      {:ok, %{aggregate_id: command.id, events: new_events}}
+      {:ok, new_events}
     else
       {:error, :not_found} -> {:error, "Product not found"}
       error -> error
@@ -74,7 +74,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
       # イベントバスに発行
       Enum.each(new_events, &EventBus.publish/1)
 
-      {:ok, %{aggregate_id: command.id, events: new_events}}
+      {:ok, new_events}
     else
       {:error, :not_found} -> {:error, "Product not found"}
       error -> error

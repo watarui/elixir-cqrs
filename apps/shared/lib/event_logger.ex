@@ -31,16 +31,28 @@ defmodule Shared.EventLogger do
   @doc """
   ドメインイベントを記録する（構造化）
   """
-  @spec log_domain_event(struct()) :: :ok
-  def log_domain_event(event_struct) do
-    event = %{
-      event_type: event_struct.__struct__,
-      data: Map.from_struct(event_struct),
+  @spec log_domain_event(struct() | map()) :: :ok
+  def log_domain_event(event) when is_struct(event) do
+    event_map = %{
+      event_type: event.__struct__,
+      data: Map.from_struct(event),
       timestamp: DateTime.utc_now(),
       service: get_service_name()
     }
 
-    Logger.info("Domain event occurred", event)
+    Logger.info("Domain event occurred", event_map)
+    :ok
+  end
+
+  def log_domain_event(event) when is_map(event) do
+    event_map = %{
+      event_type: Map.get(event, :event_type, "UnknownEvent"),
+      data: Map.get(event, :event_data, event),
+      timestamp: Map.get(event, :occurred_at, DateTime.utc_now()),
+      service: get_service_name()
+    }
+
+    Logger.info("Domain event occurred", event_map)
     :ok
   end
 

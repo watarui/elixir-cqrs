@@ -17,12 +17,25 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     ReserveInventory
   }
 
-  alias Shared.Infrastructure.EventStore.EventStore
+  alias CommandService.Application.Commands.OrderCommands.{
+    CreateOrder,
+    UpdateOrder
+  }
+
+  alias CommandService.Application.Commands.OrderCommands.CancelOrder, as: AppCancelOrder
+
+  alias CommandService.Domain.Aggregates.OrderAggregate
+  alias Shared.Infrastructure.{EventBus, EventStore}
   require Logger
 
   @impl true
   def command_types do
     [
+      # アプリケーションコマンド
+      CreateOrder,
+      UpdateOrder,
+      AppCancelOrder,
+      # サガコマンド
       ReserveInventory,
       ReleaseInventory,
       ProcessPayment,
@@ -32,6 +45,57 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
       ConfirmOrder,
       CancelOrder
     ]
+  end
+
+  # アプリケーションコマンドの処理
+  @impl true
+  def handle_command(%CreateOrder{} = command) do
+    aggregate = OrderAggregate.new()
+
+    case OrderAggregate.execute(aggregate, {:create_order, Map.from_struct(command)}) do
+      {:ok, events} ->
+        case EventStore.save_aggregate_events(command.order_id, events, 0) do
+          {:ok, _version} ->
+            Enum.each(events, &EventBus.publish/1)
+            {:ok, events}
+
+          error ->
+            error
+        end
+
+      error ->
+        error
+    end
+  end
+
+  def handle_command(%UpdateOrder{} = command) do
+    with {:ok, events} <- EventStore.read_aggregate_events(command.order_id),
+         aggregate = OrderAggregate.load_from_events(events),
+         {:ok, new_events} <-
+           OrderAggregate.execute(aggregate, {:update_order, Map.from_struct(command)}),
+         {:ok, _version} <-
+           EventStore.save_aggregate_events(command.order_id, new_events, aggregate.version) do
+      Enum.each(new_events, &EventBus.publish/1)
+      {:ok, new_events}
+    else
+      {:error, :not_found} -> {:error, "Order not found"}
+      error -> error
+    end
+  end
+
+  def handle_command(%AppCancelOrder{} = command) do
+    with {:ok, events} <- EventStore.read_aggregate_events(command.order_id),
+         aggregate = OrderAggregate.load_from_events(events),
+         {:ok, new_events} <-
+           OrderAggregate.execute(aggregate, {:cancel_order, Map.from_struct(command)}),
+         {:ok, _version} <-
+           EventStore.save_aggregate_events(command.order_id, new_events, aggregate.version) do
+      Enum.each(new_events, &EventBus.publish/1)
+      {:ok, new_events}
+    else
+      {:error, :not_found} -> {:error, "Order not found"}
+      error -> error
+    end
   end
 
   @impl true

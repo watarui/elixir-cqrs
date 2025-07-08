@@ -15,11 +15,12 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
     ProductUpdated
   }
 
-  defstruct [:id, :name, :price, :category_id, :deleted, :version, :pending_events]
+  defstruct [:id, :name, :description, :price, :category_id, :deleted, :version, :pending_events]
 
   @type t :: %__MODULE__{
           id: ProductId.t() | nil,
           name: ProductName.t() | nil,
+          description: String.t() | nil,
           price: ProductPrice.t() | nil,
           category_id: CategoryId.t() | nil,
           deleted: boolean(),
@@ -50,6 +51,8 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
          {:ok, category_id} <- CategoryId.new(params.category_id) do
       # 純粋な関数でメタデータを生成
       metadata = AggregateLogic.build_command_metadata(params)
+      # descriptionをmetadataに追加
+      metadata = Map.put(metadata, :description, params[:description])
 
       event =
         ProductCreated.new(
@@ -142,6 +145,7 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
         aggregate
         | id: product_id,
           name: product_name,
+          description: event.description,
           price: product_price,
           category_id: category_id,
           deleted: false
@@ -170,6 +174,9 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
           {:ok, category_id} -> %{acc | category_id: category_id}
           _ -> acc
         end
+
+      {:description, new_description}, acc ->
+        %{acc | description: new_description}
 
       _, acc ->
         acc
@@ -261,6 +268,20 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
 
             _ ->
               changes
+          end
+      end
+
+    changes =
+      case params[:description] do
+        nil ->
+          changes
+
+        new_description ->
+          # descriptionは文字列型なので、直接比較
+          if new_description != aggregate.description do
+            Map.put(changes, :description, new_description)
+          else
+            changes
           end
       end
 

@@ -3,15 +3,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
 
   alias CommandService.Application.Handlers.OrderCommandHandler
 
-  alias CommandService.Application.Commands.{
-    CancelOrderCommand,
-    CreateOrderCommand,
-    UpdateOrderCommand
-  }
+  alias CommandService.Application.Commands.OrderCommands.{CreateOrder, UpdateOrder, CancelOrder}
 
-  alias CommandService.Domain.Aggregates.Order
-  alias CommandService.Infrastructure.Database.Repo
-  alias Ecto.Adapters.SQL.Sandbox
+  alias CommandService.Domain.Aggregates.OrderAggregate
   alias Shared.Infrastructure.Saga.OrderSaga
 
   # import ElixirCqrs.Factory
@@ -19,7 +13,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
   # import ElixirCqrs.EventStoreHelpers
 
   setup do
-    :ok = Sandbox.checkout(Repo)
+    # EventStoreはGenServerなので、特別なセットアップは不要
     :ok
   end
 
@@ -76,7 +70,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       ]
 
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: order_items,
           shipping_address: build_shipping_address(),
@@ -84,7 +78,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -98,15 +92,25 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       assert event.event_data.status == "pending"
 
       # Check total calculation
-      # (2 * 50) + (1 * 30)
-      expected_total = Decimal.new("130.00")
+      # subtotal: (2 * 50) + (1 * 30) = 130
+      # tax: 130 * 0.10 = 13
+      # shipping: 500 (standard shipping for subtotal < 5000)
+      # total: 130 + 13 + 500 = 643
+      expected_subtotal = Decimal.new("130.00")
+      expected_tax = Decimal.new("13.00")
+      expected_shipping = Decimal.new("500.00")
+      expected_total = Decimal.new("643.00")
+
+      assert Decimal.equal?(event.event_data.subtotal, expected_subtotal)
+      assert Decimal.equal?(event.event_data.tax_amount, expected_tax)
+      assert Decimal.equal?(event.event_data.shipping_cost, expected_shipping)
       assert Decimal.equal?(event.event_data.total_amount, expected_total)
     end
 
     test "fails to create order without items" do
       # Arrange
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: [],
           shipping_address: build_shipping_address(),
@@ -114,7 +118,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :no_items} = result
@@ -127,7 +131,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       ]
 
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: order_items,
           shipping_address: build_shipping_address(),
@@ -135,7 +139,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :invalid_quantity} = result
@@ -144,7 +148,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to create order without customer_id" do
       # Arrange
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: nil,
           items: [build_order_item()],
           shipping_address: build_shipping_address(),
@@ -152,7 +156,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :missing_customer} = result
@@ -161,7 +165,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to create order without shipping address" do
       # Arrange
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: [build_order_item()],
           shipping_address: nil,
@@ -169,7 +173,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :missing_shipping_address} = result
@@ -178,7 +182,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "triggers order saga on creation" do
       # Arrange
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: [build_order_item()],
           shipping_address: build_shipping_address(),
@@ -186,7 +190,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      {:ok, events} = OrderCommandHandler.handle(command)
+      {:ok, events} = OrderCommandHandler.handle_command(command)
       [event] = events
 
       # Assert saga trigger
@@ -204,14 +208,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "successfully updates order status", %{order: order} do
       # Arrange
       command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           status: "processing",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -229,14 +233,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           shipping_address: new_address,
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -247,24 +251,24 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to update order in final status", %{order: order} do
       # First, move order to completed status
       complete_command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           status: "completed",
           metadata: test_metadata()
         })
 
-      {:ok, _} = OrderCommandHandler.handle(complete_command)
+      {:ok, _} = OrderCommandHandler.handle_command(complete_command)
 
       # Try to update completed order
       command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           status: "processing",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :order_completed} = result
@@ -273,14 +277,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "validates status transitions", %{order: order} do
       # Invalid transition: pending -> completed (skipping processing)
       command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           status: "completed",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :invalid_status_transition} = result
@@ -289,14 +293,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to update non-existent order" do
       # Arrange
       command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: Ecto.UUID.generate(),
           status: "processing",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :order_not_found} = result
@@ -312,14 +316,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "successfully cancels a pending order", %{order: order} do
       # Arrange
       command =
-        CancelOrderCommand.new(%{
+        CancelOrder.new(%{
           id: order.id,
           reason: "Customer requested cancellation",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:ok, events} = result
@@ -332,14 +336,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "triggers compensation saga on cancellation", %{order: order} do
       # Arrange
       command =
-        CancelOrderCommand.new(%{
+        CancelOrder.new(%{
           id: order.id,
           reason: "Out of stock",
           metadata: test_metadata()
         })
 
       # Act
-      {:ok, events} = OrderCommandHandler.handle(command)
+      {:ok, events} = OrderCommandHandler.handle_command(command)
       [event] = events
 
       # Assert compensation trigger
@@ -349,24 +353,24 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to cancel completed order", %{order: order} do
       # Complete the order first
       complete_command =
-        UpdateOrderCommand.new(%{
+        UpdateOrder.new(%{
           id: order.id,
           status: "completed",
           metadata: test_metadata()
         })
 
-      {:ok, _} = OrderCommandHandler.handle(complete_command)
+      {:ok, _} = OrderCommandHandler.handle_command(complete_command)
 
       # Try to cancel
       command =
-        CancelOrderCommand.new(%{
+        CancelOrder.new(%{
           id: order.id,
           reason: "Too late",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :cannot_cancel_completed_order} = result
@@ -375,24 +379,24 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to cancel already cancelled order", %{order: order} do
       # Cancel once
       cancel_command =
-        CancelOrderCommand.new(%{
+        CancelOrder.new(%{
           id: order.id,
           reason: "First cancellation",
           metadata: test_metadata()
         })
 
-      {:ok, _} = OrderCommandHandler.handle(cancel_command)
+      {:ok, _} = OrderCommandHandler.handle_command(cancel_command)
 
       # Try to cancel again
       command =
-        CancelOrderCommand.new(%{
+        CancelOrder.new(%{
           id: order.id,
           reason: "Second cancellation",
           metadata: test_metadata()
         })
 
       # Act
-      result = OrderCommandHandler.handle(command)
+      result = OrderCommandHandler.handle_command(command)
 
       # Assert
       assert {:error, :order_already_cancelled} = result
@@ -409,7 +413,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       ]
 
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: items,
           shipping_address: build_shipping_address(),
@@ -417,7 +421,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      {:ok, events} = OrderCommandHandler.handle(command)
+      {:ok, events} = OrderCommandHandler.handle_command(command)
       [event] = events
 
       # Assert
@@ -435,7 +439,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       ]
 
       command =
-        CreateOrderCommand.new(%{
+        CreateOrder.new(%{
           customer_id: Ecto.UUID.generate(),
           items: items,
           shipping_address: build_shipping_address(),
@@ -443,7 +447,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
         })
 
       # Act
-      {:ok, events} = OrderCommandHandler.handle(command)
+      {:ok, events} = OrderCommandHandler.handle_command(command)
       [event] = events
 
       # Assert
@@ -461,9 +465,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     }
 
     order_attrs = Map.merge(default_attrs, attrs)
-    command = CreateOrderCommand.new(Map.merge(order_attrs, %{metadata: test_metadata()}))
+    command = CreateOrder.new(Map.merge(order_attrs, %{metadata: test_metadata()}))
 
-    {:ok, events} = OrderCommandHandler.handle(command)
+    {:ok, events} = OrderCommandHandler.handle_command(command)
     event = hd(events)
 
     %{
