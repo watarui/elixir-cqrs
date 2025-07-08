@@ -49,7 +49,8 @@ defmodule CommandService.Application do
         prometheus_children ++
         [
           # イベントストア (PostgreSQL)
-          {Shared.Infrastructure.EventStore.PostgresAdapter, []},
+          {Shared.Infrastructure.EventStore.PostgresAdapter,
+           Application.get_env(:shared, :event_store_repo, [])},
 
           # イベントバス
           {Shared.Infrastructure.EventBus, name: Shared.Infrastructure.EventBus},

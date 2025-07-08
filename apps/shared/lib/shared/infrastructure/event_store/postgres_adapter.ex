@@ -56,13 +56,21 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl GenServer
   def init(opts) do
-    db_config = [
-      hostname: opts[:hostname] || System.get_env("EVENT_STORE_HOST", "postgres-event"),
-      username: opts[:username] || System.get_env("EVENT_STORE_USER", "postgres"),
-      password: opts[:password] || System.get_env("EVENT_STORE_PASSWORD", "postgres"),
-      database: opts[:database] || System.get_env("EVENT_STORE_DB", "event_store"),
-      port: opts[:port] || System.get_env("EVENT_STORE_PORT", "5432") |> String.to_integer()
-    ]
+    # URLが指定されている場合はそちらを優先
+    db_config =
+      if opts[:url] do
+        # URLから基本設定を取得し、database設定で上書き
+        base_config = Ecto.Repo.Supervisor.parse_url(opts[:url])
+        Keyword.merge(base_config, Keyword.take(opts, [:database, :pool_size]))
+      else
+        [
+          hostname: opts[:hostname] || System.get_env("EVENT_STORE_HOST", "postgres-event"),
+          username: opts[:username] || System.get_env("EVENT_STORE_USER", "postgres"),
+          password: opts[:password] || System.get_env("EVENT_STORE_PASSWORD", "postgres"),
+          database: opts[:database] || System.get_env("EVENT_STORE_DB", "event_store"),
+          port: opts[:port] || System.get_env("EVENT_STORE_PORT", "5432") |> String.to_integer()
+        ]
+      end
 
     Logger.info(
       "Connecting to event store with config: #{inspect(Map.new(db_config) |> Map.delete(:password))}"

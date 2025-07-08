@@ -40,7 +40,8 @@ defmodule QueryService.Application do
       QueryService.Infrastructure.Cache.EtsCache,
 
       # イベントストア (PostgreSQL) - ProjectionManagerがイベントを読むため
-      {Shared.Infrastructure.EventStore.PostgresAdapter, []},
+      {Shared.Infrastructure.EventStore.PostgresAdapter,
+       Application.get_env(:shared, :event_store_repo, [])},
 
       # プロジェクションマネージャー（イベント→Read Model投影）
       {QueryService.Application.ProjectionManager,

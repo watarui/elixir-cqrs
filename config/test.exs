@@ -56,12 +56,21 @@ config :telemetry_metrics_prometheus,
 config :grpc, start_server: false
 
 # イベントストアのテスト環境設定
-config :shared, :event_store_repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "event_store_test#{System.get_env("MIX_TEST_PARTITION")}",
-  port: 5432
+if database_url do
+  # CI環境ではDATABASE_URLから設定を取得
+  config :shared, :event_store_repo,
+    url: database_url,
+    database: "event_store_test#{System.get_env("MIX_TEST_PARTITION")}",
+    pool_size: 10
+else
+  # ローカル環境では明示的な設定を使用
+  config :shared, :event_store_repo,
+    username: "postgres",
+    password: "postgres",
+    hostname: "localhost",
+    database: "event_store_test#{System.get_env("MIX_TEST_PARTITION")}",
+    port: 5432
+end
 
 # Shared application configuration
 config :shared,
