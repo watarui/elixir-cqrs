@@ -68,7 +68,7 @@ defmodule CommandService.Infrastructure.Projections.CategoryProjection do
         true
 
       %{parent_id: parent_id} ->
-        is_descendant_of?(parent_id, ancestor_id)
+        descendant_of?(parent_id, ancestor_id)
     end
   rescue
     _ -> false
