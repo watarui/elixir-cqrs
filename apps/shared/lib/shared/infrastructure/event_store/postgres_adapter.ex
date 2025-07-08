@@ -422,55 +422,41 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   end
 
   defp resolve_event_module(event_type) do
-    case event_type do
-      "ProductCreated" ->
-        Shared.Domain.Events.ProductEvents.ProductCreated
+    # イベントモジュールのレジストリ
+    # 将来的には、動的に登録できるようにする
+    event_modules = %{
+      # Product events
+      "ProductCreated" => Shared.Domain.Events.ProductEvents.ProductCreated,
+      "ProductUpdated" => Shared.Domain.Events.ProductEvents.ProductUpdated,
+      "ProductDeleted" => Shared.Domain.Events.ProductEvents.ProductDeleted,
+      "ProductPriceChanged" => Shared.Domain.Events.ProductEvents.ProductPriceChanged,
 
-      "ProductUpdated" ->
-        Shared.Domain.Events.ProductEvents.ProductUpdated
-
-      "ProductDeleted" ->
-        Shared.Domain.Events.ProductEvents.ProductDeleted
-
-      "ProductPriceChanged" ->
-        Shared.Domain.Events.ProductEvents.ProductPriceChanged
-
-      "CategoryCreated" ->
-        Shared.Domain.Events.CategoryEvents.CategoryCreated
-
-      "CategoryUpdated" ->
-        Shared.Domain.Events.CategoryEvents.CategoryUpdated
-
-      "CategoryDeleted" ->
-        Shared.Domain.Events.CategoryEvents.CategoryDeleted
+      # Category events
+      "CategoryCreated" => Shared.Domain.Events.CategoryEvents.CategoryCreated,
+      "CategoryUpdated" => Shared.Domain.Events.CategoryEvents.CategoryUpdated,
+      "CategoryDeleted" => Shared.Domain.Events.CategoryEvents.CategoryDeleted,
 
       # Saga events
-      "SagaStarted" ->
-        Shared.Domain.Saga.SagaEvents.SagaStarted
+      "SagaStarted" => Shared.Domain.Saga.SagaEvents.SagaStarted,
+      "SagaCompleted" => Shared.Domain.Saga.SagaEvents.SagaCompleted,
+      "SagaFailed" => Shared.Domain.Saga.SagaEvents.SagaFailed,
+      "SagaCompensated" => Shared.Domain.Saga.SagaEvents.SagaCompensated,
+      "SagaStepCompleted" => Shared.Domain.Saga.SagaEvents.SagaStepCompleted,
+      "SagaStepFailed" => Shared.Domain.Saga.SagaEvents.SagaStepFailed,
+      "SagaCompensationStarted" => Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
+    }
 
-      "SagaCompleted" ->
-        Shared.Domain.Saga.SagaEvents.SagaCompleted
+    case Map.get(event_modules, event_type) do
+      nil ->
+        # テスト環境では警告を出さない
+        if Mix.env() != :test do
+          Logger.warning("Unknown event type: #{event_type}, using Map")
+        end
 
-      "SagaFailed" ->
-        Shared.Domain.Saga.SagaEvents.SagaFailed
-
-      "SagaCompensated" ->
-        Shared.Domain.Saga.SagaEvents.SagaCompensated
-
-      "SagaStepCompleted" ->
-        Shared.Domain.Saga.SagaEvents.SagaStepCompleted
-
-      "SagaStepFailed" ->
-        Shared.Domain.Saga.SagaEvents.SagaStepFailed
-
-      "SagaCompensationStarted" ->
-        Shared.Domain.Saga.SagaEvents.SagaCompensationStarted
-
-      # Other events
-      _ ->
-        # For unknown event types, return a generic map module
-        Logger.warning("Unknown event type: #{event_type}, using Map")
         Map
+
+      module ->
+        module
     end
   end
 

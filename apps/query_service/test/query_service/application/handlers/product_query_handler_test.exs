@@ -1,8 +1,5 @@
 defmodule QueryService.Application.Handlers.ProductQueryHandlerTest do
-  use ExUnit.Case, async: true
-
-  # Skip all tests in this module as it requires database setup
-  @moduletag :skip
+  use ExUnit.Case, async: false
 
   alias QueryService.Application.Handlers.ProductQueryHandler
 

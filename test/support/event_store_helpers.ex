@@ -3,25 +3,28 @@ defmodule ElixirCqrs.EventStoreHelpers do
   Test helpers for event sourcing and event store testing.
   """
 
-  alias CommandService.Infrastructure.EventStore.PostgresEventStore
+  alias Shared.Infrastructure.EventStore
   alias ElixirCqrs.Factory
 
   @doc """
   Creates and stores an event in the event store.
   """
   def store_event(event_type, aggregate_id, event_data, opts \\ []) do
+    version = Keyword.get(opts, :version, 1)
+    expected_version = if version == 1, do: 0, else: version - 1
+    
     event = %{
-      event_id: Keyword.get(opts, :event_id, UUID.uuid4()),
+      event_id: Keyword.get(opts, :event_id, Ecto.UUID.generate()),
       event_type: event_type,
       aggregate_id: aggregate_id,
       aggregate_type: Keyword.get(opts, :aggregate_type, "test_aggregate"),
       event_data: event_data,
       event_metadata: Keyword.get(opts, :metadata, %{}),
-      event_version: Keyword.get(opts, :version, 1),
+      event_version: version,
       created_at: Keyword.get(opts, :created_at, DateTime.utc_now())
     }
 
-    PostgresEventStore.append_events([event])
+    {:ok, _} = EventStore.save_aggregate_events(aggregate_id, [event], expected_version)
     event
   end
 
@@ -40,14 +43,14 @@ defmodule ElixirCqrs.EventStoreHelpers do
   Retrieves all events for an aggregate.
   """
   def get_aggregate_events(aggregate_id) do
-    PostgresEventStore.get_events(aggregate_id)
+    EventStore.get_events(aggregate_id)
   end
 
   @doc """
   Retrieves events by type.
   """
   def get_events_by_type(event_type) do
-    PostgresEventStore.get_all_events()
+    EventStore.get_all_events()
     |> Enum.filter(&(&1.event_type == event_type))
   end
 
@@ -99,11 +102,16 @@ defmodule ElixirCqrs.EventStoreHelpers do
     events
     |> Enum.with_index(1)
     |> Enum.map(fn {{type, data}, version} ->
-      Factory.build(:"#{type}_event", %{
+      # Factory.build を使わずに直接イベントを構築
+      %{
+        event_type: to_string(type),
         aggregate_id: aggregate_id,
+        aggregate_type: "test_aggregate",
+        event_data: data,
+        event_metadata: %{},
         event_version: version,
-        event_data: data
-      })
+        occurred_at: DateTime.utc_now()
+      }
     end)
   end
 

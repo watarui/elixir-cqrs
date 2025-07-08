@@ -134,7 +134,8 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
               occurred_at: DateTime.utc_now()
             }
 
-            case EventStore.append_events([event]) do
+            # save_aggregate_events を使用（:any でバージョン競合を無視）
+            case EventStore.save_aggregate_events(aggregate_id, [event], :any) do
               {:ok, _} -> {:ok, i}
               {:error, reason} -> {:error, reason}
             end
@@ -610,6 +611,9 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
     version = Keyword.get(opts, :version, 1)
     aggregate_type = Keyword.get(opts, :aggregate_type, "test_aggregate")
 
+    # 期待バージョンを計算（1から始まるので、version - 1）
+    expected_version = if version == 1, do: 0, else: version - 1
+
     event = %{
       event_type: event_type,
       aggregate_id: aggregate_id,
@@ -620,10 +624,10 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       occurred_at: DateTime.utc_now()
     }
 
-    # Use append_events directly, which should handle version constraints
-    case EventStore.append_events([event]) do
+    # save_aggregate_events を使用して適切にバージョン管理
+    case EventStore.save_aggregate_events(aggregate_id, [event], expected_version) do
       {:ok, _} -> event
-      {:error, reason} -> raise "Failed to append event: #{inspect(reason)}"
+      {:error, reason} -> raise "Failed to save event: #{inspect(reason)}"
     end
   end
 end

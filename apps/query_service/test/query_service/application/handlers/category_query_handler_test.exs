@@ -1,16 +1,13 @@
 defmodule QueryService.Application.Handlers.CategoryQueryHandlerTest do
-  use ExUnit.Case, async: true
-
-  # Skip all tests in this module as it requires database setup
-  @moduletag :skip
+  use ExUnit.Case, async: false
 
   alias QueryService.Application.Handlers.CategoryQueryHandler
 
   alias QueryService.Application.Queries.{
-    GetCategoryPathQuery,
     GetCategoryQuery,
+    ListCategoriesQuery,
     GetCategoryTreeQuery,
-    ListCategoriesQuery
+    GetCategoryPathQuery
   }
 
   alias Ecto.Adapters.SQL.Sandbox

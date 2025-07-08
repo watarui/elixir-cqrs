@@ -68,23 +68,21 @@ defmodule Shared.Infrastructure.EventStore do
 
   @doc """
   集約IDからイベントを取得する
-  """
-  @spec get_events(aggregate_id()) :: list(event())
-  def get_events(aggregate_id) do
-    case read_aggregate_events(aggregate_id) do
-      {:ok, events} -> events
-      {:error, _} -> []
-    end
-  end
 
-  @doc """
-  特定のバージョン以降のイベントを取得する
+  オプション:
+    - after_version: 指定したバージョン以降のイベントのみ取得
   """
-  @spec get_events(aggregate_id(), after_version: version()) :: list(event())
-  def get_events(aggregate_id, after_version: version) do
+  @spec get_events(aggregate_id(), keyword()) :: list(event())
+  def get_events(aggregate_id, opts \\ []) do
     stream_name = aggregate_stream_name(aggregate_id)
 
-    case read_stream_forward(stream_name, version + 1) do
+    from_version =
+      case Keyword.get(opts, :after_version) do
+        nil -> 0
+        version -> version + 1
+      end
+
+    case read_stream_forward(stream_name, from_version) do
       {:ok, events} -> events
       {:error, _} -> []
     end
@@ -167,24 +165,6 @@ defmodule Shared.Infrastructure.EventStore do
       _ ->
         []
     end
-  end
-
-  @doc """
-  複数のイベントを一括で保存する
-  """
-  @spec append_events(list(event())) :: {:ok, term()} | error()
-  def append_events(events) do
-    # グループ化して各ストリームに保存
-    events
-    |> Enum.group_by(& &1.aggregate_id)
-    |> Enum.reduce_while({:ok, []}, fn {aggregate_id, agg_events}, {:ok, acc} ->
-      stream_name = aggregate_stream_name(aggregate_id)
-
-      case append_to_stream(stream_name, agg_events, :any) do
-        {:ok, version} -> {:cont, {:ok, [{aggregate_id, version} | acc]}}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
   end
 
   # プライベート関数

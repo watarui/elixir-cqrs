@@ -116,10 +116,41 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
     Repo.one(query) > 0
   end
 
+  @doc """
+  ルートカテゴリ（parent_idがnilのカテゴリ）を取得する
+  """
+  def find_root_categories do
+    query = from(c in CategorySchema, where: is_nil(c.parent_id))
+
+    categories =
+      Repo.all(query)
+      |> Enum.map(&schema_to_model/1)
+
+    categories
+  end
+
+  @doc """
+  特定の親カテゴリに属する子カテゴリを取得する
+  """
+  def find_by_parent_id(parent_id) do
+    query = from(c in CategorySchema, where: c.parent_id == ^parent_id)
+
+    Repo.all(query)
+    |> Enum.map(&schema_to_model/1)
+  end
+
   # Schema to Domain Model変換
   defp schema_to_model(schema) do
-    Category.new(schema.id, schema.name)
-    |> Category.with_timestamps(to_datetime(schema.inserted_at), to_datetime(schema.updated_at))
+    # スキーマから必要なフィールドを取得してマップを作成
+    %{
+      id: schema.id,
+      name: schema.name,
+      parent_id: schema.parent_id,
+      level: Map.get(schema, :level, 0),
+      is_active: Map.get(schema, :is_active, true),
+      created_at: to_datetime(schema.inserted_at),
+      updated_at: to_datetime(schema.updated_at)
+    }
   end
 
   # タイムスタンプ変換ヘルパー関数

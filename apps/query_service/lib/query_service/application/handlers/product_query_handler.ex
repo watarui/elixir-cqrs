@@ -22,6 +22,28 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
     [GetProduct, ListProducts, SearchProducts, GetProductsByCategory]
   end
 
+  # handleメソッドの実装（test_support_queriesのクエリを処理）
+  def handle(%{__struct__: module} = query) do
+    # test_support_queriesのクエリモジュールに対応
+    case module do
+      QueryService.Application.Queries.GetProductQuery ->
+        handle_get_product_query(query)
+
+      QueryService.Application.Queries.ListProductsQuery ->
+        handle_list_products_query(query)
+
+      QueryService.Application.Queries.SearchProductsQuery ->
+        handle_search_products_query(query)
+
+      QueryService.Application.Queries.GetProductsByCategoryQuery ->
+        handle_get_products_by_category_query(query)
+
+      _ ->
+        # 既存のクエリはhandle_queryに委譲
+        handle_query(query)
+    end
+  end
+
   @impl true
   def handle_query(%GetProduct{} = query) do
     with :ok <- query.__struct__.validate(query) do
@@ -196,5 +218,111 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
       Decimal.compare(product.price, min_price) != :lt &&
         Decimal.compare(product.price, max_price) != :gt
     end)
+  end
+
+  # 新しいクエリモジュールのハンドラー実装
+  defp handle_get_product_query(query) do
+    case ProductRepo.find_by_id(query.id) do
+      {:ok, product} ->
+        result = format_product(product)
+
+        result =
+          if query.include_category && product.category_id do
+            case CategoryRepo.find_by_id(product.category_id) do
+              {:ok, category} -> Map.put(result, :category, format_category(category))
+              _ -> result
+            end
+          else
+            result
+          end
+
+        {:ok, result}
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+    end
+  end
+
+  defp handle_list_products_query(query) do
+    products = ProductRepo.list()
+
+    # フィルタリング
+    products =
+      if query.min_price || query.max_price do
+        filter_by_price_range(products, query.min_price, query.max_price)
+      else
+        products
+      end
+
+    products =
+      if query.availability do
+        Enum.filter(products, &(&1.is_available == query.availability))
+      else
+        products
+      end
+
+    # ソート
+    products =
+      apply_sorting(products, String.to_atom(query.sort_by), String.to_atom(query.sort_order))
+
+    # ページネーション
+    total_count = length(products)
+    products = apply_pagination(products, query.page_size, (query.page - 1) * query.page_size)
+
+    {:ok,
+     %{
+       data: Enum.map(products, &format_product/1),
+       metadata: %{
+         page: query.page,
+         page_size: query.page_size,
+         total_count: total_count,
+         total_pages: ceil(total_count / query.page_size)
+       }
+     }}
+  end
+
+  defp handle_search_products_query(query) do
+    products = ProductRepo.list()
+
+    # 検索フィルター
+    products = filter_by_search_term(products, query.search_term)
+
+    # カテゴリフィルター
+    products =
+      if query.category_id do
+        filter_by_category(products, query.category_id)
+      else
+        products
+      end
+
+    # 価格フィルター
+    products =
+      if query.min_price || query.max_price do
+        filter_by_price_range(products, query.min_price, query.max_price)
+      else
+        products
+      end
+
+    # ページネーション
+    page = query.page || 1
+    page_size = query.page_size || 20
+    products = apply_pagination(products, page_size, (page - 1) * page_size)
+
+    {:ok, %{data: Enum.map(products, &format_product/1)}}
+  end
+
+  defp handle_get_products_by_category_query(query) do
+    products = ProductRepo.find_by_category_id(query.category_id)
+
+    products =
+      if query.include_subcategories do
+        # サブカテゴリの商品も含める場合の実装
+        # TODO: カテゴリツリーを辿ってサブカテゴリIDを収集
+        products
+      else
+        products
+      end
+
+    {:ok, Enum.map(products, &format_product/1)}
   end
 end
