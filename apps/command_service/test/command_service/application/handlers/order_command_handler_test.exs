@@ -23,18 +23,52 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     :ok
   end
 
+  defp test_metadata do
+    %{
+      user_id: Ecto.UUID.generate(),
+      request_id: Ecto.UUID.generate(),
+      timestamp: DateTime.utc_now()
+    }
+  end
+
+  defp build_order_item(attrs \\ %{}) do
+    Map.merge(
+      %{
+        product_id: Ecto.UUID.generate(),
+        product_name: "Test Product",
+        quantity: 1,
+        unit_price: Decimal.new("99.99"),
+        subtotal: Decimal.new("99.99")
+      },
+      attrs
+    )
+  end
+
+  defp build_shipping_address(attrs \\ %{}) do
+    Map.merge(
+      %{
+        street: "123 Test St",
+        city: "Test City",
+        state: "TS",
+        postal_code: "12345",
+        country: "Test Country"
+      },
+      attrs
+    )
+  end
+
   describe "handle CreateOrderCommand" do
     test "successfully creates an order with valid items" do
       # Arrange
       order_items = [
-        build(:order_item, %{
-          product_id: UUID.uuid4(),
+        build_order_item(%{
+          product_id: Ecto.UUID.generate(),
           product_name: "Product 1",
           quantity: 2,
           unit_price: Decimal.new("50.00")
         }),
-        build(:order_item, %{
-          product_id: UUID.uuid4(),
+        build_order_item(%{
+          product_id: Ecto.UUID.generate(),
           product_name: "Product 2",
           quantity: 1,
           unit_price: Decimal.new("30.00")
@@ -43,9 +77,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
 
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
+          customer_id: Ecto.UUID.generate(),
           items: order_items,
-          shipping_address: build(:shipping_address),
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -73,9 +107,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       # Arrange
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
+          customer_id: Ecto.UUID.generate(),
           items: [],
-          shipping_address: build(:shipping_address),
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -89,14 +123,14 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "fails to create order with invalid quantity" do
       # Arrange
       order_items = [
-        build(:order_item, %{quantity: 0})
+        build_order_item(%{quantity: 0})
       ]
 
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
+          customer_id: Ecto.UUID.generate(),
           items: order_items,
-          shipping_address: build(:shipping_address),
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -112,8 +146,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       command =
         CreateOrderCommand.new(%{
           customer_id: nil,
-          items: [build(:order_item)],
-          shipping_address: build(:shipping_address),
+          items: [build_order_item()],
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -128,8 +162,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       # Arrange
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
-          items: [build(:order_item)],
+          customer_id: Ecto.UUID.generate(),
+          items: [build_order_item()],
           shipping_address: nil,
           metadata: test_metadata()
         })
@@ -145,9 +179,9 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       # Arrange
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
-          items: [build(:order_item)],
-          shipping_address: build(:shipping_address),
+          customer_id: Ecto.UUID.generate(),
+          items: [build_order_item()],
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -256,7 +290,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
       # Arrange
       command =
         UpdateOrderCommand.new(%{
-          id: UUID.uuid4(),
+          id: Ecto.UUID.generate(),
           status: "processing",
           metadata: test_metadata()
         })
@@ -369,16 +403,16 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "correctly calculates order totals with multiple items" do
       # Arrange
       items = [
-        build(:order_item, %{quantity: 3, unit_price: Decimal.new("25.50")}),
-        build(:order_item, %{quantity: 2, unit_price: Decimal.new("10.00")}),
-        build(:order_item, %{quantity: 1, unit_price: Decimal.new("100.00")})
+        build_order_item(%{quantity: 3, unit_price: Decimal.new("25.50")}),
+        build_order_item(%{quantity: 2, unit_price: Decimal.new("10.00")}),
+        build_order_item(%{quantity: 1, unit_price: Decimal.new("100.00")})
       ]
 
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
+          customer_id: Ecto.UUID.generate(),
           items: items,
-          shipping_address: build(:shipping_address),
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 
@@ -395,16 +429,16 @@ defmodule CommandService.Application.Handlers.OrderCommandHandlerTest do
     test "handles decimal precision correctly" do
       # Arrange with prices that could cause precision issues
       items = [
-        build(:order_item, %{quantity: 1, unit_price: Decimal.new("0.01")}),
-        build(:order_item, %{quantity: 1, unit_price: Decimal.new("0.02")}),
-        build(:order_item, %{quantity: 1, unit_price: Decimal.new("0.03")})
+        build_order_item(%{quantity: 1, unit_price: Decimal.new("0.01")}),
+        build_order_item(%{quantity: 1, unit_price: Decimal.new("0.02")}),
+        build_order_item(%{quantity: 1, unit_price: Decimal.new("0.03")})
       ]
 
       command =
         CreateOrderCommand.new(%{
-          customer_id: UUID.uuid4(),
+          customer_id: Ecto.UUID.generate(),
           items: items,
-          shipping_address: build(:shipping_address),
+          shipping_address: build_shipping_address(),
           metadata: test_metadata()
         })
 

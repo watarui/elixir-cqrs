@@ -29,6 +29,14 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
     :ok
   end
 
+  defp test_metadata do
+    %{
+      user_id: Ecto.UUID.generate(),
+      request_id: Ecto.UUID.generate(),
+      timestamp: DateTime.utc_now()
+    }
+  end
+
   describe "handle CreateProductCommand" do
     test "successfully creates a product with valid data" do
       # Arrange
@@ -329,13 +337,19 @@ defmodule CommandService.Application.Handlers.ProductCommandHandlerTest do
 
   # Helper functions
   defp create_test_product do
-    product_attrs = build(:product)
+    product_attrs = %{
+      name: "Test Product",
+      description: "Test Description",
+      price: Decimal.new("99.99"),
+      category_id: Ecto.UUID.generate()
+    }
+
     command = CreateProductCommand.new(Map.merge(product_attrs, %{metadata: test_metadata()}))
 
     {:ok, events} = ProductCommandHandler.handle(command)
     event = hd(events)
 
-    %Product{
+    %{
       id: event.aggregate_id,
       name: event.event_data.name,
       description: event.event_data.description,
