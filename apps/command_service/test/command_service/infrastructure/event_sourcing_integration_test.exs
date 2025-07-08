@@ -76,7 +76,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       {:ok, events} = EventStore.read_aggregate_events(aggregate_id)
 
       # TODO: Add assertions when store_event is implemented
-      assert length(events) == 0
+      assert Enum.empty?(events)
     end
 
     test "prevents duplicate event versions for same aggregate" do
@@ -107,7 +107,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       events = Enum.filter(all_events, fn e -> e.event_version > 3 end)
 
       # TODO: Add assertions when store_event is implemented
-      assert length(events) == 0
+      assert Enum.empty?(events)
     end
 
     test "handles concurrent event appends safely" do
@@ -355,7 +355,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       # Query by event type
       product_events = []
 
-      assert length(product_events) == 0
+      assert Enum.empty?(product_events)
     end
 
     test "queries events within time range" do
@@ -372,7 +372,7 @@ defmodule CommandService.Infrastructure.EventSourcingIntegrationTest do
       one_hour_ago = DateTime.utc_now() |> DateTime.add(-300, :second)
       recent_events = EventStore.get_events_since(one_hour_ago)
 
-      assert length(recent_events) == 0
+      assert Enum.empty?(recent_events)
     end
   end
 
