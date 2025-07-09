@@ -15,7 +15,7 @@ docker compose ps
 
 # Command Service の起動
 echo "Starting Command Service..."
-cd "$PROJECT_ROOT/apps/command_service"
+cd "$PROJECT_ROOT/apps/command_service" || exit 1
 mix run --no-halt > "$PROJECT_ROOT/logs/command_service.log" 2>&1 &
 COMMAND_PID=$!
 echo "Command Service started with PID: $COMMAND_PID"
@@ -25,7 +25,7 @@ sleep 5
 
 # Query Service の起動
 echo "Starting Query Service..."
-cd "$PROJECT_ROOT/apps/query_service"
+cd "$PROJECT_ROOT/apps/query_service" || exit 1
 mix run --no-halt > "$PROJECT_ROOT/logs/query_service.log" 2>&1 &
 QUERY_PID=$!
 echo "Query Service started with PID: $QUERY_PID"
@@ -35,7 +35,7 @@ sleep 5
 
 # Client Service の起動
 echo "Starting Client Service..."
-cd "$PROJECT_ROOT/apps/client_service"
+cd "$PROJECT_ROOT/apps/client_service" || exit 1
 mix phx.server > "$PROJECT_ROOT/logs/client_service.log" 2>&1 &
 CLIENT_PID=$!
 echo "Client Service started with PID: $CLIENT_PID"

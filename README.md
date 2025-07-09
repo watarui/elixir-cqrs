@@ -14,18 +14,21 @@ docker compose up -d
 # データベースのセットアップ
 ./scripts/setup_db.sh
 
-# サービスの起動（3つのターミナルで実行）
+# サービスの起動
+./scripts/start_services.sh
+
+# または個別に起動する場合（3つのターミナルで実行）
 # Terminal 1: Command Service
-cd apps/command_service && iex -S mix
+cd apps/command_service && mix run --no-halt
 
 # Terminal 2: Query Service
-cd apps/query_service && iex -S mix
+cd apps/query_service && mix run --no-halt
 
 # Terminal 3: Client Service
 cd apps/client_service && mix phx.server
 ```
 
-GraphQL Playground: http://localhost:4000/graphql
+GraphQL Playground: http://localhost:4000/graphiql
 
 詳細な手順は [Getting Started Guide](./docs/GETTING_STARTED.md) を参照してください。
 
@@ -81,7 +84,7 @@ GraphQL Playground: http://localhost:4000/graphql
 
 ### GraphQL Playground
 
-http://localhost:4000/graphql でインタラクティブな GraphQL Playground が利用できます。
+http://localhost:4000/graphiql でインタラクティブな GraphQL Playground が利用できます。
 
 ### カテゴリ作成
 
