@@ -180,8 +180,10 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   end
 
   defp ensure_datetime(%DateTime{} = datetime), do: datetime
+
   defp ensure_datetime(%NaiveDateTime{} = naive_datetime) do
     DateTime.from_naive!(naive_datetime, "Etc/UTC")
   end
+
   defp ensure_datetime(nil), do: nil
 end

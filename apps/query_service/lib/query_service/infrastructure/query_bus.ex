@@ -110,7 +110,8 @@ defmodule QueryService.Infrastructure.QueryBus do
         query.query_type
 
       # __struct__ がアトムの場合
-      is_atom(Map.get(query, :__struct__)) and function_exported?(query.__struct__, :query_type, 0) ->
+      is_atom(Map.get(query, :__struct__)) and
+          function_exported?(query.__struct__, :query_type, 0) ->
         query.__struct__.query_type()
 
       # __struct__ が文字列の場合（PubSub経由）

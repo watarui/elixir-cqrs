@@ -99,7 +99,9 @@ defmodule CommandService.Infrastructure.CommandBus do
     ProductCommandHandler.handle(cmd)
   end
 
-  defp route_command(%CommandService.Application.Commands.ProductCommands.ChangeProductPrice{} = cmd) do
+  defp route_command(
+         %CommandService.Application.Commands.ProductCommands.ChangeProductPrice{} = cmd
+       ) do
     ProductCommandHandler.handle(cmd)
   end
 

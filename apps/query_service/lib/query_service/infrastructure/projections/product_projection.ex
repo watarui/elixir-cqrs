@@ -22,7 +22,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   def handle_event(%ProductCreated{} = event) do
     # カテゴリ名を取得
     category_name = get_category_name(event.category_id.value)
-    
+
     attrs = %{
       id: event.id.value,
       name: event.name.value,
@@ -118,7 +118,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
 
   defp get_category_name(category_id) do
     alias QueryService.Infrastructure.Repositories.CategoryRepository
-    
+
     case CategoryRepository.get(category_id) do
       {:ok, category} -> category.name
       {:error, _} -> nil

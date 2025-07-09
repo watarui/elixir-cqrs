@@ -56,14 +56,15 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
     Logger.debug("CategoryRepository.save - aggregate: #{inspect(aggregate)}")
     Logger.debug("CategoryRepository.save - aggregate.id: #{inspect(aggregate.id)}")
     Logger.debug("CategoryRepository.save - aggregate.name: #{inspect(aggregate.name)}")
-    
+
     # 既存のレコードを取得
-    id_value = case aggregate.id do
-      %{value: value} -> value
-      value when is_binary(value) -> value
-      _ -> nil
-    end
-    
+    id_value =
+      case aggregate.id do
+        %{value: value} -> value
+        value when is_binary(value) -> value
+        _ -> nil
+      end
+
     existing_schema = Repo.get(CategorySchema, id_value)
     changeset = build_changeset(aggregate, existing_schema)
 
@@ -139,28 +140,31 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
   defp build_changeset(%CategoryAggregate{} = aggregate, existing_schema) do
     # idフィールドが値オブジェクトかどうかチェック
-    id_value = case aggregate.id do
-      %{value: value} -> value
-      value when is_binary(value) -> value
-      _ -> nil
-    end
-    
+    id_value =
+      case aggregate.id do
+        %{value: value} -> value
+        value when is_binary(value) -> value
+        _ -> nil
+      end
+
     # nameフィールドが値オブジェクトかどうかチェック
-    name_value = case aggregate.name do
-      %{value: value} -> value
-      value when is_binary(value) -> value
-      nil -> nil
-      _ -> nil
-    end
-    
+    name_value =
+      case aggregate.name do
+        %{value: value} -> value
+        value when is_binary(value) -> value
+        nil -> nil
+        _ -> nil
+      end
+
     # parent_idフィールドが値オブジェクトかどうかチェック
-    parent_id_value = case aggregate.parent_id do
-      %{value: value} -> value
-      value when is_binary(value) -> value
-      nil -> nil
-      _ -> nil
-    end
-    
+    parent_id_value =
+      case aggregate.parent_id do
+        %{value: value} -> value
+        value when is_binary(value) -> value
+        nil -> nil
+        _ -> nil
+      end
+
     data = %{
       id: id_value,
       name: name_value,
@@ -173,7 +177,7 @@ defmodule CommandService.Infrastructure.Repositories.CategoryRepository do
 
     # 既存のスキーマがある場合はそれを使用、ない場合は新規作成
     schema = existing_schema || %CategorySchema{}
-    
+
     schema
     |> Ecto.Changeset.cast(data, [
       :id,

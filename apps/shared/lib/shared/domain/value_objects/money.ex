@@ -27,13 +27,13 @@ defmodule Shared.Domain.ValueObjects.Money do
   @spec new(number()) :: {:ok, t()} | {:error, String.t()}
   def new(amount) when is_number(amount) and amount >= 0 do
     # Decimal.new は整数または文字列のみ受け付けるため、数値を文字列に変換
-    decimal_amount = 
+    decimal_amount =
       if is_float(amount) do
         amount |> Float.to_string() |> Decimal.new()
       else
         Decimal.new(amount)
       end
-    
+
     {:ok,
      %__MODULE__{
        amount: decimal_amount,
@@ -102,13 +102,13 @@ defmodule Shared.Domain.ValueObjects.Money do
   def multiply(%__MODULE__{} = money, multiplier)
       when is_number(multiplier) and multiplier >= 0 do
     # Decimal.new は整数または文字列のみ受け付けるため、数値を文字列に変換
-    decimal_multiplier = 
+    decimal_multiplier =
       if is_float(multiplier) do
         multiplier |> Float.to_string() |> Decimal.new()
       else
         Decimal.new(multiplier)
       end
-    
+
     {:ok,
      %__MODULE__{
        amount: Decimal.mult(money.amount, decimal_multiplier),

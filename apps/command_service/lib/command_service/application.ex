@@ -9,7 +9,7 @@ defmodule CommandService.Application do
   def start(_type, _args) do
     # クラスタリングの初期化
     connect_to_cluster()
-    
+
     children = [
       # Ecto リポジトリ
       CommandService.Repo,
@@ -26,24 +26,26 @@ defmodule CommandService.Application do
 
     Supervisor.start_link(children, opts)
   end
-  
+
   defp connect_to_cluster do
     require Logger
-    
+
     # 他のノードに接続を試みる
     nodes = [:"query@127.0.0.1", :"client@127.0.0.1"]
-    
+
     Enum.each(nodes, fn node ->
       case Node.connect(node) do
-        true -> 
+        true ->
           Logger.info("Connected to node: #{node}")
-        false -> 
+
+        false ->
           Logger.debug("Could not connect to node: #{node} (may not be started yet)")
+
         :ignored ->
           Logger.debug("Connection to node #{node} was ignored")
       end
     end)
-    
+
     Logger.info("Current connected nodes: #{inspect(Node.list())}")
   end
 end

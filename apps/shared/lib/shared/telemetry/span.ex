@@ -20,15 +20,16 @@ defmodule Shared.Telemetry.Span do
   def with_span(name, attributes \\ %{}, fun) do
     Tracer.with_span name, %{attributes: normalize_attributes(attributes)} do
       # funが関数かdo-blockキーワードリストかチェック
-      result = if is_function(fun) do
-        fun.()
-      else
-        # do-block の場合
-        case Keyword.fetch(fun, :do) do
-          {:ok, expr} -> expr
-          :error -> raise ArgumentError, "Expected a function or do-block"
+      result =
+        if is_function(fun) do
+          fun.()
+        else
+          # do-block の場合
+          case Keyword.fetch(fun, :do) do
+            {:ok, expr} -> expr
+            :error -> raise ArgumentError, "Expected a function or do-block"
+          end
         end
-      end
 
       # エラーの場合はスパンにエラー情報を記録
       case result do

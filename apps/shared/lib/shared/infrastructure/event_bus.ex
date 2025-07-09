@@ -21,8 +21,11 @@ defmodule Shared.Infrastructure.EventBus do
   @spec publish(atom(), any()) :: :ok
   def publish(event_type, event) do
     require Logger
-    Logger.debug("EventBus publishing to topic: events:#{event_type}, event: #{inspect(event, limit: :infinity)}")
-    
+
+    Logger.debug(
+      "EventBus publishing to topic: events:#{event_type}, event: #{inspect(event, limit: :infinity)}"
+    )
+
     Phoenix.PubSub.broadcast(@pubsub_name, "events:#{event_type}", {:event, event})
     Phoenix.PubSub.broadcast(@pubsub_name, "events:all", {:event, event_type, event})
     :ok
@@ -35,7 +38,7 @@ defmodule Shared.Infrastructure.EventBus do
   def subscribe(event_type) do
     require Logger
     Logger.info("EventBus subscribing to topic: events:#{event_type}")
-    
+
     Phoenix.PubSub.subscribe(@pubsub_name, "events:#{event_type}")
   end
 

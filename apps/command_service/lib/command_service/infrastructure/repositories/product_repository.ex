@@ -161,7 +161,7 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
     # 既存のスキーマがある場合はそれを使用、ない場合は新規作成
     schema = existing_schema || %ProductSchema{}
-    
+
     schema
     |> Ecto.Changeset.cast(data, [
       :id,

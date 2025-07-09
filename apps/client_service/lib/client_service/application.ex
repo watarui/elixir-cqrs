@@ -11,7 +11,7 @@ defmodule ClientService.Application do
   def start(_type, _args) do
     # クラスタリングの初期化
     connect_to_cluster()
-    
+
     children = [
       # Telemetry
       ClientServiceWeb.Telemetry,
@@ -26,10 +26,10 @@ defmodule ClientService.Application do
     ]
 
     opts = [strategy: :one_for_one, name: ClientService.Supervisor]
-    
+
     require Logger
     Logger.info("Starting Client Service with GraphQL API on node: #{node()}")
-    
+
     Supervisor.start_link(children, opts)
   end
 
@@ -40,24 +40,26 @@ defmodule ClientService.Application do
     ClientServiceWeb.Endpoint.config_change(changed, removed)
     :ok
   end
-  
+
   defp connect_to_cluster do
     require Logger
-    
+
     # 他のノードに接続を試みる
     nodes = [:"command@127.0.0.1", :"query@127.0.0.1"]
-    
+
     Enum.each(nodes, fn node ->
       case Node.connect(node) do
-        true -> 
+        true ->
           Logger.info("Connected to node: #{node}")
-        false -> 
+
+        false ->
           Logger.debug("Could not connect to node: #{node} (may not be started yet)")
+
         :ignored ->
           Logger.debug("Connection to node #{node} was ignored")
       end
     end)
-    
+
     Logger.info("Current connected nodes: #{inspect(Node.list())}")
   end
 end

@@ -30,7 +30,7 @@ defmodule CommandService.Infrastructure.CommandListener do
   @impl true
   def handle_info({:event, message}, state) when is_map(message) do
     Logger.info("CommandListener received command: #{inspect(message)}")
-    
+
     # 非同期でコマンドを処理
     Task.start(fn ->
       process_command(message)
@@ -45,17 +45,21 @@ defmodule CommandService.Infrastructure.CommandListener do
   end
 
   defp process_command(%{request_id: request_id, command: command, reply_to: reply_to}) do
-    Logger.info("Processing command: request_id=#{request_id}, type=#{inspect(command[:command_type])}, reply_to=#{reply_to}")
+    Logger.info(
+      "Processing command: request_id=#{request_id}, type=#{inspect(command[:command_type])}, reply_to=#{reply_to}"
+    )
+
     Logger.debug("Full command data: #{inspect(command)}")
 
     # コマンドバリデーションと変換
     validated_command = validate_and_convert_command(command)
 
     # コマンドを実行
-    result = case validated_command do
-      {:ok, cmd} -> CommandBus.dispatch(cmd)
-      error -> error
-    end
+    result =
+      case validated_command do
+        {:ok, cmd} -> CommandBus.dispatch(cmd)
+        error -> error
+      end
 
     # レスポンスを作成
     response = %{
