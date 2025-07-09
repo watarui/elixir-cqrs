@@ -21,8 +21,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   @doc """
   新しいサガを開始する
   """
-  def start_saga(saga_module, initial_data) do
-    GenServer.call(__MODULE__, {:start_saga, saga_module, initial_data})
+  def start_saga(saga_id, saga_module, initial_data) do
+    GenServer.call(__MODULE__, {:start_saga, saga_id, saga_module, initial_data})
   end
 
   @doc """
@@ -51,7 +51,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
       active_sagas: %{},
       # event_type => [saga_modules]
       saga_mappings: %{
-        "order.created" => [CommandService.Domain.Sagas.OrderSaga]
+        :order_created => [CommandService.Domain.Sagas.OrderSaga],
+        "order_created" => [CommandService.Domain.Sagas.OrderSaga]
       }
     }
 
@@ -59,12 +60,12 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   end
 
   @impl true
-  def handle_call({:start_saga, saga_module, initial_data}, _from, state) do
-    saga_id = UUID.uuid4()
+  def handle_call({:start_saga, saga_id, saga_module, initial_data}, _from, state) do
     saga_state = saga_module.new(saga_id, initial_data)
 
     # サガを保存
     new_active_sagas = Map.put(state.active_sagas, saga_id, {saga_module, saga_state})
+    persist_saga(saga_id, saga_module, saga_state)
 
     # 初期コマンドを発行
     case get_next_commands(saga_module, saga_state) do
@@ -143,6 +144,12 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
       # EventBus からのイベントを処理
       handle_cast({:handle_event, event}, state)
     end
+  end
+
+  @impl true
+  def handle_info({:event, event}, state) do
+    # 新しい形式のイベント
+    handle_cast({:handle_event, event}, state)
   end
 
   # Private functions

@@ -1,158 +1,118 @@
 defmodule QueryService.Infrastructure.Repositories.OrderRepository do
   @moduledoc """
-  注文リポジトリの実装（Read Model）
+  注文リポジトリ
 
-  クエリサービス用の注文データアクセス層
+  注文の Read Model を管理します
   """
 
   import Ecto.Query
   alias QueryService.Repo
+  alias QueryService.Domain.ReadModels.Order
 
-  # スキーマ定義
-  defmodule OrderSchema do
-    use Ecto.Schema
+  @doc """
+  注文を作成する
+  """
+  def create(attrs) do
+    %Order{}
+    |> Order.changeset(attrs)
+    |> Repo.insert()
+  end
 
-    @primary_key {:id, :binary_id, autogenerate: false}
+  @doc """
+  注文を更新する
+  """
+  def update(id, attrs) do
+    case get(id) do
+      {:ok, order} ->
+        order
+        |> Order.changeset(attrs)
+        |> Repo.update()
 
-    schema "orders" do
-      field(:user_id, :binary_id)
-      field(:order_number, :string)
-      field(:status, :string)
-      field(:total_amount, :decimal)
-      field(:currency, :string)
-      field(:items, {:array, :map}, default: [])
-      field(:shipping_address, :map)
-      field(:payment_method, :string)
-      field(:payment_status, :string)
-      field(:shipping_status, :string)
-      field(:metadata, :map, default: %{})
-
-      timestamps()
+      error ->
+        error
     end
   end
 
   @doc """
-  IDで注文を取得
+  注文を取得する
   """
   def get(id) do
-    case Repo.get(OrderSchema, id) do
+    case Repo.get(Order, id) do
       nil -> {:error, :not_found}
-      order -> {:ok, to_domain_model(order)}
+      order -> {:ok, order}
     end
   end
 
   @doc """
-  注文一覧を取得
+  すべての注文を取得する
   """
   def get_all(filters \\ %{}) do
-    query =
-      OrderSchema
-      |> maybe_filter_user(filters[:user_id])
-      |> maybe_filter_status(filters[:status])
-      |> maybe_sort(filters[:sort_by], filters[:sort_order])
-      |> maybe_limit(filters[:limit])
-      |> maybe_offset(filters[:offset])
+    query = from(o in Order)
 
-    orders = Repo.all(query)
-    {:ok, Enum.map(orders, &to_domain_model/1)}
+    query =
+      Enum.reduce(filters, query, fn
+        {:user_id, user_id}, query ->
+          from(o in query, where: o.user_id == ^user_id)
+
+        {:status, status}, query ->
+          from(o in query, where: o.status == ^status)
+
+        {:sort_by, field}, query ->
+          order_by_field(query, field, Map.get(filters, :sort_order, :asc))
+
+        {:limit, limit}, query ->
+          from(o in query, limit: ^limit)
+
+        {:offset, offset}, query ->
+          from(o in query, offset: ^offset)
+
+        _, query ->
+          query
+      end)
+
+    {:ok, Repo.all(query)}
   end
 
   @doc """
-  注文を検索
+  ユーザーの注文を取得する
   """
-  def search(filters) do
-    query = OrderSchema
+  def get_by_user(user_id, filters \\ %{}) do
+    filters = Map.put(filters, :user_id, user_id)
+    get_all(filters)
+  end
 
-    query =
-      query
-      |> maybe_filter_user(filters[:user_id])
-      |> maybe_filter_status(filters[:status])
-      |> maybe_filter_date_range(filters[:from_date], filters[:to_date])
-      |> maybe_filter_amount_range(filters[:min_amount], filters[:max_amount])
-      |> maybe_sort(filters[:sort_by], filters[:sort_order])
-      |> maybe_limit(filters[:limit])
-      |> maybe_offset(filters[:offset])
+  @doc """
+  注文を削除する
+  """
+  def delete(id) do
+    case get(id) do
+      {:ok, order} ->
+        case Repo.delete(order) do
+          {:ok, _} -> :ok
+          error -> error
+        end
 
-    orders = Repo.all(query)
-    {:ok, Enum.map(orders, &to_domain_model/1)}
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  すべての注文を削除する
+  """
+  def delete_all do
+    {count, _} = Repo.delete_all(Order)
+    {:ok, count}
   end
 
   # Private functions
 
-  defp to_domain_model(schema) do
-    %{
-      id: schema.id,
-      user_id: schema.user_id,
-      order_number: schema.order_number,
-      status: schema.status,
-      total_amount: schema.total_amount,
-      currency: schema.currency,
-      items: schema.items,
-      shipping_address: schema.shipping_address,
-      payment_method: schema.payment_method,
-      payment_status: schema.payment_status,
-      shipping_status: schema.shipping_status,
-      created_at: schema.inserted_at,
-      updated_at: schema.updated_at
-    }
+  defp order_by_field(query, field, direction) do
+    case field do
+      "created_at" -> from(o in query, order_by: [{^direction, o.created_at}])
+      "total_amount" -> from(o in query, order_by: [{^direction, o.total_amount}])
+      "status" -> from(o in query, order_by: [{^direction, o.status}])
+      _ -> query
+    end
   end
-
-  defp maybe_filter_user(query, nil), do: query
-
-  defp maybe_filter_user(query, user_id) do
-    from(o in query, where: o.user_id == ^user_id)
-  end
-
-  defp maybe_filter_status(query, nil), do: query
-
-  defp maybe_filter_status(query, status) do
-    from(o in query, where: o.status == ^status)
-  end
-
-  defp maybe_filter_date_range(query, nil, nil), do: query
-
-  defp maybe_filter_date_range(query, from_date, nil) do
-    from(o in query, where: o.inserted_at >= ^from_date)
-  end
-
-  defp maybe_filter_date_range(query, nil, to_date) do
-    from(o in query, where: o.inserted_at <= ^to_date)
-  end
-
-  defp maybe_filter_date_range(query, from_date, to_date) do
-    from(o in query,
-      where: o.inserted_at >= ^from_date,
-      where: o.inserted_at <= ^to_date
-    )
-  end
-
-  defp maybe_filter_amount_range(query, nil, nil), do: query
-
-  defp maybe_filter_amount_range(query, min_amount, nil) do
-    from(o in query, where: o.total_amount >= ^min_amount)
-  end
-
-  defp maybe_filter_amount_range(query, nil, max_amount) do
-    from(o in query, where: o.total_amount <= ^max_amount)
-  end
-
-  defp maybe_filter_amount_range(query, min_amount, max_amount) do
-    from(o in query,
-      where: o.total_amount >= ^min_amount,
-      where: o.total_amount <= ^max_amount
-    )
-  end
-
-  defp maybe_sort(query, nil, _), do: from(o in query, order_by: [desc: o.inserted_at])
-
-  defp maybe_sort(query, field, order) do
-    order = order || :desc
-    from(o in query, order_by: [{^order, ^String.to_atom(field)}])
-  end
-
-  defp maybe_limit(query, nil), do: query
-  defp maybe_limit(query, limit), do: from(o in query, limit: ^limit)
-
-  defp maybe_offset(query, nil), do: query
-  defp maybe_offset(query, offset), do: from(o in query, offset: ^offset)
 end

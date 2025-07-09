@@ -4,7 +4,6 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   """
 
   alias CommandService.Application.Commands.OrderCommands
-  alias CommandService.Application.Handlers.BaseCommandHandler
   alias CommandService.Domain.Aggregates.OrderAggregate
   alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
   alias Shared.Infrastructure.EventBus
@@ -16,19 +15,42 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.CreateOrder{} = command) do
-    UnitOfWork.transaction(fn context ->
+    UnitOfWork.transaction(fn _context ->
       case OrderAggregate.create(command.user_id, command.items) do
         {:ok, order} ->
           # イベントストアに保存
           repo = RepositoryContext.get_repository(:order)
-          repo.save(order)
+          {:ok, _} = repo.save(order)
 
           # イベントを発行
-          EventBus.publish_all(order.uncommitted_events)
+          Enum.each(order.uncommitted_events, fn event ->
+            EventBus.publish_event(event)
+          end)
 
-          # OrderCreated イベントがサガコーディネーターによって処理される
+          # サガを開始
+          saga_id = UUID.uuid4()
 
-          {:ok, %{order_id: order.id.value}}
+          saga_data = %{
+            order_id: order.id.value,
+            user_id: command.user_id,
+            items: command.items,
+            total_amount: calculate_total_amount(command.items)
+          }
+
+          case SagaCoordinator.start_saga(
+                 saga_id,
+                 CommandService.Domain.Sagas.OrderSaga,
+                 saga_data
+               ) do
+            {:ok, _} ->
+              Logger.info("Order saga started for order #{order.id.value}")
+              {:ok, %{order_id: order.id.value, saga_id: saga_id}}
+
+            {:error, reason} ->
+              Logger.error("Failed to start order saga: #{inspect(reason)}")
+              # サガの開始失敗は注文作成には影響しない
+              {:ok, %{order_id: order.id.value}}
+          end
 
         {:error, reason} ->
           {:error, reason}
@@ -173,5 +195,19 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   @impl true
   def handle(command) do
     {:error, "Unknown order command: #{inspect(command)}"}
+  end
+
+  # Private functions
+
+  defp calculate_total_amount(items) do
+    Enum.reduce(items, Decimal.new(0), fn item, acc ->
+      item_total =
+        Decimal.mult(
+          Decimal.new(to_string(item.unit_price)),
+          Decimal.new(to_string(item.quantity))
+        )
+
+      Decimal.add(acc, item_total)
+    end)
   end
 end

@@ -13,13 +13,14 @@ defmodule QueryService.Application do
     children = [
       # Ecto リポジトリ
       QueryService.Repo,
+      # キャッシュ
+      QueryService.Infrastructure.Cache,
       # クエリバス
       QueryService.Infrastructure.QueryBus,
       # プロジェクションマネージャー
       QueryService.Infrastructure.ProjectionManager,
       # クエリリスナー（PubSub経由でクエリを受信）
       QueryService.Infrastructure.QueryListener
-      # TODO: キャッシュ (ETS)
     ]
 
     opts = [strategy: :one_for_one, name: QueryService.Supervisor]

@@ -3,18 +3,24 @@ defmodule QueryService.Repo.Migrations.CreateOrders do
 
   def change do
     create table(:orders, primary_key: false) do
-      add :id, :uuid, primary_key: true
-      add :user_id, :uuid, null: false
-      add :order_number, :string, null: false
+      add :id, :string, primary_key: true
+      add :user_id, :string, null: false
       add :status, :string, null: false
       add :total_amount, :decimal, precision: 10, scale: 2, null: false
       add :currency, :string, default: "JPY", null: false
       add :items, :jsonb, default: "[]", null: false
-      add :shipping_address, :map
-      add :payment_method, :string
-      add :payment_status, :string
-      add :shipping_status, :string
-      add :metadata, :map, default: %{}
+      
+      # 追加フィールド
+      add :payment_id, :string
+      add :shipping_id, :string
+      add :cancellation_reason, :text
+      
+      # タイムスタンプ
+      add :confirmed_at, :utc_datetime
+      add :payment_processed_at, :utc_datetime
+      add :shipped_at, :utc_datetime
+      add :delivered_at, :utc_datetime
+      add :cancelled_at, :utc_datetime
 
       timestamps()
     end
@@ -22,6 +28,5 @@ defmodule QueryService.Repo.Migrations.CreateOrders do
     create index(:orders, [:user_id])
     create index(:orders, [:status])
     create index(:orders, [:inserted_at])
-    create unique_index(:orders, [:order_number])
   end
 end

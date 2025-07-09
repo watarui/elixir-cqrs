@@ -6,6 +6,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   """
 
   alias QueryService.Infrastructure.Repositories.ProductRepository
+  alias QueryService.Infrastructure.Cache
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
@@ -41,6 +42,8 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     case ProductRepository.create(attrs) do
       {:ok, product} ->
         Logger.info("Product projection created: #{product.id}")
+        # キャッシュを無効化
+        Cache.delete_pattern("products:*")
         {:ok, product}
 
       {:error, reason} ->
@@ -60,6 +63,9 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     case ProductRepository.update(event.id.value, attrs) do
       {:ok, product} ->
         Logger.info("Product projection updated: #{product.id}")
+        # 関連するキャッシュを無効化
+        Cache.delete("product:#{product.id}")
+        Cache.delete_pattern("products:*")
         {:ok, product}
 
       {:error, reason} ->
@@ -77,6 +83,9 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     case ProductRepository.update(event.id.value, attrs) do
       {:ok, product} ->
         Logger.info("Product price updated: #{product.id}")
+        # 関連するキャッシュを無効化
+        Cache.delete("product:#{product.id}")
+        Cache.delete_pattern("products:*")
         {:ok, product}
 
       {:error, reason} ->
@@ -94,6 +103,9 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     case ProductRepository.delete(event.id.value) do
       {:ok, _} ->
         Logger.info("Product projection deleted: #{event.id.value}")
+        # 関連するキャッシュを無効化
+        Cache.delete("product:#{event.id.value}")
+        Cache.delete_pattern("products:*")
         :ok
 
       {:error, reason} ->

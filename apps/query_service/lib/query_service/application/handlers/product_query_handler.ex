@@ -7,6 +7,7 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
 
   alias QueryService.Infrastructure.Repositories.ProductRepository
   alias QueryService.Application.Queries.ProductQueries
+  alias QueryService.Infrastructure.Cache
 
   require Logger
 
@@ -15,14 +16,27 @@ defmodule QueryService.Application.Handlers.ProductQueryHandler do
   """
   def handle(%ProductQueries.GetProduct{id: id}) do
     Logger.info("Getting product by id: #{id}")
-    ProductRepository.get(id)
+
+    cache_key = "product:#{id}"
+
+    Cache.fetch(cache_key, fn ->
+      ProductRepository.get(id)
+    end)
   end
 
   def handle(%ProductQueries.ListProducts{} = query) do
     Logger.info("Getting products")
 
     filters = build_filters(query)
-    ProductRepository.get_all(filters)
+    cache_key = "products:list:#{:erlang.phash2(filters)}"
+
+    Cache.fetch(
+      cache_key,
+      fn ->
+        ProductRepository.get_all(filters)
+      end,
+      :timer.minutes(1)
+    )
   end
 
   def handle(%ProductQueries.SearchProducts{search_term: search_term} = query) do
