@@ -1,18 +1,7 @@
 defmodule ClientService do
   @moduledoc """
-  Documentation for `ClientService`.
+  Client Service
+  
+  GraphQL API ゲートウェイとして、Command Service と Query Service を統合します
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> ClientService.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end
