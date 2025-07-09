@@ -8,11 +8,8 @@
 # 依存関係のインストール
 mix deps.get
 
-# Protocol Buffers の依存関係をインストール
-mix escript.install hex protobuf
-
-# Protocol Buffers ファイルの生成
-./proto/generate.sh
+# コンパイル
+mix compile
 
 # Docker コンテナの起動
 docker compose up -d
@@ -52,17 +49,17 @@ GraphQL Playground: http://localhost:4000/graphiql
    - アグリゲート実装（Category、Product、Order）
    - コマンドハンドラー
    - SAGA実装（OrderSaga）
-   - gRPC サーバー（ポート: 50051）
+   - Phoenix PubSub 経由でイベントを受信
 
 3. **Query Service** - クエリ処理サービス
    - リードモデル
    - クエリハンドラー
    - プロジェクション
-   - gRPC サーバー（ポート: 50052）
+   - Phoenix PubSub 経由でクエリを受信
 
 4. **Client Service** - クライアント向け API
    - GraphQL API（ポート: 4000）
-   - gRPC クライアント
+   - Phoenix PubSub を使用した非同期通信
 
 ## 技術スタック
 
@@ -71,10 +68,7 @@ GraphQL Playground: http://localhost:4000/graphiql
 - **データベース**: PostgreSQL 16+ (3つのインスタンス)
 - **API**: 
   - GraphQL (Absinthe) - クライアント向け API
-  - gRPC - マイクロサービス間通信
-- **Protocol Buffers**: 
-  - protoc 3.0+ - コンパイラ
-  - protoc-gen-elixir - Elixir コード生成プラグイン
+  - Phoenix PubSub - マイクロサービス間通信
 - **イベントストア**: PostgreSQL ベースの実装
 - **監視**: 
   - OpenTelemetry - 分散トレーシング
@@ -87,7 +81,7 @@ GraphQL Playground: http://localhost:4000/graphiql
 - [Getting Started](./docs/GETTING_STARTED.md) - 環境構築と起動手順
 - [アーキテクチャ概要](./docs/ARCHITECTURE.md) - システム設計と構成
 - [開発ガイド](./docs/DEVELOPMENT.md) - 開発規約と新機能の追加方法
-- [API リファレンス](./docs/API_REFERENCE.md) - GraphQL/gRPC API の詳細
+- [API リファレンス](./docs/API_REFERENCE.md) - GraphQL API の詳細
 
 ## API の使用例
 

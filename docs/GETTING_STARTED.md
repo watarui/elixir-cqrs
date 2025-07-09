@@ -11,7 +11,6 @@
 - Docker Desktop
 - PostgreSQL クライアント（psql）
 - Git
-- Protocol Buffers コンパイラ（protoc 3.0+）
 
 ## 環境構築
 
@@ -32,22 +31,7 @@ mix deps.get
 mix deps.get --all
 ```
 
-### 3. Protocol Buffers の設定
-
-```bash
-# protoc-gen-elixir プラグインのインストール
-mix escript.install hex protobuf
-
-# PATH に ~/.mix/escripts を追加（初回のみ）
-export PATH="$HOME/.mix/escripts:$PATH"
-
-# proto ファイルをコンパイル
-./proto/generate.sh
-```
-
-**注意**: `protoc-gen-elixir` プラグインのインストールが必要です。asdf を使用している場合は、インストール後に `asdf reshim elixir` を実行してください。
-
-### 4. Docker コンテナの起動
+### 3. Docker コンテナの起動
 
 ```bash
 # データベースと監視ツールを起動
@@ -63,7 +47,7 @@ docker compose up -d
 - Jaeger (ポート: 16686)
 - Grafana (ポート: 3000)
 
-### 5. データベースのセットアップ
+### 4. データベースのセットアップ
 
 ```bash
 # データベースの作成とマイグレーション

@@ -23,10 +23,7 @@ spec:
       containers:
       - name: query-service
         image: IMAGE_PLACEHOLDER
-        ports:
-        - containerPort: 50052
-          name: grpc
-          protocol: TCP
+        # PubSub を使用するため、外部ポートは不要
         envFrom:
         - configMapRef:
             name: elixir-cqrs-config
@@ -70,22 +67,4 @@ spec:
                   values:
                   - query-service
               topologyKey: kubernetes.io/hostname
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: query-service
-  namespace: elixir-cqrs
-  labels:
-    app.kubernetes.io/name: query-service
-    app.kubernetes.io/component: backend
-spec:
-  selector:
-    app.kubernetes.io/name: query-service
-    app.kubernetes.io/component: backend
-  ports:
-  - port: 50052
-    targetPort: 50052
-    protocol: TCP
-    name: grpc
-  type: ClusterIP
+# PubSub を使用するため、Service は不要

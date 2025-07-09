@@ -11,7 +11,7 @@
 │  (Phoenix/GraphQL)                 │                 │
 └────────┬────────┘                  └─────────────────┘
          │
-         │ gRPC
+         │ Phoenix PubSub
     ┌────┴────┐
     │         │
     ▼         ▼
@@ -37,14 +37,13 @@
 - **ポート**: 4000
 - **責務**:
   - GraphQL API の提供
-  - gRPC クライアントによるバックエンドサービスとの通信
+  - Phoenix PubSub を使用したバックエンドサービスとの非同期通信
   - 認証・認可（未実装）
 
 ### 2. Command Service (apps/command_service)
 
 - **役割**: 書き込み処理とビジネスロジック
-- **技術スタック**: gRPC サーバー
-- **ポート**: 50051
+- **技術スタック**: Phoenix PubSub
 - **主要コンポーネント**:
   - **CommandBus**: コマンドのルーティング
   - **CommandHandlers**: コマンドの処理
@@ -54,8 +53,7 @@
 ### 3. Query Service (apps/query_service)
 
 - **役割**: 読み取り専用のデータ提供
-- **技術スタック**: gRPC サーバー
-- **ポート**: 50052
+- **技術スタック**: Phoenix PubSub
 - **主要コンポーネント**:
   - **QueryBus**: クエリのルーティング
   - **QueryHandlers**: クエリの処理
@@ -70,14 +68,14 @@
   - 値オブジェクト
   - イベントストア実装
   - テレメトリー設定
-  - Protocol Buffers 定義
+  - イベントバス実装
 
 ## データフロー
 
 ### 書き込みフロー
 
 1. クライアントが GraphQL Mutation を送信
-2. Client Service が gRPC でコマンドを Command Service に送信
+2. Client Service が PubSub 経由でコマンドを Command Service に送信
 3. CommandBus がコマンドを適切なハンドラーにルーティング
 4. CommandHandler がアグリゲートを読み込み、コマンドを実行
 5. アグリゲートがイベントを生成
@@ -86,10 +84,10 @@
 
 ### 読み取りフロー
 
-1. ProjectionManager が Event Store から新しいイベントを定期的に取得
+1. ProjectionManager が EventBus からイベントをリアルタイムで受信
 2. 各 Projection がイベントを処理し、Read Model を更新
 3. クライアントが GraphQL Query を送信
-4. Client Service が gRPC でクエリを Query Service に送信
+4. Client Service が PubSub 経由でクエリを Query Service に送信
 5. QueryHandler が Read Model からデータを取得
 6. 結果がクライアントに返される
 

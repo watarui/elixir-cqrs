@@ -11,8 +11,8 @@ RUN apk add --no-cache \
     python3 \
     nodejs \
     npm \
-    protobuf \
-    protobuf-dev
+    nodejs \
+    npm
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -73,12 +73,10 @@ CMD ["/app/bin/client_service", "start"]
 FROM runtime-base AS command_service
 COPY --from=builder --chown=elixir:elixir /app/_build/prod/rel/command_service ./
 USER elixir
-EXPOSE 50051
 CMD ["/app/bin/command_service", "start"]
 
 # Query Service
 FROM runtime-base AS query_service
 COPY --from=builder --chown=elixir:elixir /app/_build/prod/rel/query_service ./
 USER elixir
-EXPOSE 50052
 CMD ["/app/bin/query_service", "start"]

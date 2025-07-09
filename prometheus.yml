@@ -7,5 +7,4 @@ scrape_configs:
     static_configs:
       - targets:
         - 'host.docker.internal:4000'  # Client Service
-        - 'host.docker.internal:50051' # Command Service
-        - 'host.docker.internal:50052' # Query Service
+        # Command Service と Query Service は PubSub を使用するため、外部ポートなし
