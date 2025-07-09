@@ -1,0 +1,69 @@
+# GraphQL テストクエリ
+
+# カテゴリ作成
+mutation CreateCategory {
+  createCategory(input: {name: "電化製品"}) {
+    id
+    name
+    createdAt
+  }
+}
+
+# カテゴリ一覧取得
+query ListCategories {
+  categories {
+    id
+    name
+    productCount
+    createdAt
+    updatedAt
+  }
+}
+
+# 商品作成
+mutation CreateProduct {
+  createProduct(input: {
+    name: "ノートパソコン",
+    price: 120000,
+    categoryId: "1"
+  }) {
+    id
+    name
+    price
+    currency
+    category {
+      name
+    }
+  }
+}
+
+# 商品一覧取得
+query ListProducts {
+  products {
+    id
+    name
+    price
+    currency
+    categoryId
+    createdAt
+    updatedAt
+  }
+}
+
+# カテゴリ別商品取得
+query ProductsByCategory($categoryId: ID!) {
+  products(categoryId: $categoryId) {
+    id
+    name
+    price
+  }
+}
+
+# 商品検索
+query SearchProducts($term: String!) {
+  searchProducts(searchTerm: $term) {
+    id
+    name
+    price
+  }
+}

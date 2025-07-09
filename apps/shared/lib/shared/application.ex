@@ -11,7 +11,11 @@ defmodule Shared.Application do
       # イベントストアのリポジトリ
       Shared.Infrastructure.EventStore.Repo,
       # イベントバス
-      Shared.Infrastructure.EventBus
+      Shared.Infrastructure.EventBus,
+      # サガリポジトリ
+      Shared.Infrastructure.Saga.SagaRepository,
+      # サガコーディネーター
+      Shared.Infrastructure.Saga.SagaCoordinator
     ]
 
     opts = [strategy: :one_for_one, name: Shared.Supervisor]
