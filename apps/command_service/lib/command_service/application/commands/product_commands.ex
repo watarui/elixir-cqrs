@@ -231,4 +231,132 @@ defmodule CommandService.Application.Commands.ProductCommands do
     defp validate_id(id) when is_binary(id), do: {:ok, id}
     defp validate_id(_), do: {:error, "ID must be a string"}
   end
+
+  defmodule UpdateStock do
+    @moduledoc """
+    在庫更新コマンド
+    """
+    use CommandService.Application.Commands.BaseCommand
+
+    @enforce_keys [:product_id, :quantity]
+    defstruct [:product_id, :quantity, :metadata]
+
+    @type t :: %__MODULE__{
+            product_id: String.t(),
+            quantity: integer(),
+            metadata: map() | nil
+          }
+
+    @impl true
+    def validate(params) do
+      with {:ok, product_id} <- validate_id(params["product_id"] || params[:product_id]),
+           {:ok, quantity} <- validate_quantity(params["quantity"] || params[:quantity]) do
+        {:ok,
+         %__MODULE__{
+           product_id: product_id,
+           quantity: quantity,
+           metadata: params["metadata"] || params[:metadata]
+         }}
+      end
+    end
+
+    @impl true
+    def command_type, do: "product.update_stock"
+
+    defp validate_id(nil), do: {:error, "Product ID is required"}
+    defp validate_id(id) when is_binary(id), do: {:ok, id}
+    defp validate_id(_), do: {:error, "Product ID must be a string"}
+
+    defp validate_quantity(nil), do: {:error, "Quantity is required"}
+    defp validate_quantity(qty) when is_integer(qty) and qty >= 0, do: {:ok, qty}
+    defp validate_quantity(_), do: {:error, "Quantity must be a non-negative integer"}
+  end
+
+  defmodule ReserveStock do
+    @moduledoc """
+    在庫予約コマンド
+    """
+    use CommandService.Application.Commands.BaseCommand
+
+    @enforce_keys [:product_id, :quantity, :reservation_id]
+    defstruct [:product_id, :quantity, :reservation_id, :metadata]
+
+    @type t :: %__MODULE__{
+            product_id: String.t(),
+            quantity: integer(),
+            reservation_id: String.t(),
+            metadata: map() | nil
+          }
+
+    @impl true
+    def validate(params) do
+      with {:ok, product_id} <- validate_id(params["product_id"] || params[:product_id]),
+           {:ok, quantity} <- validate_quantity(params["quantity"] || params[:quantity]),
+           {:ok, reservation_id} <-
+             validate_id(params["reservation_id"] || params[:reservation_id]) do
+        {:ok,
+         %__MODULE__{
+           product_id: product_id,
+           quantity: quantity,
+           reservation_id: reservation_id,
+           metadata: params["metadata"] || params[:metadata]
+         }}
+      end
+    end
+
+    @impl true
+    def command_type, do: "product.reserve_stock"
+
+    defp validate_id(nil), do: {:error, "ID is required"}
+    defp validate_id(id) when is_binary(id), do: {:ok, id}
+    defp validate_id(_), do: {:error, "ID must be a string"}
+
+    defp validate_quantity(nil), do: {:error, "Quantity is required"}
+    defp validate_quantity(qty) when is_integer(qty) and qty > 0, do: {:ok, qty}
+    defp validate_quantity(_), do: {:error, "Quantity must be a positive integer"}
+  end
+
+  defmodule ReleaseStock do
+    @moduledoc """
+    在庫解放コマンド
+    """
+    use CommandService.Application.Commands.BaseCommand
+
+    @enforce_keys [:product_id, :quantity, :reservation_id]
+    defstruct [:product_id, :quantity, :reservation_id, :metadata]
+
+    @type t :: %__MODULE__{
+            product_id: String.t(),
+            quantity: integer(),
+            reservation_id: String.t(),
+            metadata: map() | nil
+          }
+
+    @impl true
+    def validate(params) do
+      with {:ok, product_id} <- validate_id(params["product_id"] || params[:product_id]),
+           {:ok, quantity} <- validate_quantity(params["quantity"] || params[:quantity]),
+           {:ok, reservation_id} <-
+             validate_id(params["reservation_id"] || params[:reservation_id]) do
+        {:ok,
+         %__MODULE__{
+           product_id: product_id,
+           quantity: quantity,
+           reservation_id: reservation_id,
+           metadata: params["metadata"] || params[:metadata]
+         }}
+      end
+    end
+
+    @impl true
+    def command_type, do: "product.release_stock"
+
+    defp validate_id(nil), do: {:error, "ID is required"}
+    defp validate_id(id) when is_binary(id), do: {:ok, id}
+    defp validate_id(_), do: {:error, "ID must be a string"}
+
+    defp validate_quantity(nil), do: {:error, "Quantity is required"}
+    defp validate_quantity(qty) when is_integer(qty) and qty > 0, do: {:ok, qty}
+    defp validate_quantity(_), do: {:error, "Quantity must be a positive integer"}
+  end
 end

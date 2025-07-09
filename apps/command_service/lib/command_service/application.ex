@@ -10,8 +10,8 @@ defmodule CommandService.Application do
     port = Application.get_env(:command_service, :grpc_port, 50_051)
 
     children = [
-      # データベース接続
-      CommandService.Infrastructure.Database.Connection,
+      # Ecto リポジトリ
+      CommandService.Repo,
       # コマンドバス
       CommandService.Infrastructure.CommandBus,
       # gRPC エンドポイント

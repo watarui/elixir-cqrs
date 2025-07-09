@@ -20,8 +20,11 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   defstruct [
     :id,
     :name,
+    :description,
     :price,
     :category_id,
+    :stock_quantity,
+    :active,
     :version,
     :deleted,
     :created_at,
@@ -32,8 +35,11 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   @type t :: %__MODULE__{
           id: EntityId.t(),
           name: ProductName.t() | nil,
+          description: String.t() | nil,
           price: Money.t() | nil,
           category_id: EntityId.t() | nil,
+          stock_quantity: integer(),
+          active: boolean(),
           version: integer(),
           deleted: boolean(),
           created_at: DateTime.t() | nil,
@@ -45,6 +51,8 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   def new do
     %__MODULE__{
       id: EntityId.generate(),
+      stock_quantity: 0,
+      active: true,
       version: 0,
       deleted: false,
       uncommitted_events: []

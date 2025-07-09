@@ -10,7 +10,10 @@ defmodule QueryService.Application do
     port = Application.get_env(:query_service, :grpc_port, 50_052)
 
     children = [
-      # TODO: データベース接続
+      # Ecto リポジトリ
+      QueryService.Repo,
+      # クエリバス
+      QueryService.Infrastructure.QueryBus,
       # TODO: キャッシュ (ETS)
       # TODO: プロジェクションマネージャー
       # gRPC エンドポイント

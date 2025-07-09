@@ -9,10 +9,13 @@ defmodule QueryService.Domain.Models.Product do
   defstruct [
     :id,
     :name,
+    :description,
     :price,
     :currency,
     :category_id,
     :category_name,
+    :stock_quantity,
+    :active,
     :created_at,
     :updated_at
   ]
@@ -20,10 +23,13 @@ defmodule QueryService.Domain.Models.Product do
   @type t :: %__MODULE__{
           id: String.t(),
           name: String.t(),
+          description: String.t() | nil,
           price: Decimal.t(),
           currency: String.t(),
           category_id: String.t(),
           category_name: String.t() | nil,
+          stock_quantity: integer(),
+          active: boolean(),
           created_at: DateTime.t(),
           updated_at: DateTime.t()
         }
@@ -44,10 +50,13 @@ defmodule QueryService.Domain.Models.Product do
        %__MODULE__{
          id: id,
          name: name,
+         description: params["description"] || params[:description],
          price: price,
          currency: currency,
          category_id: category_id,
          category_name: params["category_name"] || params[:category_name],
+         stock_quantity: params["stock_quantity"] || params[:stock_quantity] || 0,
+         active: params["active"] || params[:active] || true,
          created_at: created_at,
          updated_at: updated_at
        }}
@@ -109,10 +118,13 @@ defmodule QueryService.Domain.Models.Product do
         %{
           id: product.id,
           name: product.name,
+          description: product.description,
           price: Decimal.to_string(product.price),
           currency: product.currency,
           category_id: product.category_id,
           category_name: product.category_name,
+          stock_quantity: product.stock_quantity,
+          active: product.active,
           created_at: DateTime.to_iso8601(product.created_at),
           updated_at: DateTime.to_iso8601(product.updated_at)
         },

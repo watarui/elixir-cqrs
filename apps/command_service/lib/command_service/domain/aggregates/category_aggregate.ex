@@ -11,11 +11,25 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
   alias Shared.Domain.Events.CategoryEvents.{CategoryCreated, CategoryDeleted, CategoryUpdated}
 
   @enforce_keys [:id]
-  defstruct [:id, :name, :version, :deleted, :created_at, :updated_at, uncommitted_events: []]
+  defstruct [
+    :id,
+    :name,
+    :description,
+    :parent_id,
+    :active,
+    :version,
+    :deleted,
+    :created_at,
+    :updated_at,
+    uncommitted_events: []
+  ]
 
   @type t :: %__MODULE__{
           id: EntityId.t(),
           name: CategoryName.t() | nil,
+          description: String.t() | nil,
+          parent_id: EntityId.t() | nil,
+          active: boolean(),
           version: integer(),
           deleted: boolean(),
           created_at: DateTime.t() | nil,
@@ -28,6 +42,7 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
     %__MODULE__{
       id: EntityId.generate(),
       version: 0,
+      active: true,
       deleted: false,
       uncommitted_events: []
     }

@@ -6,11 +6,23 @@ defmodule QueryService.Domain.Models.Category do
   """
 
   @enforce_keys [:id, :name, :created_at, :updated_at]
-  defstruct [:id, :name, :product_count, :created_at, :updated_at]
+  defstruct [
+    :id,
+    :name,
+    :description,
+    :parent_id,
+    :active,
+    :product_count,
+    :created_at,
+    :updated_at
+  ]
 
   @type t :: %__MODULE__{
           id: String.t(),
           name: String.t(),
+          description: String.t() | nil,
+          parent_id: String.t() | nil,
+          active: boolean(),
           product_count: integer() | nil,
           created_at: DateTime.t(),
           updated_at: DateTime.t()
@@ -29,7 +41,10 @@ defmodule QueryService.Domain.Models.Category do
        %__MODULE__{
          id: id,
          name: name,
-         product_count: params["product_count"] || params[:product_count],
+         description: params["description"] || params[:description],
+         parent_id: params["parent_id"] || params[:parent_id],
+         active: params["active"] || params[:active] || true,
+         product_count: params["product_count"] || params[:product_count] || 0,
          created_at: created_at,
          updated_at: updated_at
        }}
@@ -69,6 +84,9 @@ defmodule QueryService.Domain.Models.Category do
         %{
           id: category.id,
           name: category.name,
+          description: category.description,
+          parent_id: category.parent_id,
+          active: category.active,
           product_count: category.product_count,
           created_at: DateTime.to_iso8601(category.created_at),
           updated_at: DateTime.to_iso8601(category.updated_at)
