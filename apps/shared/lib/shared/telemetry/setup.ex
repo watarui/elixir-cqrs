@@ -1,7 +1,7 @@
 defmodule Shared.Telemetry.Setup do
   @moduledoc """
   OpenTelemetry のセットアップ
-  
+
   分散トレーシングとメトリクスの設定を行います
   """
 
@@ -18,17 +18,27 @@ defmodule Shared.Telemetry.Setup do
           {
             :otel_batch_processor,
             %{
-              exporter: {:opentelemetry_exporter, %{
-                endpoints: [
-                  {:http, Application.get_env(:opentelemetry, :otlp_endpoint, "http://localhost:4318"), []}
-                ]
-              }}
+              exporter:
+                {:opentelemetry_exporter,
+                 %{
+                   endpoints: [
+                     {:http,
+                      Application.get_env(
+                        :opentelemetry,
+                        :otlp_endpoint,
+                        "http://localhost:4318"
+                      ), []}
+                   ]
+                 }}
             }
           }
         ],
-        sampler: {:parent_based, %{
-          root: {:trace_id_ratio_based, Application.get_env(:opentelemetry, :sampling_ratio, 1.0)}
-        }}
+        sampler:
+          {:parent_based,
+           %{
+             root:
+               {:trace_id_ratio_based, Application.get_env(:opentelemetry, :sampling_ratio, 1.0)}
+           }}
       }
     }
 
@@ -113,7 +123,11 @@ defmodule Shared.Telemetry.Setup do
 
       [:phoenix, :endpoint, :stop] ->
         # HTTPリクエストの終了
-        :otel_telemetry.set_current_telemetry_span(:opentelemetry.get_tracer(__MODULE__), metadata)
+        :otel_telemetry.set_current_telemetry_span(
+          :opentelemetry.get_tracer(__MODULE__),
+          metadata
+        )
+
         :otel_telemetry.end_telemetry_span(metadata)
 
       _ ->
@@ -124,7 +138,7 @@ defmodule Shared.Telemetry.Setup do
   # Ecto イベントハンドラー
   defp handle_ecto_event([:ecto, :query], measurements, metadata, _config) do
     total_time = System.convert_time_unit(measurements.total_time, :native, :millisecond)
-    
+
     :otel_telemetry.with_span(
       :opentelemetry.get_tracer(__MODULE__),
       "db.query",
@@ -152,11 +166,16 @@ defmodule Shared.Telemetry.Setup do
         )
 
       [:absinthe, :execute, :operation, :stop] ->
-        :otel_telemetry.set_current_telemetry_span(:opentelemetry.get_tracer(__MODULE__), metadata)
+        :otel_telemetry.set_current_telemetry_span(
+          :opentelemetry.get_tracer(__MODULE__),
+          metadata
+        )
+
         :otel_telemetry.end_telemetry_span(metadata)
 
       [:absinthe, :resolve, :field, :start] ->
         field_name = metadata.resolution.path |> Enum.join(".")
+
         :otel_telemetry.start_telemetry_span(
           :opentelemetry.get_tracer(__MODULE__),
           "GraphQL.resolve #{field_name}",
@@ -165,7 +184,11 @@ defmodule Shared.Telemetry.Setup do
         )
 
       [:absinthe, :resolve, :field, :stop] ->
-        :otel_telemetry.set_current_telemetry_span(:opentelemetry.get_tracer(__MODULE__), metadata)
+        :otel_telemetry.set_current_telemetry_span(
+          :opentelemetry.get_tracer(__MODULE__),
+          metadata
+        )
+
         :otel_telemetry.end_telemetry_span(metadata)
 
       _ ->
@@ -175,15 +198,16 @@ defmodule Shared.Telemetry.Setup do
 
   # カスタムイベントハンドラー
   defp handle_custom_event(event, measurements, metadata, _config) do
-    span_name = case event do
-      [:cqrs, :command, _] -> "Command #{metadata[:command_type] || "Unknown"}"
-      [:cqrs, :query, _] -> "Query #{metadata[:query_type] || "Unknown"}"
-      [:cqrs, :saga, _] -> "Saga #{metadata[:saga_type] || "Unknown"}"
-      [:cqrs, :event, :published] -> "Event Published #{metadata[:event_type] || "Unknown"}"
-      [:cqrs, :event_store, :append] -> "EventStore Append"
-      [:cqrs, :event_store, :read] -> "EventStore Read"
-      _ -> "Unknown Event"
-    end
+    span_name =
+      case event do
+        [:cqrs, :command, _] -> "Command #{metadata[:command_type] || "Unknown"}"
+        [:cqrs, :query, _] -> "Query #{metadata[:query_type] || "Unknown"}"
+        [:cqrs, :saga, _] -> "Saga #{metadata[:saga_type] || "Unknown"}"
+        [:cqrs, :event, :published] -> "Event Published #{metadata[:event_type] || "Unknown"}"
+        [:cqrs, :event_store, :append] -> "EventStore Append"
+        [:cqrs, :event_store, :read] -> "EventStore Read"
+        _ -> "Unknown Event"
+      end
 
     case List.last(event) do
       :start ->
@@ -195,7 +219,11 @@ defmodule Shared.Telemetry.Setup do
         )
 
       :stop ->
-        :otel_telemetry.set_current_telemetry_span(:opentelemetry.get_tracer(__MODULE__), metadata)
+        :otel_telemetry.set_current_telemetry_span(
+          :opentelemetry.get_tracer(__MODULE__),
+          metadata
+        )
+
         :otel_telemetry.end_telemetry_span(metadata)
 
       :published ->

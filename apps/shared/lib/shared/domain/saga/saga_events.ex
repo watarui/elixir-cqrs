@@ -48,7 +48,16 @@ defmodule Shared.Domain.Saga.SagaEvents do
     use BaseEvent
 
     @enforce_keys [:saga_id, :saga_type, :failed_step, :reason, :occurred_at]
-    defstruct [:saga_id, :saga_type, :failed_step, :reason, :metadata, :occurred_at, :event_id, :version]
+    defstruct [
+      :saga_id,
+      :saga_type,
+      :failed_step,
+      :reason,
+      :metadata,
+      :occurred_at,
+      :event_id,
+      :version
+    ]
 
     @impl true
     def new(attrs) do
@@ -120,7 +129,16 @@ defmodule Shared.Domain.Saga.SagaEvents do
     use BaseEvent
 
     @enforce_keys [:saga_id, :saga_type, :state, :occurred_at]
-    defstruct [:saga_id, :saga_type, :state, :current_step, :metadata, :occurred_at, :event_id, :version]
+    defstruct [
+      :saga_id,
+      :saga_type,
+      :state,
+      :current_step,
+      :metadata,
+      :occurred_at,
+      :event_id,
+      :version
+    ]
 
     @impl true
     def new(attrs) do

@@ -1,7 +1,7 @@
 defmodule ClientService.Application do
   @moduledoc """
   Client Service アプリケーション
-  
+
   GraphQL API ゲートウェイとして機能します
   """
 

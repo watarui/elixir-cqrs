@@ -1,7 +1,7 @@
 defmodule Shared.Telemetry.Metrics do
   @moduledoc """
   テレメトリメトリクスの定義
-  
+
   アプリケーションのメトリクスを定義します
   """
 
@@ -20,7 +20,7 @@ defmodule Shared.Telemetry.Metrics do
       counter("phoenix.endpoint.stop.count",
         tags: [:method, :route, :status]
       ),
-      
+
       # Ecto メトリクス
       summary("ecto.query.total_time",
         unit: {:native, :millisecond},
@@ -30,7 +30,7 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:repo, :source]
       ),
-      
+
       # GraphQL メトリクス
       summary("absinthe.execute.operation.stop.duration",
         unit: {:native, :millisecond},
@@ -43,7 +43,7 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:object_type, :field]
       ),
-      
+
       # CQRS メトリクス
       counter("cqrs.command.stop.count",
         event_name: [:cqrs, :command, :stop],
@@ -54,7 +54,6 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:command_type]
       ),
-      
       counter("cqrs.query.stop.count",
         event_name: [:cqrs, :query, :stop],
         tags: [:query_type, :status]
@@ -64,7 +63,7 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:query_type]
       ),
-      
+
       # Saga メトリクス
       counter("cqrs.saga.stop.count",
         event_name: [:cqrs, :saga, :stop],
@@ -79,7 +78,7 @@ defmodule Shared.Telemetry.Metrics do
         event_name: [:cqrs, :saga, :active],
         tags: [:saga_type]
       ),
-      
+
       # Event Store メトリクス
       counter("cqrs.event_store.append.count",
         event_name: [:cqrs, :event_store, :append],
@@ -94,13 +93,13 @@ defmodule Shared.Telemetry.Metrics do
         event_name: [:cqrs, :event_store, :read],
         tags: [:stream_name]
       ),
-      
+
       # Event Bus メトリクス
       counter("cqrs.event.published.count",
         event_name: [:cqrs, :event, :published],
         tags: [:event_type]
       ),
-      
+
       # VM メトリクス
       last_value("vm.memory.total", unit: {:byte, :megabyte}),
       last_value("vm.memory.processes", unit: {:byte, :megabyte}),
@@ -108,7 +107,6 @@ defmodule Shared.Telemetry.Metrics do
       last_value("vm.memory.atom", unit: {:byte, :megabyte}),
       last_value("vm.memory.binary", unit: {:byte, :megabyte}),
       last_value("vm.memory.ets", unit: {:byte, :megabyte}),
-      
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
       summary("vm.system_counts.process_count"),

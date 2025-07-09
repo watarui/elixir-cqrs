@@ -1,7 +1,7 @@
 defmodule QueryService.Application.Queries.BaseQuery do
   @moduledoc """
   すべてのクエリの基底モジュール
-  
+
   クエリの共通的な振る舞いと構造を定義します
   """
 

@@ -16,7 +16,10 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
 
   @impl Shared.Infrastructure.EventStore.EventStore
   def append_events(aggregate_id, aggregate_type, events, expected_version, metadata) do
-    GenServer.call(__MODULE__, {:append_events, aggregate_id, aggregate_type, events, expected_version, metadata})
+    GenServer.call(
+      __MODULE__,
+      {:append_events, aggregate_id, aggregate_type, events, expected_version, metadata}
+    )
   end
 
   @impl Shared.Infrastructure.EventStore.EventStore
@@ -32,13 +35,13 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   @impl Shared.Infrastructure.EventStore.EventStore
   def subscribe(subscriber, opts) do
     event_types = Keyword.get(opts, :event_types, :all)
-    
+
     if event_types == :all do
       EventBus.subscribe_all()
     else
       Enum.each(event_types, &EventBus.subscribe/1)
     end
-    
+
     {:ok, {subscriber, event_types}}
   end
 
@@ -49,7 +52,7 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
     else
       Enum.each(event_types, &EventBus.unsubscribe/1)
     end
-    
+
     :ok
   end
 
@@ -61,11 +64,15 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   end
 
   @impl GenServer
-  def handle_call({:append_events, aggregate_id, aggregate_type, events, expected_version, metadata}, _from, state) do
+  def handle_call(
+        {:append_events, aggregate_id, aggregate_type, events, expected_version, metadata},
+        _from,
+        state
+      ) do
     current_version = get_aggregate_version(state.events, aggregate_id)
-    
+
     if current_version == expected_version do
-      {new_events, new_state} = 
+      {new_events, new_state} =
         events
         |> Enum.with_index(1)
         |> Enum.reduce({[], state}, fn {event, index}, {acc_events, acc_state} ->
@@ -79,18 +86,18 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
             metadata: metadata,
             inserted_at: DateTime.utc_now()
           }
-          
+
           {acc_events ++ [event_record], %{acc_state | id_counter: acc_state.id_counter + 1}}
         end)
-      
+
       # イベントバスに発行
       Enum.each(new_events, fn event_record ->
         EventBus.publish(String.to_atom(event_record.event_type), event_record.event_data)
       end)
-      
+
       final_version = expected_version + length(events)
       updated_state = %{new_state | events: state.events ++ new_events}
-      
+
       {:reply, {:ok, final_version}, updated_state}
     else
       {:reply, {:error, :version_mismatch}, state}
@@ -99,15 +106,15 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
 
   @impl GenServer
   def handle_call({:get_events, aggregate_id, from_version}, _from, state) do
-    events = 
+    events =
       state.events
       |> Enum.filter(fn e -> e.aggregate_id == aggregate_id end)
-      |> Enum.filter(fn e -> 
-        is_nil(from_version) or e.event_version > from_version 
+      |> Enum.filter(fn e ->
+        is_nil(from_version) or e.event_version > from_version
       end)
       |> Enum.sort_by(& &1.event_version)
       |> Enum.map(& &1.event_data)
-    
+
     {:reply, {:ok, events}, state}
   end
 
@@ -115,17 +122,17 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   def handle_call({:get_events_by_type, event_type, opts}, _from, state) do
     limit = Keyword.get(opts, :limit, 100)
     after_id = Keyword.get(opts, :after_id)
-    
-    events = 
+
+    events =
       state.events
       |> Enum.filter(fn e -> e.event_type == event_type end)
-      |> Enum.filter(fn e -> 
-        is_nil(after_id) or e.id > after_id 
+      |> Enum.filter(fn e ->
+        is_nil(after_id) or e.id > after_id
       end)
       |> Enum.sort_by(& &1.id)
       |> Enum.take(limit)
       |> Enum.map(& &1.event_data)
-    
+
     {:reply, {:ok, events}, state}
   end
 

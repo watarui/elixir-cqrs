@@ -7,13 +7,13 @@ defmodule Shared.Infrastructure.EventStore.Schema.Event do
   import Ecto.Changeset
 
   schema "events" do
-    field :aggregate_id, Ecto.UUID
-    field :aggregate_type, :string
-    field :event_type, :string
-    field :event_data, :map
-    field :event_version, :integer
-    field :metadata, :map, default: %{}
-    
+    field(:aggregate_id, Ecto.UUID)
+    field(:aggregate_type, :string)
+    field(:event_type, :string)
+    field(:event_data, :map)
+    field(:event_version, :integer)
+    field(:metadata, :map, default: %{})
+
     timestamps()
   end
 

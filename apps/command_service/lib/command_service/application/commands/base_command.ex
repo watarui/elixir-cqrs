@@ -1,7 +1,7 @@
 defmodule CommandService.Application.Commands.BaseCommand do
   @moduledoc """
   すべてのコマンドの基底モジュール
-  
+
   コマンドの共通的な振る舞いと構造を定義します
   """
 

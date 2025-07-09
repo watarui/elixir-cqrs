@@ -16,16 +16,19 @@ defmodule CommandService.Infrastructure.Repositories.OrderRepository do
     case EntityId.from_string(id) do
       {:ok, entity_id} ->
         stream_name = "#{@aggregate_type}-#{entity_id.value}"
-        
+
         case EventStore.get_events(stream_name) do
           {:ok, events} when events != [] ->
             aggregate = rebuild_aggregate_from_events(events)
             {:ok, aggregate}
+
           {:ok, []} ->
             {:error, :not_found}
+
           {:error, reason} ->
             {:error, reason}
         end
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -34,15 +37,18 @@ defmodule CommandService.Infrastructure.Repositories.OrderRepository do
   @impl true
   def save(aggregate) do
     stream_name = "#{@aggregate_type}-#{aggregate.id.value}"
-    
+
     case EventStore.append_events(stream_name, aggregate.uncommitted_events, aggregate.version) do
       {:ok, _} ->
         # uncommitted_events をクリア
-        updated_aggregate = %{aggregate | 
-          uncommitted_events: [],
-          version: aggregate.version + length(aggregate.uncommitted_events)
+        updated_aggregate = %{
+          aggregate
+          | uncommitted_events: [],
+            version: aggregate.version + length(aggregate.uncommitted_events)
         }
+
         {:ok, updated_aggregate}
+
       {:error, reason} ->
         {:error, reason}
     end

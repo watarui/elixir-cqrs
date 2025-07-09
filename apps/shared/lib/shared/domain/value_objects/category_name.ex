@@ -1,7 +1,7 @@
 defmodule Shared.Domain.ValueObjects.CategoryName do
   @moduledoc """
   カテゴリ名を表す値オブジェクト
-  
+
   カテゴリ名のバリデーションと正規化を提供します
   """
 
@@ -15,9 +15,9 @@ defmodule Shared.Domain.ValueObjects.CategoryName do
 
   @doc """
   新しい CategoryName を作成する
-  
+
   ## 例
-  
+
       iex> CategoryName.new("電化製品")
       {:ok, %CategoryName{value: "電化製品"}}
       
@@ -30,18 +30,19 @@ defmodule Shared.Domain.ValueObjects.CategoryName do
   @spec new(String.t()) :: {:ok, t()} | {:error, String.t()}
   def new(name) when is_binary(name) do
     trimmed = String.trim(name)
-    
+
     cond do
       String.length(trimmed) < @min_length ->
         {:error, "Name cannot be empty"}
-        
+
       String.length(trimmed) > @max_length ->
         {:error, "Name too long (max #{@max_length} characters)"}
-        
+
       true ->
         {:ok, %__MODULE__{value: trimmed}}
     end
   end
+
   def new(_), do: {:error, "Invalid category name"}
 
   @doc """

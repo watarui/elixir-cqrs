@@ -2,28 +2,28 @@ defmodule ClientServiceWeb.Router do
   use ClientServiceWeb, :router
 
   pipeline :browser do
-    plug :accepts, ["html"]
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug :put_root_layout, html: {ClientServiceWeb.Layouts, :root}
-    plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, html: {ClientServiceWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug(:accepts, ["json"])
   end
 
   # GraphQL エンドポイント
   scope "/" do
-    pipe_through :api
+    pipe_through(:api)
 
-    forward "/graphql", Absinthe.Plug,
-      schema: ClientService.GraphQL.Schema
+    forward("/graphql", Absinthe.Plug, schema: ClientService.GraphQL.Schema)
 
-    forward "/graphiql", Absinthe.Plug.GraphiQL,
+    forward("/graphiql", Absinthe.Plug.GraphiQL,
       schema: ClientService.GraphQL.Schema,
       interface: :playground
+    )
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
@@ -36,9 +36,9 @@ defmodule ClientServiceWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
-      pipe_through :browser
+      pipe_through(:browser)
 
-      live_dashboard "/dashboard", metrics: ClientServiceWeb.Telemetry
+      live_dashboard("/dashboard", metrics: ClientServiceWeb.Telemetry)
     end
   end
 end

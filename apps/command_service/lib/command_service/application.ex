@@ -8,14 +8,15 @@ defmodule CommandService.Application do
   @impl true
   def start(_type, _args) do
     port = Application.get_env(:command_service, :grpc_port, 50051)
-    
+
     children = [
       # データベース接続
       CommandService.Infrastructure.Database.Connection,
       # コマンドバス
       CommandService.Infrastructure.CommandBus,
       # gRPC エンドポイント
-      {GRPC.Server.Supervisor, endpoint: CommandService.Presentation.Grpc.Endpoint, port: port, start_server: true}
+      {GRPC.Server.Supervisor,
+       endpoint: CommandService.Presentation.Grpc.Endpoint, port: port, start_server: true}
     ]
 
     opts = [strategy: :one_for_one, name: CommandService.Supervisor]

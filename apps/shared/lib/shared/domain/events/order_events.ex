@@ -15,13 +15,13 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:id, :user_id, :items, :total_amount, :saga_id, :created_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      user_id: EntityId.t(),
-      items: list(map()),
-      total_amount: Money.t(),
-      saga_id: EntityId.t(),
-      created_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            user_id: EntityId.t(),
+            items: list(map()),
+            total_amount: Money.t(),
+            saga_id: EntityId.t(),
+            created_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -52,11 +52,11 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:order_id, :product_id, :quantity, :reserved_at]
 
     @type t :: %__MODULE__{
-      order_id: EntityId.t(),
-      product_id: EntityId.t(),
-      quantity: integer(),
-      reserved_at: DateTime.t()
-    }
+            order_id: EntityId.t(),
+            product_id: EntityId.t(),
+            quantity: integer(),
+            reserved_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -85,11 +85,11 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:order_id, :amount, :payment_id, :processed_at]
 
     @type t :: %__MODULE__{
-      order_id: EntityId.t(),
-      amount: Money.t(),
-      payment_id: String.t(),
-      processed_at: DateTime.t()
-    }
+            order_id: EntityId.t(),
+            amount: Money.t(),
+            payment_id: String.t(),
+            processed_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -118,9 +118,9 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:id, :confirmed_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      confirmed_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            confirmed_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -147,10 +147,10 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:id, :reason, :cancelled_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      reason: String.t(),
-      cancelled_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            reason: String.t(),
+            cancelled_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -178,11 +178,11 @@ defmodule Shared.Domain.Events.OrderEvents do
     defstruct [:order_id, :saga_id, :reason, :started_at]
 
     @type t :: %__MODULE__{
-      order_id: EntityId.t(),
-      saga_id: EntityId.t(),
-      reason: String.t(),
-      started_at: DateTime.t()
-    }
+            order_id: EntityId.t(),
+            saga_id: EntityId.t(),
+            reason: String.t(),
+            started_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do

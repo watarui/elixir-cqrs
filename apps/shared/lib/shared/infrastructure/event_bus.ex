@@ -1,7 +1,7 @@
 defmodule Shared.Infrastructure.EventBus do
   @moduledoc """
   イベントバスの実装
-  
+
   PubSub を使用してイベントの発行と購読を管理します
   """
 

@@ -1,19 +1,19 @@
 defmodule Shared.Domain.Events.BaseEvent do
   @moduledoc """
   すべてのドメインイベントの基底モジュール
-  
+
   イベントの共通的な振る舞いと構造を定義します
   """
 
   @type event_metadata :: %{
-    event_id: String.t(),
-    event_type: String.t(),
-    aggregate_id: String.t(),
-    aggregate_type: String.t(),
-    event_version: integer(),
-    occurred_at: DateTime.t(),
-    metadata: map()
-  }
+          event_id: String.t(),
+          event_type: String.t(),
+          aggregate_id: String.t(),
+          aggregate_type: String.t(),
+          event_version: integer(),
+          occurred_at: DateTime.t(),
+          metadata: map()
+        }
 
   @callback new(map()) :: struct()
   @callback event_type() :: String.t()

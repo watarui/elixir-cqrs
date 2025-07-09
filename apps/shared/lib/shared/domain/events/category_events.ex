@@ -15,10 +15,10 @@ defmodule Shared.Domain.Events.CategoryEvents do
     defstruct [:id, :name, :created_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      name: CategoryName.t(),
-      created_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            name: CategoryName.t(),
+            created_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -46,10 +46,10 @@ defmodule Shared.Domain.Events.CategoryEvents do
     defstruct [:id, :name, :updated_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      name: CategoryName.t(),
-      updated_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            name: CategoryName.t(),
+            updated_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -77,9 +77,9 @@ defmodule Shared.Domain.Events.CategoryEvents do
     defstruct [:id, :deleted_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      deleted_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            deleted_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do

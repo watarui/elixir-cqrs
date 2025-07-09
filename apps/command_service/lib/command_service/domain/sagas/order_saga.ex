@@ -1,7 +1,7 @@
 defmodule CommandService.Domain.Sagas.OrderSaga do
   @moduledoc """
   注文処理のサガ実装
-  
+
   注文の作成から確定までの分散トランザクションを管理します
   """
 
@@ -41,65 +41,70 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   @impl true
   def handle_event(event, saga) do
     saga = record_processed_event(saga, event)
-    
+
     case {saga.current_step, event.__struct__} do
       # 在庫予約完了
       {:reserve_inventory, Shared.Domain.Events.OrderEvents.OrderItemReserved} ->
-        saga = %{saga | 
-          inventory_reserved: true,
-          reservation_ids: [event.product_id | saga.reservation_ids]
+        saga = %{
+          saga
+          | inventory_reserved: true,
+            reservation_ids: [event.product_id | saga.reservation_ids]
         }
-        
+
         # すべての商品の在庫が予約されたかチェック
         if all_items_reserved?(saga) do
-          saga = saga
-          |> complete_step(:reserve_inventory)
-          |> Map.put(:current_step, :process_payment)
-          
+          saga =
+            saga
+            |> complete_step(:reserve_inventory)
+            |> Map.put(:current_step, :process_payment)
+
           commands = [create_payment_command(saga)]
           {:ok, commands}
         else
           # まだ予約が必要な商品がある
           {:ok, []}
         end
-        
+
       # 支払い処理完了
       {:process_payment, Shared.Domain.Events.OrderEvents.OrderPaymentProcessed} ->
-        saga = saga
-        |> Map.put(:payment_processed, true)
-        |> Map.put(:payment_id, event.payment_id)
-        |> complete_step(:process_payment)
-        |> Map.put(:current_step, :arrange_shipping)
-        
+        saga =
+          saga
+          |> Map.put(:payment_processed, true)
+          |> Map.put(:payment_id, event.payment_id)
+          |> complete_step(:process_payment)
+          |> Map.put(:current_step, :arrange_shipping)
+
         commands = [create_shipping_command(saga)]
         {:ok, commands}
-        
+
       # 配送手配完了
       {:arrange_shipping, _ShippingArranged} ->
-        saga = saga
-        |> Map.put(:shipping_arranged, true)
-        |> Map.put(:shipping_id, event.shipping_id)
-        |> complete_step(:arrange_shipping)
-        |> Map.put(:current_step, :confirm_order)
-        
+        saga =
+          saga
+          |> Map.put(:shipping_arranged, true)
+          |> Map.put(:shipping_id, event.shipping_id)
+          |> complete_step(:arrange_shipping)
+          |> Map.put(:current_step, :confirm_order)
+
         commands = [create_order_confirmation_command(saga)]
         {:ok, commands}
-        
+
       # 注文確定
       {:confirm_order, Shared.Domain.Events.OrderEvents.OrderConfirmed} ->
-        saga = saga
-        |> Map.put(:order_confirmed, true)
-        |> complete_step(:confirm_order)
-        |> complete_saga()
-        
+        saga =
+          saga
+          |> Map.put(:order_confirmed, true)
+          |> complete_step(:confirm_order)
+          |> complete_saga()
+
         {:ok, []}
-        
+
       # エラーイベント
       {_, _ErrorEvent} ->
         saga = record_failure(saga, saga.current_step, "Step failed")
         compensation_commands = get_compensation_commands(saga)
         {:ok, compensation_commands}
-        
+
       _ ->
         # 想定外のイベント
         {:ok, []}
@@ -109,29 +114,34 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   @impl true
   def get_compensation_commands(saga) do
     commands = []
-    
+
     # 完了したステップを逆順に補償
-    commands = if saga.shipping_arranged do
-      [create_cancel_shipping_command(saga) | commands]
-    else
-      commands
-    end
-    
-    commands = if saga.payment_processed do
-      [create_refund_payment_command(saga) | commands]
-    else
-      commands
-    end
-    
-    commands = if saga.inventory_reserved do
-      release_commands = Enum.map(saga.reservation_ids, fn product_id ->
-        create_release_inventory_command(saga, product_id)
-      end)
-      release_commands ++ commands
-    else
-      commands
-    end
-    
+    commands =
+      if saga.shipping_arranged do
+        [create_cancel_shipping_command(saga) | commands]
+      else
+        commands
+      end
+
+    commands =
+      if saga.payment_processed do
+        [create_refund_payment_command(saga) | commands]
+      else
+        commands
+      end
+
+    commands =
+      if saga.inventory_reserved do
+        release_commands =
+          Enum.map(saga.reservation_ids, fn product_id ->
+            create_release_inventory_command(saga, product_id)
+          end)
+
+        release_commands ++ commands
+      else
+        commands
+      end
+
     # 最後に注文をキャンセル
     [create_cancel_order_command(saga) | commands]
   end

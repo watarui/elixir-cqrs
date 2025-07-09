@@ -1,7 +1,7 @@
 defmodule Shared.Domain.ValueObjects.ProductName do
   @moduledoc """
   商品名を表す値オブジェクト
-  
+
   商品名のバリデーションと正規化を提供します
   """
 
@@ -15,9 +15,9 @@ defmodule Shared.Domain.ValueObjects.ProductName do
 
   @doc """
   新しい ProductName を作成する
-  
+
   ## 例
-  
+
       iex> ProductName.new("ノートパソコン")
       {:ok, %ProductName{value: "ノートパソコン"}}
       
@@ -30,18 +30,19 @@ defmodule Shared.Domain.ValueObjects.ProductName do
   @spec new(String.t()) :: {:ok, t()} | {:error, String.t()}
   def new(name) when is_binary(name) do
     trimmed = String.trim(name)
-    
+
     cond do
       String.length(trimmed) < @min_length ->
         {:error, "Name cannot be empty"}
-        
+
       String.length(trimmed) > @max_length ->
         {:error, "Name too long (max #{@max_length} characters)"}
-        
+
       true ->
         {:ok, %__MODULE__{value: trimmed}}
     end
   end
+
   def new(_), do: {:error, "Invalid name"}
 
   @doc """

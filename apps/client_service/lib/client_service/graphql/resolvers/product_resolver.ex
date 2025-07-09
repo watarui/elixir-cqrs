@@ -15,15 +15,16 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def get_product(_parent, %{id: id}, _resolution) do
     # TODO: Query Service への gRPC 呼び出し
-    {:ok, %{
-      id: id,
-      name: "Sample Product",
-      price: Decimal.new("1000"),
-      currency: "JPY",
-      category_id: "1",
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
-    }}
+    {:ok,
+     %{
+       id: id,
+       name: "Sample Product",
+       price: Decimal.new("1000"),
+       currency: "JPY",
+       category_id: "1",
+       created_at: DateTime.utc_now(),
+       updated_at: DateTime.utc_now()
+     }}
   end
 
   @doc """
@@ -31,26 +32,27 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def list_products(_parent, args, _resolution) do
     # TODO: Query Service への gRPC 呼び出し
-    {:ok, [
-      %{
-        id: "1",
-        name: "ノートパソコン",
-        price: Decimal.new("120000"),
-        currency: "JPY",
-        category_id: "1",
-        created_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now()
-      },
-      %{
-        id: "2",
-        name: "マウス",
-        price: Decimal.new("3000"),
-        currency: "JPY",
-        category_id: "1",
-        created_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now()
-      }
-    ]}
+    {:ok,
+     [
+       %{
+         id: "1",
+         name: "ノートパソコン",
+         price: Decimal.new("120000"),
+         currency: "JPY",
+         category_id: "1",
+         created_at: DateTime.utc_now(),
+         updated_at: DateTime.utc_now()
+       },
+       %{
+         id: "2",
+         name: "マウス",
+         price: Decimal.new("3000"),
+         currency: "JPY",
+         category_id: "1",
+         created_at: DateTime.utc_now(),
+         updated_at: DateTime.utc_now()
+       }
+     ]}
   end
 
   @doc """
@@ -66,15 +68,16 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def create_product(_parent, %{input: input}, _resolution) do
     # TODO: Command Service への gRPC 呼び出し
-    {:ok, %{
-      id: UUID.uuid4(),
-      name: input.name,
-      price: input.price,
-      currency: "JPY",
-      category_id: input.category_id,
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
-    }}
+    {:ok,
+     %{
+       id: UUID.uuid4(),
+       name: input.name,
+       price: input.price,
+       currency: "JPY",
+       category_id: input.category_id,
+       created_at: DateTime.utc_now(),
+       updated_at: DateTime.utc_now()
+     }}
   end
 
   @doc """
@@ -83,15 +86,16 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   def update_product(_parent, %{id: id, input: input}, _resolution) do
     # TODO: Command Service への gRPC 呼び出し
     # 現在の値とマージ
-    {:ok, %{
-      id: id,
-      name: input[:name] || "Updated Product",
-      price: input[:price] || Decimal.new("1000"),
-      currency: "JPY",
-      category_id: input[:category_id] || "1",
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
-    }}
+    {:ok,
+     %{
+       id: id,
+       name: input[:name] || "Updated Product",
+       price: input[:price] || Decimal.new("1000"),
+       currency: "JPY",
+       category_id: input[:category_id] || "1",
+       created_at: DateTime.utc_now(),
+       updated_at: DateTime.utc_now()
+     }}
   end
 
   @doc """
@@ -99,15 +103,16 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolver do
   """
   def change_product_price(_parent, %{id: id, new_price: new_price}, _resolution) do
     # TODO: Command Service への gRPC 呼び出し
-    {:ok, %{
-      id: id,
-      name: "Product",
-      price: new_price,
-      currency: "JPY",
-      category_id: "1",
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
-    }}
+    {:ok,
+     %{
+       id: id,
+       name: "Product",
+       price: new_price,
+       currency: "JPY",
+       category_id: "1",
+       created_at: DateTime.utc_now(),
+       updated_at: DateTime.utc_now()
+     }}
   end
 
   @doc """

@@ -1,7 +1,7 @@
 defmodule Shared.Domain.Aggregate.Base do
   @moduledoc """
   アグリゲートの基底モジュール
-  
+
   Event Sourcing パターンにおけるアグリゲートの共通機能を提供します
   """
 
@@ -70,7 +70,7 @@ defmodule Shared.Domain.Aggregate.Base do
         |> add_uncommitted_event(event)
       end
 
-      defoverridable [new: 0, apply_event: 2]
+      defoverridable new: 0, apply_event: 2
     end
   end
 end

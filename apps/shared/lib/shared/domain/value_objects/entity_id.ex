@@ -1,7 +1,7 @@
 defmodule Shared.Domain.ValueObjects.EntityId do
   @moduledoc """
   エンティティ ID を表す値オブジェクト
-  
+
   UUID v4 形式の ID を管理し、型安全性を提供します
   """
 
@@ -20,9 +20,9 @@ defmodule Shared.Domain.ValueObjects.EntityId do
 
   @doc """
   文字列から EntityId を作成する
-  
+
   ## 例
-  
+
       iex> EntityId.from_string("550e8400-e29b-41d4-a716-446655440000")
       {:ok, %EntityId{value: "550e8400-e29b-41d4-a716-446655440000"}}
       
@@ -36,6 +36,7 @@ defmodule Shared.Domain.ValueObjects.EntityId do
       _ -> {:error, "Invalid UUID"}
     end
   end
+
   def from_string(_), do: {:error, "Invalid UUID"}
 
   @doc """

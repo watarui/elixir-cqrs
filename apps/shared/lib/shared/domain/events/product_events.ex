@@ -15,12 +15,12 @@ defmodule Shared.Domain.Events.ProductEvents do
     defstruct [:id, :name, :price, :category_id, :created_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      name: ProductName.t(),
-      price: Money.t(),
-      category_id: EntityId.t(),
-      created_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            name: ProductName.t(),
+            price: Money.t(),
+            category_id: EntityId.t(),
+            created_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -50,12 +50,12 @@ defmodule Shared.Domain.Events.ProductEvents do
     defstruct [:id, :name, :price, :category_id, :updated_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      name: ProductName.t() | nil,
-      price: Money.t() | nil,
-      category_id: EntityId.t() | nil,
-      updated_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            name: ProductName.t() | nil,
+            price: Money.t() | nil,
+            category_id: EntityId.t() | nil,
+            updated_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -85,11 +85,11 @@ defmodule Shared.Domain.Events.ProductEvents do
     defstruct [:id, :old_price, :new_price, :changed_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      old_price: Money.t(),
-      new_price: Money.t(),
-      changed_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            old_price: Money.t(),
+            new_price: Money.t(),
+            changed_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do
@@ -118,9 +118,9 @@ defmodule Shared.Domain.Events.ProductEvents do
     defstruct [:id, :deleted_at]
 
     @type t :: %__MODULE__{
-      id: EntityId.t(),
-      deleted_at: DateTime.t()
-    }
+            id: EntityId.t(),
+            deleted_at: DateTime.t()
+          }
 
     @impl true
     def new(params) do

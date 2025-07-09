@@ -8,13 +8,14 @@ defmodule QueryService.Application do
   @impl true
   def start(_type, _args) do
     port = Application.get_env(:query_service, :grpc_port, 50052)
-    
+
     children = [
       # TODO: データベース接続
       # TODO: キャッシュ (ETS)
       # TODO: プロジェクションマネージャー
       # gRPC エンドポイント
-      {GRPC.Server.Supervisor, endpoint: QueryService.Presentation.Grpc.Endpoint, port: port, start_server: true}
+      {GRPC.Server.Supervisor,
+       endpoint: QueryService.Presentation.Grpc.Endpoint, port: port, start_server: true}
     ]
 
     opts = [strategy: :one_for_one, name: QueryService.Supervisor]

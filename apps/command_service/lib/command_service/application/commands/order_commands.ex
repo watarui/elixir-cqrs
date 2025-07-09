@@ -16,10 +16,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -38,12 +41,19 @@ defmodule CommandService.Application.Commands.OrderCommands do
         end
       end)
     end
+
     defp validate_items(_), do: {:error, "Items must be a non-empty list"}
 
     defp validate_item(item) do
-      with :ok <- validate_required(item[:product_id] || item["product_id"], "product_id in item"),
-           :ok <- validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item"),
-           :ok <- validate_positive_number(item[:unit_price] || item["unit_price"], "unit_price in item") do
+      with :ok <-
+             validate_required(item[:product_id] || item["product_id"], "product_id in item"),
+           :ok <-
+             validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item"),
+           :ok <-
+             validate_positive_number(
+               item[:unit_price] || item["unit_price"],
+               "unit_price in item"
+             ) do
         :ok
       end
     end
@@ -66,10 +76,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -91,10 +104,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -117,10 +133,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -143,10 +162,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -169,10 +191,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -197,10 +222,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -223,10 +251,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true
@@ -249,10 +280,13 @@ defmodule CommandService.Application.Commands.OrderCommands do
 
     @impl true
     def new(attrs) do
-      struct!(__MODULE__, Map.merge(attrs, %{
-        command_id: UUID.uuid4(),
-        timestamp: DateTime.utc_now()
-      }))
+      struct!(
+        __MODULE__,
+        Map.merge(attrs, %{
+          command_id: UUID.uuid4(),
+          timestamp: DateTime.utc_now()
+        })
+      )
     end
 
     @impl true

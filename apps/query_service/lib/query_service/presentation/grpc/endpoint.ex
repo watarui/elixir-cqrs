@@ -5,11 +5,11 @@ defmodule QueryService.Presentation.Grpc.Endpoint do
 
   use GRPC.Endpoint
 
-  intercept GRPC.Server.Interceptors.Logger
-  
+  intercept(GRPC.Server.Interceptors.Logger)
+
   # gRPC サーバーの登録
-  run [
+  run([
     QueryService.Presentation.Grpc.CategoryQueryServer,
     QueryService.Presentation.Grpc.ProductQueryServer
-  ]
+  ])
 end

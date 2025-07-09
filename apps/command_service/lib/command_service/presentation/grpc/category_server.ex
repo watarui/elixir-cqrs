@@ -26,13 +26,17 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
               result: Result.success("Category created successfully"),
               id: aggregate.id.value
             }
+
           {:error, reason} ->
             %{
-              result: Result.failure(Error.new("SAVE_FAILED", "Failed to save category: #{inspect(reason)}")),
+              result:
+                Result.failure(
+                  Error.new("SAVE_FAILED", "Failed to save category: #{inspect(reason)}")
+                ),
               id: ""
             }
         end
-        
+
       {:error, reason} ->
         %{
           result: Result.failure(Error.new("VALIDATION_ERROR", reason)),
@@ -54,6 +58,7 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
     else
       {:error, :not_found} ->
         %{result: Result.failure(Error.new("NOT_FOUND", "Category not found"))}
+
       {:error, reason} ->
         %{result: Result.failure(Error.new("UPDATE_FAILED", inspect(reason)))}
     end
@@ -72,6 +77,7 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
     else
       {:error, :not_found} ->
         %{result: Result.failure(Error.new("NOT_FOUND", "Category not found"))}
+
       {:error, reason} ->
         %{result: Result.failure(Error.new("DELETE_FAILED", inspect(reason)))}
     end
@@ -83,9 +89,11 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
     case EventStore.get_events(id) do
       {:ok, []} ->
         {:error, :not_found}
+
       {:ok, events} ->
         aggregate = CategoryAggregate.rebuild_from_events(events)
         {:ok, aggregate}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -93,7 +101,7 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
 
   defp save_aggregate(aggregate) do
     {cleared_aggregate, events} = CategoryAggregate.get_and_clear_uncommitted_events(aggregate)
-    
+
     if length(events) > 0 do
       EventStore.append_events(
         aggregate.id.value,

@@ -24,6 +24,7 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
           product: nil,
           error: Error.new("NOT_FOUND", "Product not found")
         }
+
       id ->
         %{
           product: %{
@@ -73,11 +74,12 @@ defmodule QueryService.Presentation.Grpc.ProductQueryServer do
     ]
 
     # フィルタリング（仮実装）
-    filtered_products = if request.category_id do
-      Enum.filter(products, fn p -> p.category_id == request.category_id end)
-    else
-      products
-    end
+    filtered_products =
+      if request.category_id do
+        Enum.filter(products, fn p -> p.category_id == request.category_id end)
+      else
+        products
+      end
 
     %{
       products: filtered_products,

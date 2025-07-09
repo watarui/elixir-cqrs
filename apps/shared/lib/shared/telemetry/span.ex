@@ -1,7 +1,7 @@
 defmodule Shared.Telemetry.Span do
   @moduledoc """
   OpenTelemetry スパンのヘルパー関数
-  
+
   トレーシングスパンを簡単に作成・管理するための関数を提供します
   """
 
@@ -9,9 +9,9 @@ defmodule Shared.Telemetry.Span do
 
   @doc """
   スパン内でコードを実行する
-  
+
   ## 例
-  
+
       Span.with_span "my_operation", %{user_id: "123"} do
         # 処理
         {:ok, result}
@@ -20,15 +20,16 @@ defmodule Shared.Telemetry.Span do
   def with_span(name, attributes \\ %{}, fun) do
     Tracer.with_span name, %{attributes: normalize_attributes(attributes)} do
       result = fun.()
-      
+
       # エラーの場合はスパンにエラー情報を記録
       case result do
         {:error, reason} ->
           Tracer.set_status(:error, format_error(reason))
+
         _ ->
           :ok
       end
-      
+
       result
     end
   end
@@ -58,8 +59,10 @@ defmodule Shared.Telemetry.Span do
   """
   def get_trace_id do
     case OpenTelemetry.Tracer.current_span_ctx() do
-      :undefined -> nil
-      span_ctx -> 
+      :undefined ->
+        nil
+
+      span_ctx ->
         {:ok, trace_id} = OpenTelemetry.Span.trace_id(span_ctx)
         trace_id |> :io_lib.format("~32.16.0b") |> to_string()
     end
@@ -70,7 +73,9 @@ defmodule Shared.Telemetry.Span do
   """
   def get_span_id do
     case OpenTelemetry.Tracer.current_span_ctx() do
-      :undefined -> nil
+      :undefined ->
+        nil
+
       span_ctx ->
         {:ok, span_id} = OpenTelemetry.Span.span_id(span_ctx)
         span_id |> :io_lib.format("~16.16.0b") |> to_string()
@@ -84,6 +89,7 @@ defmodule Shared.Telemetry.Span do
       Map.put(acc, to_string(key), format_value(value))
     end)
   end
+
   defp normalize_attributes(_), do: %{}
 
   defp format_value(value) when is_binary(value), do: value

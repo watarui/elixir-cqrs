@@ -31,6 +31,7 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
           result: Result.failure(Error.new("INVALID_PRICE", "Invalid price format")),
           id: ""
         }
+
       {:error, reason} ->
         %{
           result: Result.failure(Error.new("CREATE_FAILED", reason)),
@@ -55,6 +56,7 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
     else
       {:error, :not_found} ->
         %{result: Result.failure(Error.new("NOT_FOUND", "Product not found"))}
+
       {:error, reason} ->
         %{result: Result.failure(Error.new("UPDATE_FAILED", inspect(reason)))}
     end
@@ -74,8 +76,10 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
     else
       :error ->
         %{result: Result.failure(Error.new("INVALID_PRICE", "Invalid price format"))}
+
       {:error, :not_found} ->
         %{result: Result.failure(Error.new("NOT_FOUND", "Product not found"))}
+
       {:error, reason} ->
         %{result: Result.failure(Error.new("PRICE_CHANGE_FAILED", inspect(reason)))}
     end
@@ -94,6 +98,7 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
     else
       {:error, :not_found} ->
         %{result: Result.failure(Error.new("NOT_FOUND", "Product not found"))}
+
       {:error, reason} ->
         %{result: Result.failure(Error.new("DELETE_FAILED", inspect(reason)))}
     end
@@ -105,9 +110,11 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
     case EventStore.get_events(id) do
       {:ok, []} ->
         {:error, :not_found}
+
       {:ok, events} ->
         aggregate = ProductAggregate.rebuild_from_events(events)
         {:ok, aggregate}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -115,7 +122,7 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
 
   defp save_aggregate(aggregate) do
     {_cleared_aggregate, events} = ProductAggregate.get_and_clear_uncommitted_events(aggregate)
-    
+
     if length(events) > 0 do
       EventStore.append_events(
         aggregate.id.value,
@@ -131,22 +138,24 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
 
   defp build_update_params(request) do
     params = %{}
-    
-    params = if request.name != nil && request.name != "" do
-      Map.put(params, :name, request.name)
-    else
-      params
-    end
-    
-    params = if request.price != nil && request.price != "" do
-      case Float.parse(request.price) do
-        {price, ""} -> Map.put(params, :price, price)
-        _ -> params
+
+    params =
+      if request.name != nil && request.name != "" do
+        Map.put(params, :name, request.name)
+      else
+        params
       end
-    else
-      params
-    end
-    
+
+    params =
+      if request.price != nil && request.price != "" do
+        case Float.parse(request.price) do
+          {price, ""} -> Map.put(params, :price, price)
+          _ -> params
+        end
+      else
+        params
+      end
+
     if request.category_id != nil && request.category_id != "" do
       Map.put(params, :category_id, request.category_id)
     else

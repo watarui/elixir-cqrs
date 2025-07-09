@@ -24,6 +24,7 @@ defmodule QueryService.Presentation.Grpc.CategoryQueryServer do
           category: nil,
           error: Error.new("NOT_FOUND", "Category not found")
         }
+
       id ->
         %{
           category: %{

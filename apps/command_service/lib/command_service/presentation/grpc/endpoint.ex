@@ -5,11 +5,11 @@ defmodule CommandService.Presentation.Grpc.Endpoint do
 
   use GRPC.Endpoint
 
-  intercept GRPC.Server.Interceptors.Logger
-  
+  intercept(GRPC.Server.Interceptors.Logger)
+
   # gRPC サーバーの登録
-  run [
+  run([
     CommandService.Presentation.Grpc.CategoryServer,
     CommandService.Presentation.Grpc.ProductServer
-  ]
+  ])
 end

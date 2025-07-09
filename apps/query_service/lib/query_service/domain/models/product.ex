@@ -1,23 +1,32 @@
 defmodule QueryService.Domain.Models.Product do
   @moduledoc """
   商品の読み取りモデル
-  
+
   クエリ側で使用する商品のデータ構造を定義します
   """
 
   @enforce_keys [:id, :name, :price, :currency, :category_id, :created_at, :updated_at]
-  defstruct [:id, :name, :price, :currency, :category_id, :category_name, :created_at, :updated_at]
+  defstruct [
+    :id,
+    :name,
+    :price,
+    :currency,
+    :category_id,
+    :category_name,
+    :created_at,
+    :updated_at
+  ]
 
   @type t :: %__MODULE__{
-    id: String.t(),
-    name: String.t(),
-    price: Decimal.t(),
-    currency: String.t(),
-    category_id: String.t(),
-    category_name: String.t() | nil,
-    created_at: DateTime.t(),
-    updated_at: DateTime.t()
-  }
+          id: String.t(),
+          name: String.t(),
+          price: Decimal.t(),
+          currency: String.t(),
+          category_id: String.t(),
+          category_name: String.t() | nil,
+          created_at: DateTime.t(),
+          updated_at: DateTime.t()
+        }
 
   @doc """
   マップから商品モデルを生成する
@@ -31,16 +40,17 @@ defmodule QueryService.Domain.Models.Product do
          {:ok, category_id} <- validate_field(params, "category_id", :string),
          {:ok, created_at} <- validate_field(params, "created_at", :datetime),
          {:ok, updated_at} <- validate_field(params, "updated_at", :datetime) do
-      {:ok, %__MODULE__{
-        id: id,
-        name: name,
-        price: price,
-        currency: currency,
-        category_id: category_id,
-        category_name: params["category_name"] || params[:category_name],
-        created_at: created_at,
-        updated_at: updated_at
-      }}
+      {:ok,
+       %__MODULE__{
+         id: id,
+         name: name,
+         price: price,
+         currency: currency,
+         category_id: category_id,
+         category_name: params["category_name"] || params[:category_name],
+         created_at: created_at,
+         updated_at: updated_at
+       }}
     end
   end
 
@@ -54,43 +64,60 @@ defmodule QueryService.Domain.Models.Product do
 
   defp validate_field(params, field, :decimal) do
     case params[field] || params[String.to_atom(field)] do
-      nil -> {:error, "#{field} is required"}
-      %Decimal{} = value -> {:ok, value}
-      value when is_number(value) -> {:ok, Decimal.new(value)}
+      nil ->
+        {:error, "#{field} is required"}
+
+      %Decimal{} = value ->
+        {:ok, value}
+
+      value when is_number(value) ->
+        {:ok, Decimal.new(value)}
+
       value when is_binary(value) ->
         case Decimal.parse(value) do
           {decimal, ""} -> {:ok, decimal}
           _ -> {:error, "Invalid decimal format for #{field}"}
         end
-      _ -> {:error, "#{field} must be a number"}
+
+      _ ->
+        {:error, "#{field} must be a number"}
     end
   end
 
   defp validate_field(params, field, :datetime) do
     case params[field] || params[String.to_atom(field)] do
-      nil -> {:error, "#{field} is required"}
-      %DateTime{} = value -> {:ok, value}
+      nil ->
+        {:error, "#{field} is required"}
+
+      %DateTime{} = value ->
+        {:ok, value}
+
       value when is_binary(value) ->
         case DateTime.from_iso8601(value) do
           {:ok, datetime, _} -> {:ok, datetime}
           _ -> {:error, "Invalid datetime format for #{field}"}
         end
-      _ -> {:error, "#{field} must be a datetime"}
+
+      _ ->
+        {:error, "#{field} must be a datetime"}
     end
   end
 
   defimpl Jason.Encoder do
     def encode(product, opts) do
-      Jason.Encode.map(%{
-        id: product.id,
-        name: product.name,
-        price: Decimal.to_string(product.price),
-        currency: product.currency,
-        category_id: product.category_id,
-        category_name: product.category_name,
-        created_at: DateTime.to_iso8601(product.created_at),
-        updated_at: DateTime.to_iso8601(product.updated_at)
-      }, opts)
+      Jason.Encode.map(
+        %{
+          id: product.id,
+          name: product.name,
+          price: Decimal.to_string(product.price),
+          currency: product.currency,
+          category_id: product.category_id,
+          category_name: product.category_name,
+          created_at: DateTime.to_iso8601(product.created_at),
+          updated_at: DateTime.to_iso8601(product.updated_at)
+        },
+        opts
+      )
     end
   end
 end

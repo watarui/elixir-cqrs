@@ -4,9 +4,9 @@ defmodule ElixirCqrs.CategoryCommandService.Service do
   """
   use GRPC.Service, name: "elixir_cqrs.CategoryCommandService"
 
-  rpc :CreateCategory, stream(false), stream(false)
-  rpc :UpdateCategory, stream(false), stream(false)
-  rpc :DeleteCategory, stream(false), stream(false)
+  rpc(:CreateCategory, stream(false), stream(false))
+  rpc(:UpdateCategory, stream(false), stream(false))
+  rpc(:DeleteCategory, stream(false), stream(false))
 end
 
 defmodule ElixirCqrs.ProductCommandService.Service do
@@ -15,10 +15,10 @@ defmodule ElixirCqrs.ProductCommandService.Service do
   """
   use GRPC.Service, name: "elixir_cqrs.ProductCommandService"
 
-  rpc :CreateProduct, stream(false), stream(false)
-  rpc :UpdateProduct, stream(false), stream(false)
-  rpc :ChangeProductPrice, stream(false), stream(false)
-  rpc :DeleteProduct, stream(false), stream(false)
+  rpc(:CreateProduct, stream(false), stream(false))
+  rpc(:UpdateProduct, stream(false), stream(false))
+  rpc(:ChangeProductPrice, stream(false), stream(false))
+  rpc(:DeleteProduct, stream(false), stream(false))
 end
 
 defmodule ElixirCqrs.CategoryQueryService.Service do
@@ -27,9 +27,9 @@ defmodule ElixirCqrs.CategoryQueryService.Service do
   """
   use GRPC.Service, name: "elixir_cqrs.CategoryQueryService"
 
-  rpc :GetCategory, stream(false), stream(false)
-  rpc :ListCategories, stream(false), stream(false)
-  rpc :SearchCategories, stream(false), stream(false)
+  rpc(:GetCategory, stream(false), stream(false))
+  rpc(:ListCategories, stream(false), stream(false))
+  rpc(:SearchCategories, stream(false), stream(false))
 end
 
 defmodule ElixirCqrs.ProductQueryService.Service do
@@ -38,7 +38,7 @@ defmodule ElixirCqrs.ProductQueryService.Service do
   """
   use GRPC.Service, name: "elixir_cqrs.ProductQueryService"
 
-  rpc :GetProduct, stream(false), stream(false)
-  rpc :ListProducts, stream(false), stream(false)
-  rpc :SearchProducts, stream(false), stream(false)
+  rpc(:GetProduct, stream(false), stream(false))
+  rpc(:ListProducts, stream(false), stream(false))
+  rpc(:SearchProducts, stream(false), stream(false))
 end

@@ -1,7 +1,7 @@
 defmodule Shared.Domain.Saga.SagaBase do
   @moduledoc """
   サガの基底モジュール
-  
+
   サガパターンの共通機能を提供します
   """
 
@@ -33,14 +33,15 @@ defmodule Shared.Domain.Saga.SagaBase do
       def record_processed_event(saga, event) do
         event_id = get_event_id(event)
         processed_events = Map.get(saga, :processed_events, [])
-        
+
         if event_id in processed_events do
           saga
         else
-          %{saga | 
-            processed_events: [event_id | processed_events],
-            last_event_id: event_id,
-            updated_at: DateTime.utc_now()
+          %{
+            saga
+            | processed_events: [event_id | processed_events],
+              last_event_id: event_id,
+              updated_at: DateTime.utc_now()
           }
         end
       end
@@ -50,14 +51,11 @@ defmodule Shared.Domain.Saga.SagaBase do
       """
       def complete_step(saga, step_name) do
         completed_steps = Map.get(saga, :completed_steps, [])
-        
+
         if step_name in completed_steps do
           saga
         else
-          %{saga | 
-            completed_steps: [step_name | completed_steps],
-            updated_at: DateTime.utc_now()
-          }
+          %{saga | completed_steps: [step_name | completed_steps], updated_at: DateTime.utc_now()}
         end
       end
 
@@ -65,12 +63,13 @@ defmodule Shared.Domain.Saga.SagaBase do
       失敗を記録する
       """
       def record_failure(saga, step_name, reason) do
-        %{saga |
-          state: :failed,
-          failed_step: step_name,
-          failure_reason: reason,
-          failed_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
+        %{
+          saga
+          | state: :failed,
+            failed_step: step_name,
+            failure_reason: reason,
+            failed_at: DateTime.utc_now(),
+            updated_at: DateTime.utc_now()
         }
       end
 
@@ -78,10 +77,11 @@ defmodule Shared.Domain.Saga.SagaBase do
       補償処理を開始する
       """
       def start_compensation(saga) do
-        %{saga |
-          state: :compensating,
-          compensation_started_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
+        %{
+          saga
+          | state: :compensating,
+            compensation_started_at: DateTime.utc_now(),
+            updated_at: DateTime.utc_now()
         }
       end
 
@@ -89,10 +89,11 @@ defmodule Shared.Domain.Saga.SagaBase do
       補償処理を完了する
       """
       def complete_compensation(saga) do
-        %{saga |
-          state: :compensated,
-          compensation_completed_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
+        %{
+          saga
+          | state: :compensated,
+            compensation_completed_at: DateTime.utc_now(),
+            updated_at: DateTime.utc_now()
         }
       end
 
@@ -100,10 +101,11 @@ defmodule Shared.Domain.Saga.SagaBase do
       サガを完了する
       """
       def complete_saga(saga) do
-        %{saga |
-          state: :completed,
-          completed_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
+        %{
+          saga
+          | state: :completed,
+            completed_at: DateTime.utc_now(),
+            updated_at: DateTime.utc_now()
         }
       end
 
@@ -117,7 +119,11 @@ defmodule Shared.Domain.Saga.SagaBase do
         end
       end
 
-      defoverridable [new: 2, handle_event: 2, get_compensation_commands: 1, is_completed?: 1, is_failed?: 1]
+      defoverridable new: 2,
+                     handle_event: 2,
+                     get_compensation_commands: 1,
+                     is_completed?: 1,
+                     is_failed?: 1
     end
   end
 end

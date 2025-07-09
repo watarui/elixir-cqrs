@@ -9,7 +9,7 @@ defmodule Shared.Application do
   def start(_type, _args) do
     # OpenTelemetry を初期化
     Shared.Telemetry.Setup.init()
-    
+
     children = [
       # イベントストアのリポジトリ
       Shared.Infrastructure.EventStore.Repo,

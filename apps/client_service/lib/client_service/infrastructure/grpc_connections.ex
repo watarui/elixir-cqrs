@@ -1,7 +1,7 @@
 defmodule ClientService.Infrastructure.GrpcConnections do
   @moduledoc """
   gRPC 接続の管理
-  
+
   Command Service と Query Service への接続を管理します
   """
 
@@ -40,17 +40,17 @@ defmodule ClientService.Infrastructure.GrpcConnections do
       command_channel: nil,
       query_channel: nil
     }
-    
+
     {:ok, state, {:continue, :connect}}
   end
 
   @impl true
   def handle_continue(:connect, state) do
-    new_state = 
+    new_state =
       state
       |> connect_command_service()
       |> connect_query_service()
-    
+
     {:noreply, new_state}
   end
 
@@ -61,6 +61,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
         # 再接続を試みる
         new_state = connect_command_service(state)
         {:reply, new_state.command_channel, new_state}
+
       channel ->
         {:reply, channel, state}
     end
@@ -73,6 +74,7 @@ defmodule ClientService.Infrastructure.GrpcConnections do
         # 再接続を試みる
         new_state = connect_query_service(state)
         {:reply, new_state.query_channel, new_state}
+
       channel ->
         {:reply, channel, state}
     end
@@ -82,11 +84,12 @@ defmodule ClientService.Infrastructure.GrpcConnections do
 
   defp connect_command_service(state) do
     host = Application.get_env(:client_service, :command_service_host, "localhost")
-    
+
     case GRPC.Stub.connect("#{host}:#{@command_service_port}") do
       {:ok, channel} ->
         Logger.info("Connected to Command Service at #{host}:#{@command_service_port}")
         %{state | command_channel: channel}
+
       {:error, reason} ->
         Logger.error("Failed to connect to Command Service: #{inspect(reason)}")
         state
@@ -95,11 +98,12 @@ defmodule ClientService.Infrastructure.GrpcConnections do
 
   defp connect_query_service(state) do
     host = Application.get_env(:client_service, :query_service_host, "localhost")
-    
+
     case GRPC.Stub.connect("#{host}:#{@query_service_port}") do
       {:ok, channel} ->
         Logger.info("Connected to Query Service at #{host}:#{@query_service_port}")
         %{state | query_channel: channel}
+
       {:error, reason} ->
         Logger.error("Failed to connect to Query Service: #{inspect(reason)}")
         state

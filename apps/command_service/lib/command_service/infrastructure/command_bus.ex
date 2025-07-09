@@ -1,7 +1,7 @@
 defmodule CommandService.Infrastructure.CommandBus do
   @moduledoc """
   コマンドバスの実装
-  
+
   コマンドを適切なハンドラーにルーティングして実行します
   """
 
@@ -13,6 +13,7 @@ defmodule CommandService.Infrastructure.CommandBus do
     OrderCommandHandler,
     SagaCommandHandler
   }
+
   alias Shared.Telemetry.Span
 
   require Logger
@@ -51,9 +52,11 @@ defmodule CommandService.Infrastructure.CommandBus do
 
   @impl true
   def handle_call({:dispatch, command}, _from, state) do
-    result = Span.with_span "command_bus.dispatch", %{command_type: command.__struct__} do
-      route_command(command)
-    end
+    result =
+      Span.with_span "command_bus.dispatch", %{command_type: command.__struct__} do
+        route_command(command)
+      end
+
     {:reply, result, state}
   end
 
@@ -64,12 +67,13 @@ defmodule CommandService.Infrastructure.CommandBus do
         case route_command(command) do
           {:ok, _} ->
             Logger.info("Command executed successfully: #{inspect(command.__struct__)}")
+
           {:error, reason} ->
             Logger.error("Command failed: #{inspect(command.__struct__)}, reason: #{reason}")
         end
       end
     end)
-    
+
     {:noreply, state}
   end
 
@@ -95,7 +99,9 @@ defmodule CommandService.Infrastructure.CommandBus do
     ProductCommandHandler.handle(cmd)
   end
 
-  defp route_command(%CommandService.Application.Commands.ProductCommands.ChangeProductPrice{} = cmd) do
+  defp route_command(
+         %CommandService.Application.Commands.ProductCommands.ChangeProductPrice{} = cmd
+       ) do
     ProductCommandHandler.handle(cmd)
   end
 

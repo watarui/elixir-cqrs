@@ -13,17 +13,18 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     defstruct [:name, :metadata]
 
     @type t :: %__MODULE__{
-      name: String.t(),
-      metadata: map() | nil
-    }
+            name: String.t(),
+            metadata: map() | nil
+          }
 
     @impl true
     def validate(params) do
       with {:ok, name} <- validate_name(params["name"] || params[:name]) do
-        {:ok, %__MODULE__{
-          name: name,
-          metadata: params["metadata"] || params[:metadata]
-        }}
+        {:ok,
+         %__MODULE__{
+           name: name,
+           metadata: params["metadata"] || params[:metadata]
+         }}
       end
     end
 
@@ -45,20 +46,21 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     defstruct [:id, :name, :metadata]
 
     @type t :: %__MODULE__{
-      id: String.t(),
-      name: String.t(),
-      metadata: map() | nil
-    }
+            id: String.t(),
+            name: String.t(),
+            metadata: map() | nil
+          }
 
     @impl true
     def validate(params) do
       with {:ok, id} <- validate_id(params["id"] || params[:id]),
            {:ok, name} <- validate_name(params["name"] || params[:name]) do
-        {:ok, %__MODULE__{
-          id: id,
-          name: name,
-          metadata: params["metadata"] || params[:metadata]
-        }}
+        {:ok,
+         %__MODULE__{
+           id: id,
+           name: name,
+           metadata: params["metadata"] || params[:metadata]
+         }}
       end
     end
 
@@ -84,17 +86,18 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     defstruct [:id, :metadata]
 
     @type t :: %__MODULE__{
-      id: String.t(),
-      metadata: map() | nil
-    }
+            id: String.t(),
+            metadata: map() | nil
+          }
 
     @impl true
     def validate(params) do
       with {:ok, id} <- validate_id(params["id"] || params[:id]) do
-        {:ok, %__MODULE__{
-          id: id,
-          metadata: params["metadata"] || params[:metadata]
-        }}
+        {:ok,
+         %__MODULE__{
+           id: id,
+           metadata: params["metadata"] || params[:metadata]
+         }}
       end
     end
 

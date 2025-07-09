@@ -1,7 +1,7 @@
 defmodule Shared.Infrastructure.Saga.SagaRepository do
   @moduledoc """
   サガリポジトリ
-  
+
   サガの永続化と読み込みを管理します
   """
 
@@ -58,12 +58,17 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   def init(_opts) do
     # ETS テーブルを作成
     table = :ets.new(@table_name, [:set, :private])
-    
+
     state = %{
       table: table,
-      event_store: Application.get_env(:shared, :event_store_adapter, Shared.Infrastructure.EventStore.InMemoryAdapter)
+      event_store:
+        Application.get_env(
+          :shared,
+          :event_store_adapter,
+          Shared.Infrastructure.EventStore.InMemoryAdapter
+        )
     }
-    
+
     {:ok, state}
   end
 
@@ -76,15 +81,17 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
       saga_state: saga_state,
       saved_at: DateTime.utc_now()
     }
-    
+
     :ets.insert(state.table, {saga_id, saga_data})
-    
+
     # イベントとして記録
     event = create_saga_event(saga_state)
+
     case EventStore.append_events(saga_id, [event], 0, state.event_store) do
       {:ok, _} ->
         Logger.info("Saga saved: #{saga_id}")
         {:reply, :ok, state}
+
       {:error, reason} ->
         Logger.error("Failed to save saga event: #{reason}")
         {:reply, {:error, reason}, state}
@@ -96,6 +103,7 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
     case :ets.lookup(state.table, saga_id) do
       [{^saga_id, saga_data}] ->
         {:reply, {:ok, {saga_data.saga_module, saga_data.saga_state}}, state}
+
       [] ->
         {:reply, {:error, :not_found}, state}
     end
@@ -103,15 +111,16 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
 
   @impl true
   def handle_call(:get_active_sagas, _from, state) do
-    active_sagas = :ets.tab2list(state.table)
-    |> Enum.filter(fn {_, saga_data} ->
-      saga_state = saga_data.saga_state
-      saga_state[:state] not in [:completed, :compensated, :failed]
-    end)
-    |> Enum.map(fn {saga_id, saga_data} ->
-      {saga_id, saga_data.saga_module, saga_data.saga_state}
-    end)
-    
+    active_sagas =
+      :ets.tab2list(state.table)
+      |> Enum.filter(fn {_, saga_data} ->
+        saga_state = saga_data.saga_state
+        saga_state[:state] not in [:completed, :compensated, :failed]
+      end)
+      |> Enum.map(fn {saga_id, saga_data} ->
+        {saga_id, saga_data.saga_module, saga_data.saga_state}
+      end)
+
     {:reply, active_sagas, state}
   end
 
@@ -124,16 +133,17 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   # Private functions
 
   defp create_saga_event(saga_state) do
-    event_type = case saga_state[:state] do
-      :started -> SagaEvents.SagaStarted
-      :processing -> SagaEvents.SagaStepCompleted
-      :failed -> SagaEvents.SagaFailed
-      :compensating -> SagaEvents.SagaCompensationStarted
-      :compensated -> SagaEvents.SagaCompensated
-      :completed -> SagaEvents.SagaCompleted
-      _ -> SagaEvents.SagaUpdated
-    end
-    
+    event_type =
+      case saga_state[:state] do
+        :started -> SagaEvents.SagaStarted
+        :processing -> SagaEvents.SagaStepCompleted
+        :failed -> SagaEvents.SagaFailed
+        :compensating -> SagaEvents.SagaCompensationStarted
+        :compensated -> SagaEvents.SagaCompensated
+        :completed -> SagaEvents.SagaCompleted
+        _ -> SagaEvents.SagaUpdated
+      end
+
     event_type.new(%{
       saga_id: saga_state[:saga_id],
       saga_type: saga_state[:saga_type] || "OrderSaga",

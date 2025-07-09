@@ -1,7 +1,7 @@
 defmodule Shared.Domain.ValueObjects.Money do
   @moduledoc """
   金額を表す値オブジェクト
-  
+
   日本円（JPY）のみをサポートし、精度の高い金額計算を提供します
   """
 
@@ -9,15 +9,15 @@ defmodule Shared.Domain.ValueObjects.Money do
   defstruct [:amount, :currency]
 
   @type t :: %__MODULE__{
-    amount: Decimal.t(),
-    currency: String.t()
-  }
+          amount: Decimal.t(),
+          currency: String.t()
+        }
 
   @doc """
   新しい Money オブジェクトを作成する（日本円のみ）
-  
+
   ## 例
-  
+
       iex> Money.new(1000)
       {:ok, %Money{amount: #Decimal<1000>, currency: "JPY"}}
       
@@ -26,14 +26,17 @@ defmodule Shared.Domain.ValueObjects.Money do
   """
   @spec new(number()) :: {:ok, t()} | {:error, String.t()}
   def new(amount) when is_number(amount) and amount >= 0 do
-    {:ok, %__MODULE__{
-      amount: Decimal.new(amount),
-      currency: "JPY"
-    }}
+    {:ok,
+     %__MODULE__{
+       amount: Decimal.new(amount),
+       currency: "JPY"
+     }}
   end
+
   def new(amount) when is_number(amount) do
     {:error, "Amount must be non-negative"}
   end
+
   def new(_), do: {:error, "Invalid amount"}
 
   @doc """
@@ -48,6 +51,7 @@ defmodule Shared.Domain.ValueObjects.Money do
         else
           {:ok, %__MODULE__{amount: amount, currency: "JPY"}}
         end
+
       _ ->
         {:error, "Invalid amount format"}
     end
@@ -58,11 +62,13 @@ defmodule Shared.Domain.ValueObjects.Money do
   """
   @spec add(t(), t()) :: {:ok, t()} | {:error, String.t()}
   def add(%__MODULE__{currency: c1} = m1, %__MODULE__{currency: c2} = m2) when c1 == c2 do
-    {:ok, %__MODULE__{
-      amount: Decimal.add(m1.amount, m2.amount),
-      currency: c1
-    }}
+    {:ok,
+     %__MODULE__{
+       amount: Decimal.add(m1.amount, m2.amount),
+       currency: c1
+     }}
   end
+
   def add(_, _), do: {:error, "Currency mismatch"}
 
   @doc """
@@ -71,24 +77,29 @@ defmodule Shared.Domain.ValueObjects.Money do
   @spec subtract(t(), t()) :: {:ok, t()} | {:error, String.t()}
   def subtract(%__MODULE__{currency: c1} = m1, %__MODULE__{currency: c2} = m2) when c1 == c2 do
     result = Decimal.sub(m1.amount, m2.amount)
+
     if Decimal.compare(result, 0) == :lt do
       {:error, "Result would be negative"}
     else
       {:ok, %__MODULE__{amount: result, currency: c1}}
     end
   end
+
   def subtract(_, _), do: {:error, "Currency mismatch"}
 
   @doc """
   Money オブジェクトに数値を掛ける
   """
   @spec multiply(t(), number()) :: {:ok, t()} | {:error, String.t()}
-  def multiply(%__MODULE__{} = money, multiplier) when is_number(multiplier) and multiplier >= 0 do
-    {:ok, %__MODULE__{
-      amount: Decimal.mult(money.amount, Decimal.new(multiplier)),
-      currency: money.currency
-    }}
+  def multiply(%__MODULE__{} = money, multiplier)
+      when is_number(multiplier) and multiplier >= 0 do
+    {:ok,
+     %__MODULE__{
+       amount: Decimal.mult(money.amount, Decimal.new(multiplier)),
+       currency: money.currency
+     }}
   end
+
   def multiply(_, _), do: {:error, "Invalid multiplier"}
 
   @doc """
@@ -98,6 +109,7 @@ defmodule Shared.Domain.ValueObjects.Money do
   def compare(%__MODULE__{currency: c1} = m1, %__MODULE__{currency: c2} = m2) when c1 == c2 do
     Decimal.compare(m1.amount, m2.amount)
   end
+
   def compare(_, _), do: {:error, "Currency mismatch"}
 
   @doc """
@@ -122,10 +134,13 @@ defmodule Shared.Domain.ValueObjects.Money do
 
   defimpl Jason.Encoder do
     def encode(%{amount: amount, currency: currency}, opts) do
-      Jason.Encode.map(%{
-        amount: Decimal.to_string(amount),
-        currency: currency
-      }, opts)
+      Jason.Encode.map(
+        %{
+          amount: Decimal.to_string(amount),
+          currency: currency
+        },
+        opts
+      )
     end
   end
 end
