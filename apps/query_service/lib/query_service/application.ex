@@ -7,8 +7,6 @@ defmodule QueryService.Application do
 
   @impl true
   def start(_type, _args) do
-    port = Application.get_env(:query_service, :grpc_port, 50_052)
-
     children = [
       # Ecto リポジトリ
       QueryService.Repo,
@@ -17,17 +15,14 @@ defmodule QueryService.Application do
       # プロジェクションマネージャー
       QueryService.Infrastructure.ProjectionManager,
       # クエリリスナー（PubSub経由でクエリを受信）
-      QueryService.Infrastructure.QueryListener,
+      QueryService.Infrastructure.QueryListener
       # TODO: キャッシュ (ETS)
-      # gRPC サーバー
-      {GRPC.Server.Supervisor,
-       endpoint: QueryService.Presentation.Grpc.Endpoint, port: port, start_server: true}
     ]
 
     opts = [strategy: :one_for_one, name: QueryService.Supervisor]
 
     require Logger
-    Logger.info("Starting Query Service with gRPC server on port #{port}")
+    Logger.info("Starting Query Service with PubSub listener")
 
     Supervisor.start_link(children, opts)
   end

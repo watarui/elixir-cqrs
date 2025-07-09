@@ -19,9 +19,7 @@ defmodule ClientService.Application do
       # Remote Query Bus (PubSub経由でクエリを送信)
       ClientService.Infrastructure.RemoteQueryBus,
       # Endpoint
-      ClientServiceWeb.Endpoint,
-      # gRPC 接続プール
-      {ClientService.Infrastructure.GrpcConnections, []}
+      ClientServiceWeb.Endpoint
     ]
 
     opts = [strategy: :one_for_one, name: ClientService.Supervisor]

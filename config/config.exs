@@ -49,8 +49,7 @@ config :shared,
 
 # Command Service の設定
 config :command_service,
-  ecto_repos: [CommandService.Repo],
-  grpc_port: 50051
+  ecto_repos: [CommandService.Repo]
 
 config :command_service, CommandService.Repo,
   database: "elixir_cqrs_command_#{config_env()}",
@@ -62,8 +61,7 @@ config :command_service, CommandService.Repo,
 
 # Query Service の設定
 config :query_service,
-  ecto_repos: [QueryService.Repo],
-  grpc_port: 50052
+  ecto_repos: [QueryService.Repo]
 
 config :query_service, QueryService.Repo,
   database: "elixir_cqrs_query_#{config_env()}",
@@ -75,9 +73,6 @@ config :query_service, QueryService.Repo,
 
 
 # Client Service の設定
-config :client_service,
-  command_service_host: "localhost",
-  query_service_host: "localhost"
 
 config :client_service, ClientServiceWeb.Endpoint,
   url: [host: "localhost"],

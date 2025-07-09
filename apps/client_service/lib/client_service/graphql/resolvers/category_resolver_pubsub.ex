@@ -13,7 +13,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを取得
   """
   def get_category(_parent, %{id: id}, _resolution) do
-    query = %CategoryQueries.GetCategory{id: id}
+    {:ok, query} = CategoryQueries.GetCategory.validate(%{id: id})
 
     case RemoteQueryBus.send_query(query) do
       {:ok, category} ->
@@ -34,10 +34,11 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    query = %CategoryQueries.ListCategories{
-      limit: page_size,
-      offset: offset
-    }
+    {:ok, query} =
+      CategoryQueries.ListCategories.validate(%{
+        limit: page_size,
+        offset: offset
+      })
 
     case RemoteQueryBus.send_query(query) do
       {:ok, categories} ->
@@ -57,11 +58,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    query = %CategoryQueries.SearchCategories{
-      search_term: search_term,
-      limit: page_size,
-      offset: offset
-    }
+    {:ok, query} =
+      CategoryQueries.SearchCategories.validate(%{
+        search_term: search_term,
+        limit: page_size,
+        offset: offset
+      })
 
     case RemoteQueryBus.send_query(query) do
       {:ok, categories} ->
@@ -77,10 +79,13 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを作成
   """
   def create_category(_parent, %{input: input}, _resolution) do
-    command = %CategoryCommands.CreateCategory{
+    params = %{
       name: input.name,
-      description: Map.get(input, :description)
+      description: Map.get(input, :description),
+      metadata: %{}
     }
+
+    {:ok, command} = CategoryCommands.CreateCategory.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -105,11 +110,14 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを更新
   """
   def update_category(_parent, %{id: id, input: input}, _resolution) do
-    command = %CategoryCommands.UpdateCategory{
+    params = %{
       id: id,
       name: input.name,
-      description: Map.get(input, :description)
+      description: Map.get(input, :description),
+      metadata: %{}
     }
+
+    {:ok, command} = CategoryCommands.UpdateCategory.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -133,7 +141,8 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを削除
   """
   def delete_category(_parent, %{id: id}, _resolution) do
-    command = %CategoryCommands.DeleteCategory{id: id}
+    params = %{id: id, metadata: %{}}
+    {:ok, command} = CategoryCommands.DeleteCategory.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, _} ->

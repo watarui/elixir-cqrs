@@ -7,16 +7,7 @@ defmodule Shared.Infrastructure.Saga.CommandDispatcher do
 
   @behaviour Shared.Domain.Saga.CommandDispatcherBehaviour
 
-  alias Shared.Infrastructure.GRPC.ResilientClient
-
   require Logger
-
-  # コマンドサービスの gRPC URL
-  @command_service_channel Application.compile_env(
-                             :shared,
-                             :command_service_grpc_url,
-                             "localhost:50051"
-                           )
 
   @impl true
   def dispatch_command(command) do
@@ -35,8 +26,13 @@ defmodule Shared.Infrastructure.Saga.CommandDispatcher do
                "cancel_shipping",
                "cancel_order"
              ] ->
-          # コマンドサービスのコマンドバスに直接送信
-          GenServer.call(CommandService.Infrastructure.CommandBus, {:dispatch_async, command})
+          # PubSub 経由でコマンドサービスに送信
+          Phoenix.PubSub.broadcast(
+            ClientService.PubSub,
+            "commands",
+            {:command, command}
+          )
+
           {:ok, %{dispatched: true}}
 
         _ ->

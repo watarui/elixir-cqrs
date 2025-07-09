@@ -33,8 +33,6 @@ defmodule Shared.MixProject do
       {:decimal, "~> 2.1"},
       {:elixir_uuid, "~> 1.2"},
       {:typed_struct, "~> 0.3.0"},
-      {:protobuf, "~> 0.13.0"},
-      {:grpc, "~> 0.9"},
       {:telemetry, "~> 1.2"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},

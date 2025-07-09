@@ -5,8 +5,6 @@ import Config
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
 
-# gRPC のデバッグログを有効化
-# config :grpc, start_server: true は廃止されました。GRPC.Server.Supervisor のオプションで設定します
 
 # ホットリロードの設定
 config :phoenix, :plug_init_mode, :runtime

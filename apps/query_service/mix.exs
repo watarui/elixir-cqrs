@@ -31,7 +31,6 @@ defmodule QueryService.MixProject do
       {:ecto_sql, "~> 3.11"},
       {:postgrex, "~> 0.17"},
       {:jason, "~> 1.4"},
-      {:grpc, "~> 0.9"},
       {:cowlib, "~> 2.13", override: true}
     ]
   end

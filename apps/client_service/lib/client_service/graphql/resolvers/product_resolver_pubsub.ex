@@ -13,7 +13,7 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を取得
   """
   def get_product(_parent, %{id: id}, _resolution) do
-    query = %ProductQueries.GetProduct{id: id}
+    {:ok, query} = ProductQueries.GetProduct.validate(%{id: id})
 
     case RemoteQueryBus.send_query(query) do
       {:ok, product} ->
@@ -34,10 +34,11 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    query = %ProductQueries.ListProducts{
-      limit: page_size,
-      offset: offset
-    }
+    {:ok, query} =
+      ProductQueries.ListProducts.validate(%{
+        limit: page_size,
+        offset: offset
+      })
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -57,11 +58,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    query = %ProductQueries.ListProducts{
-      category_id: category_id,
-      limit: page_size,
-      offset: offset
-    }
+    {:ok, query} =
+      ProductQueries.ListProducts.validate(%{
+        category_id: category_id,
+        limit: page_size,
+        offset: offset
+      })
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -81,11 +83,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    query = %ProductQueries.SearchProducts{
-      search_term: search_term,
-      limit: page_size,
-      offset: offset
-    }
+    {:ok, query} =
+      ProductQueries.SearchProducts.validate(%{
+        search_term: search_term,
+        limit: page_size,
+        offset: offset
+      })
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -101,13 +104,17 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を作成
   """
   def create_product(_parent, %{input: input}, _resolution) do
-    command = %ProductCommands.CreateProduct{
+    params = %{
       name: input.name,
-      description: Map.get(input, :description, ""),
       price: input.price,
-      stock_quantity: input.stock_quantity,
-      category_id: input.category_id
+      category_id: input.category_id,
+      metadata: %{
+        description: Map.get(input, :description, ""),
+        stock_quantity: Map.get(input, :stock_quantity, 0)
+      }
     }
+
+    {:ok, command} = ProductCommands.CreateProduct.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -115,9 +122,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
          %{
            id: aggregate.id.value,
            name: aggregate.name.value,
-           description: aggregate.description,
+           description: aggregate.description || "",
            price: aggregate.price.amount,
-           stock_quantity: aggregate.stock_quantity,
+           stock_quantity: aggregate.stock_quantity || 0,
            category_id: aggregate.category_id && aggregate.category_id.value,
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
@@ -133,14 +140,18 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を更新
   """
   def update_product(_parent, %{id: id, input: input}, _resolution) do
-    command = %ProductCommands.UpdateProduct{
+    params = %{
       id: id,
-      name: input.name,
-      description: Map.get(input, :description),
+      name: Map.get(input, :name),
       price: Map.get(input, :price),
-      stock_quantity: Map.get(input, :stock_quantity),
-      category_id: Map.get(input, :category_id)
+      category_id: Map.get(input, :category_id),
+      metadata: %{
+        description: Map.get(input, :description),
+        stock_quantity: Map.get(input, :stock_quantity)
+      }
     }
+
+    {:ok, command} = ProductCommands.UpdateProduct.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -148,9 +159,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
          %{
            id: aggregate.id.value,
            name: aggregate.name.value,
-           description: aggregate.description,
+           description: aggregate.description || "",
            price: aggregate.price.amount,
-           stock_quantity: aggregate.stock_quantity,
+           stock_quantity: aggregate.stock_quantity || 0,
            category_id: aggregate.category_id && aggregate.category_id.value,
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
@@ -166,7 +177,8 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を削除
   """
   def delete_product(_parent, %{id: id}, _resolution) do
-    command = %ProductCommands.DeleteProduct{id: id}
+    params = %{id: id, metadata: %{}}
+    {:ok, command} = ProductCommands.DeleteProduct.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, _} ->
@@ -179,13 +191,44 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   end
 
   @doc """
+  商品価格を変更
+  """
+  def change_product_price(_parent, %{id: id, new_price: new_price}, _resolution) do
+    {:ok, command} =
+      ProductCommands.ChangeProductPrice.validate(%{
+        id: id,
+        new_price: new_price
+      })
+
+    case RemoteCommandBus.send_command(command) do
+      {:ok, aggregate} ->
+        {:ok,
+         %{
+           id: aggregate.id.value,
+           name: aggregate.name.value,
+           description: aggregate.description || "",
+           price: aggregate.price.amount,
+           stock_quantity: aggregate.stock_quantity || 0,
+           category_id: aggregate.category_id && aggregate.category_id.value,
+           created_at: aggregate.created_at,
+           updated_at: aggregate.updated_at
+         }}
+
+      {:error, reason} ->
+        Logger.error("Failed to change product price: #{inspect(reason)}")
+        {:error, "Failed to change product price: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
   在庫を更新
   """
   def update_stock(_parent, %{id: id, quantity: quantity}, _resolution) do
-    command = %ProductCommands.UpdateStock{
-      id: id,
-      quantity: quantity
-    }
+    {:ok, command} =
+      ProductCommands.UpdateStock.validate(%{
+        product_id: id,
+        quantity: quantity
+      })
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->

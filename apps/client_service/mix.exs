@@ -46,8 +46,6 @@ defmodule ClientService.MixProject do
       {:absinthe_plug, "~> 1.5"},
       {:absinthe_phoenix, "~> 2.0"},
       {:dataloader, "~> 2.0"},
-      {:grpc, "~> 0.9"},
-      {:protobuf, "~> 0.13.0"},
       {:cowlib, "~> 2.13", override: true}
     ]
   end
