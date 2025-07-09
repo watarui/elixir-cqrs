@@ -8,6 +8,12 @@
 # 依存関係のインストール
 mix deps.get
 
+# Protocol Buffers の依存関係をインストール
+mix escript.install hex protobuf
+
+# Protocol Buffers ファイルの生成
+./proto/generate.sh
+
 # Docker コンテナの起動
 docker compose up -d
 
@@ -66,6 +72,9 @@ GraphQL Playground: http://localhost:4000/graphiql
 - **API**: 
   - GraphQL (Absinthe) - クライアント向け API
   - gRPC - マイクロサービス間通信
+- **Protocol Buffers**: 
+  - protoc 3.0+ - コンパイラ
+  - protoc-gen-elixir - Elixir コード生成プラグイン
 - **イベントストア**: PostgreSQL ベースの実装
 - **監視**: 
   - OpenTelemetry - 分散トレーシング
