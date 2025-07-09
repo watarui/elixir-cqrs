@@ -135,9 +135,14 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   end
 
   @impl true
-  def handle_info({:event, _event_type, event}, state) do
-    # EventBus からのイベントを処理
-    handle_cast({:handle_event, event}, state)
+  def handle_info({:event, event_type, event}, state) do
+    # コマンドとクエリイベントは無視する
+    if event_type in [:commands, :queries] do
+      {:noreply, state}
+    else
+      # EventBus からのイベントを処理
+      handle_cast({:handle_event, event}, state)
+    end
   end
 
   # Private functions

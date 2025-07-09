@@ -4,8 +4,6 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   """
 
   alias ClientService.Infrastructure.{RemoteCommandBus, RemoteQueryBus}
-  alias QueryService.Application.Queries.ProductQueries
-  alias CommandService.Application.Commands.ProductCommands
 
   require Logger
 
@@ -13,7 +11,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を取得
   """
   def get_product(_parent, %{id: id}, _resolution) do
-    {:ok, query} = ProductQueries.GetProduct.validate(%{id: id})
+    query = %{
+      __struct__: "QueryService.Application.Queries.ProductQueries.GetProduct",
+      query_type: "product.get",
+      id: id,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, product} ->
@@ -34,11 +37,13 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    {:ok, query} =
-      ProductQueries.ListProducts.validate(%{
-        limit: page_size,
-        offset: offset
-      })
+    query = %{
+      __struct__: "QueryService.Application.Queries.ProductQueries.ListProducts",
+      query_type: "product.list",
+      limit: page_size,
+      offset: offset,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -58,12 +63,14 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    {:ok, query} =
-      ProductQueries.ListProducts.validate(%{
-        category_id: category_id,
-        limit: page_size,
-        offset: offset
-      })
+    query = %{
+      __struct__: "QueryService.Application.Queries.ProductQueries.ListProducts",
+      query_type: "product.list",
+      category_id: category_id,
+      limit: page_size,
+      offset: offset,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -83,12 +90,14 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    {:ok, query} =
-      ProductQueries.SearchProducts.validate(%{
-        search_term: search_term,
-        limit: page_size,
-        offset: offset
-      })
+    query = %{
+      __struct__: "QueryService.Application.Queries.ProductQueries.SearchProducts",
+      query_type: "product.search",
+      search_term: search_term,
+      limit: page_size,
+      offset: offset,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, products} ->
@@ -104,7 +113,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を作成
   """
   def create_product(_parent, %{input: input}, _resolution) do
-    params = %{
+    command = %{
+      __struct__: "CommandService.Application.Commands.ProductCommands.CreateProduct",
+      command_type: "product.create",
       name: input.name,
       price: input.price,
       category_id: input.category_id,
@@ -113,8 +124,6 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
         stock_quantity: Map.get(input, :stock_quantity, 0)
       }
     }
-
-    {:ok, command} = ProductCommands.CreateProduct.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -140,7 +149,9 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を更新
   """
   def update_product(_parent, %{id: id, input: input}, _resolution) do
-    params = %{
+    command = %{
+      __struct__: "CommandService.Application.Commands.ProductCommands.UpdateProduct",
+      command_type: "product.update",
       id: id,
       name: Map.get(input, :name),
       price: Map.get(input, :price),
@@ -150,8 +161,6 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
         stock_quantity: Map.get(input, :stock_quantity)
       }
     }
-
-    {:ok, command} = ProductCommands.UpdateProduct.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -177,8 +186,12 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品を削除
   """
   def delete_product(_parent, %{id: id}, _resolution) do
-    params = %{id: id, metadata: %{}}
-    {:ok, command} = ProductCommands.DeleteProduct.validate(params)
+    command = %{
+      __struct__: "CommandService.Application.Commands.ProductCommands.DeleteProduct",
+      command_type: "product.delete",
+      id: id,
+      metadata: %{}
+    }
 
     case RemoteCommandBus.send_command(command) do
       {:ok, _} ->
@@ -194,11 +207,13 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   商品価格を変更
   """
   def change_product_price(_parent, %{id: id, new_price: new_price}, _resolution) do
-    {:ok, command} =
-      ProductCommands.ChangeProductPrice.validate(%{
-        id: id,
-        new_price: new_price
-      })
+    command = %{
+      __struct__: "CommandService.Application.Commands.ProductCommands.ChangeProductPrice",
+      command_type: "product.change_price",
+      id: id,
+      new_price: new_price,
+      metadata: %{}
+    }
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -224,11 +239,13 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
   在庫を更新
   """
   def update_stock(_parent, %{id: id, quantity: quantity}, _resolution) do
-    {:ok, command} =
-      ProductCommands.UpdateStock.validate(%{
-        product_id: id,
-        quantity: quantity
-      })
+    command = %{
+      __struct__: "CommandService.Application.Commands.ProductCommands.UpdateStock",
+      command_type: "product.update_stock",
+      product_id: id,
+      quantity: quantity,
+      metadata: %{}
+    }
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -255,8 +272,14 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
       stock_quantity: product.stock_quantity,
       category_id: product.category_id,
       category_name: product.category_name,
-      created_at: product.created_at,
-      updated_at: product.updated_at
+      created_at: ensure_datetime(product.created_at),
+      updated_at: ensure_datetime(product.updated_at)
     }
   end
+
+  defp ensure_datetime(%DateTime{} = datetime), do: datetime
+  defp ensure_datetime(%NaiveDateTime{} = naive_datetime) do
+    DateTime.from_naive!(naive_datetime, "Etc/UTC")
+  end
+  defp ensure_datetime(nil), do: nil
 end

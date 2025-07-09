@@ -2,8 +2,10 @@ import Config
 
 # 開発環境の設定
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :console, format: "[$level] $message\n"
+# ログ設定（ノード名を含める）
+config :logger, :console, 
+  format: "[$level] [$metadata] $message\n",
+  metadata: [:node, :request_id]
 
 
 # ホットリロードの設定

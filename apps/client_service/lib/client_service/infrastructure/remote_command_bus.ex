@@ -49,6 +49,8 @@ defmodule ClientService.Infrastructure.RemoteCommandBus do
   def handle_call({:send_command, command}, from, state) do
     # リクエスト ID を生成
     request_id = UUID.uuid4()
+    
+    Logger.info("RemoteCommandBus sending command: type=#{inspect(command[:command_type])}, request_id=#{request_id}")
 
     # コマンドメッセージを作成
     message = %{
@@ -58,6 +60,8 @@ defmodule ClientService.Infrastructure.RemoteCommandBus do
       timestamp: DateTime.utc_now()
     }
 
+    Logger.debug("Publishing to topic #{@command_topic}, reply_to: #{state.response_topic}")
+    
     # コマンドを発行
     EventBus.publish(@command_topic, message)
 
@@ -72,13 +76,17 @@ defmodule ClientService.Infrastructure.RemoteCommandBus do
 
   @impl true
   def handle_info({:event, response}, state) when is_map(response) do
+    Logger.info("RemoteCommandBus received response: request_id=#{inspect(Map.get(response, :request_id))}")
+    
     case Map.get(state.pending_requests, response.request_id) do
       nil ->
         # 未知のレスポンス（すでにタイムアウトしたか、別のノードへのレスポンス）
+        Logger.warning("Received response for unknown request_id: #{response.request_id}")
         {:noreply, state}
 
       from ->
         # クライアントにレスポンスを返す
+        Logger.info("Returning response to client: #{inspect(response.result)}")
         GenServer.reply(from, response.result)
 
         # ペンディングリクエストから削除

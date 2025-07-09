@@ -47,9 +47,13 @@ defmodule QueryService.Infrastructure.QueryBus do
     state = %{
       handlers: %{
         # クエリタイプとハンドラーのマッピング
+        "category.list" => QueryService.Application.Handlers.CategoryQueryHandler,
+        "category.get" => QueryService.Application.Handlers.CategoryQueryHandler,
         "category.get_by_id" => QueryService.Application.Handlers.CategoryQueryHandler,
         "category.get_all" => QueryService.Application.Handlers.CategoryQueryHandler,
         "category.search" => QueryService.Application.Handlers.CategoryQueryHandler,
+        "product.list" => QueryService.Application.Handlers.ProductQueryHandler,
+        "product.get" => QueryService.Application.Handlers.ProductQueryHandler,
         "product.get_by_id" => QueryService.Application.Handlers.ProductQueryHandler,
         "product.get_all" => QueryService.Application.Handlers.ProductQueryHandler,
         "product.get_by_category" => QueryService.Application.Handlers.ProductQueryHandler,
@@ -88,7 +92,9 @@ defmodule QueryService.Infrastructure.QueryBus do
       handler ->
         try do
           Logger.info("Executing query: #{query_type}")
-          handler.handle(query)
+          # マップ形式のクエリを構造体に変換
+          struct_query = convert_to_struct(query)
+          handler.handle(struct_query)
         rescue
           error ->
             Logger.error("Error executing query: #{inspect(error)}")
@@ -99,11 +105,21 @@ defmodule QueryService.Infrastructure.QueryBus do
 
   defp get_query_type(query) do
     cond do
-      function_exported?(query.__struct__, :query_type, 0) ->
-        query.__struct__.query_type()
-
+      # query_type フィールドがある場合は直接使用
       Map.has_key?(query, :query_type) ->
         query.query_type
+
+      # __struct__ がアトムの場合
+      is_atom(Map.get(query, :__struct__)) and function_exported?(query.__struct__, :query_type, 0) ->
+        query.__struct__.query_type()
+
+      # __struct__ が文字列の場合（PubSub経由）
+      is_binary(Map.get(query, :__struct__)) ->
+        # 文字列からモジュール名を推測
+        query.__struct__
+        |> String.split(".")
+        |> List.last()
+        |> Macro.underscore()
 
       true ->
         # モジュール名から推測
@@ -111,6 +127,75 @@ defmodule QueryService.Infrastructure.QueryBus do
         |> Module.split()
         |> List.last()
         |> Macro.underscore()
+    end
+  end
+
+  defp convert_to_struct(query) when is_struct(query), do: query
+
+  defp convert_to_struct(query) when is_map(query) do
+    case Map.get(query, :__struct__) do
+      nil ->
+        query
+
+      struct_name when is_binary(struct_name) ->
+        # 文字列のモジュール名をアトムに変換
+        try do
+          module = String.to_existing_atom(struct_name)
+          # マップから構造体を再構築
+          query
+          |> Map.delete(:__struct__)
+          |> then(&struct(module, &1))
+        rescue
+          _ ->
+            # エラーが発生した場合は、各フィールドを明示的に設定
+            case struct_name do
+              "QueryService.Application.Queries.CategoryQueries.GetCategory" ->
+                %QueryService.Application.Queries.CategoryQueries.GetCategory{
+                  id: Map.get(query, :id),
+                  metadata: Map.get(query, :metadata)
+                }
+
+              "QueryService.Application.Queries.CategoryQueries.ListCategories" ->
+                %QueryService.Application.Queries.CategoryQueries.ListCategories{
+                  limit: Map.get(query, :limit, 20),
+                  offset: Map.get(query, :offset, 0),
+                  sort_by: Map.get(query, :sort_by),
+                  sort_order: Map.get(query, :sort_order),
+                  metadata: Map.get(query, :metadata)
+                }
+
+              "QueryService.Application.Queries.ProductQueries.GetProduct" ->
+                %QueryService.Application.Queries.ProductQueries.GetProduct{
+                  id: Map.get(query, :id),
+                  metadata: Map.get(query, :metadata)
+                }
+
+              "QueryService.Application.Queries.ProductQueries.ListProducts" ->
+                %QueryService.Application.Queries.ProductQueries.ListProducts{
+                  category_id: Map.get(query, :category_id),
+                  limit: Map.get(query, :limit, 20),
+                  offset: Map.get(query, :offset, 0),
+                  sort_by: Map.get(query, :sort_by),
+                  sort_order: Map.get(query, :sort_order),
+                  metadata: Map.get(query, :metadata)
+                }
+
+              "QueryService.Application.Queries.ProductQueries.SearchProducts" ->
+                %QueryService.Application.Queries.ProductQueries.SearchProducts{
+                  search_term: Map.get(query, :search_term),
+                  category_id: Map.get(query, :category_id),
+                  limit: Map.get(query, :limit, 20),
+                  offset: Map.get(query, :offset, 0),
+                  metadata: Map.get(query, :metadata)
+                }
+
+              _ ->
+                query
+            end
+        end
+
+      struct_name when is_atom(struct_name) ->
+        query
     end
   end
 end

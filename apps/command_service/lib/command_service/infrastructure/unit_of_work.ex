@@ -98,12 +98,21 @@ defmodule CommandService.Infrastructure.UnitOfWork do
   defp save_events(events) do
     # グループ化してバッチ保存
     events
-    |> Enum.group_by(& &1.aggregate_id)
+    |> Enum.group_by(fn event -> 
+      # aggregate_id または id フィールドを取得
+      case event do
+        %{aggregate_id: id} -> id
+        %{id: %{value: id}} -> id
+        %{id: id} -> id
+      end
+    end)
     |> Enum.reduce_while(:ok, fn {aggregate_id, aggregate_events}, :ok ->
       # アグリゲートタイプを最初のイベントから取得
       aggregate_type = get_aggregate_type(hd(aggregate_events))
-      # expected_version は -1 (どのバージョンでも良い) として扱う
-      case EventStore.append_events(aggregate_id, aggregate_type, aggregate_events, -1, %{}) do
+      # 新規作成の場合は expected_version を 0 に設定
+      # TODO: 本来はアグリゲートのバージョンを使用すべきだが、現在は新規作成のみ対応
+      expected_version = 0
+      case EventStore.append_events(aggregate_id, aggregate_type, aggregate_events, expected_version, %{}) do
         {:ok, _} -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end

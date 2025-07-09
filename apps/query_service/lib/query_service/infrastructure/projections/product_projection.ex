@@ -20,6 +20,9 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   イベントを処理する
   """
   def handle_event(%ProductCreated{} = event) do
+    # カテゴリ名を取得
+    category_name = get_category_name(event.category_id.value)
+    
     attrs = %{
       id: event.id.value,
       name: event.name.value,
@@ -28,6 +31,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
       price_currency: event.price.currency,
       stock_quantity: event.stock_quantity,
       category_id: event.category_id.value,
+      category_name: category_name,
       active: true,
       metadata: %{},
       inserted_at: event.created_at,
@@ -108,5 +112,16 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   """
   def clear_all do
     ProductRepository.delete_all()
+  end
+
+  # Private functions
+
+  defp get_category_name(category_id) do
+    alias QueryService.Infrastructure.Repositories.CategoryRepository
+    
+    case CategoryRepository.get(category_id) do
+      {:ok, category} -> category.name
+      {:error, _} -> nil
+    end
   end
 end

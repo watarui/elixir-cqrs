@@ -56,7 +56,9 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
 
   @impl true
   def save(%ProductAggregate{} = aggregate) do
-    changeset = build_changeset(aggregate)
+    # 既存のレコードを取得
+    existing_schema = Repo.get(ProductSchema, aggregate.id.value)
+    changeset = build_changeset(aggregate, existing_schema)
 
     case Repo.insert_or_update(changeset) do
       {:ok, _schema} ->
@@ -143,21 +145,24 @@ defmodule CommandService.Infrastructure.Repositories.ProductRepository do
     end)
   end
 
-  defp build_changeset(%ProductAggregate{} = aggregate) do
+  defp build_changeset(%ProductAggregate{} = aggregate, existing_schema) do
     data = %{
-      id: aggregate.id,
-      name: aggregate.name,
+      id: aggregate.id.value,
+      name: aggregate.name.value,
       description: aggregate.description,
-      category_id: aggregate.category_id,
+      category_id: aggregate.category_id.value,
       price_amount: aggregate.price.amount,
       price_currency: aggregate.price.currency,
       stock_quantity: aggregate.stock_quantity,
       active: aggregate.active,
       version: aggregate.version,
-      metadata: aggregate.metadata || %{}
+      metadata: Map.get(aggregate, :metadata, %{})
     }
 
-    %ProductSchema{}
+    # 既存のスキーマがある場合はそれを使用、ない場合は新規作成
+    schema = existing_schema || %ProductSchema{}
+    
+    schema
     |> Ecto.Changeset.cast(data, [
       :id,
       :name,

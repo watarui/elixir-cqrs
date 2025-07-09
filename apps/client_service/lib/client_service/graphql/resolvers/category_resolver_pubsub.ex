@@ -4,8 +4,6 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   """
 
   alias ClientService.Infrastructure.{RemoteCommandBus, RemoteQueryBus}
-  alias QueryService.Application.Queries.CategoryQueries
-  alias CommandService.Application.Commands.CategoryCommands
 
   require Logger
 
@@ -13,7 +11,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを取得
   """
   def get_category(_parent, %{id: id}, _resolution) do
-    {:ok, query} = CategoryQueries.GetCategory.validate(%{id: id})
+    query = %{
+      __struct__: "QueryService.Application.Queries.CategoryQueries.GetCategory",
+      query_type: "category.get",
+      id: id,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, category} ->
@@ -34,11 +37,13 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    {:ok, query} =
-      CategoryQueries.ListCategories.validate(%{
-        limit: page_size,
-        offset: offset
-      })
+    query = %{
+      __struct__: "QueryService.Application.Queries.CategoryQueries.ListCategories",
+      query_type: "category.list",
+      limit: page_size,
+      offset: offset,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, categories} ->
@@ -58,12 +63,14 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
     page_size = Map.get(args, :page_size, 20)
     offset = (page - 1) * page_size
 
-    {:ok, query} =
-      CategoryQueries.SearchCategories.validate(%{
-        search_term: search_term,
-        limit: page_size,
-        offset: offset
-      })
+    query = %{
+      __struct__: "QueryService.Application.Queries.CategoryQueries.SearchCategories",
+      query_type: "category.search",
+      search_term: search_term,
+      limit: page_size,
+      offset: offset,
+      metadata: nil
+    }
 
     case RemoteQueryBus.send_query(query) do
       {:ok, categories} ->
@@ -79,13 +86,13 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを作成
   """
   def create_category(_parent, %{input: input}, _resolution) do
-    params = %{
+    command = %{
+      __struct__: "CommandService.Application.Commands.CategoryCommands.CreateCategory",
+      command_type: "category.create",
       name: input.name,
       description: Map.get(input, :description),
       metadata: %{}
     }
-
-    {:ok, command} = CategoryCommands.CreateCategory.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -110,14 +117,14 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを更新
   """
   def update_category(_parent, %{id: id, input: input}, _resolution) do
-    params = %{
+    command = %{
+      __struct__: "CommandService.Application.Commands.CategoryCommands.UpdateCategory",
+      command_type: "category.update",
       id: id,
       name: input.name,
       description: Map.get(input, :description),
       metadata: %{}
     }
-
-    {:ok, command} = CategoryCommands.UpdateCategory.validate(params)
 
     case RemoteCommandBus.send_command(command) do
       {:ok, aggregate} ->
@@ -141,8 +148,12 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
   カテゴリを削除
   """
   def delete_category(_parent, %{id: id}, _resolution) do
-    params = %{id: id, metadata: %{}}
-    {:ok, command} = CategoryCommands.DeleteCategory.validate(params)
+    command = %{
+      __struct__: "CommandService.Application.Commands.CategoryCommands.DeleteCategory",
+      command_type: "category.delete",
+      id: id,
+      metadata: %{}
+    }
 
     case RemoteCommandBus.send_command(command) do
       {:ok, _} ->
@@ -163,8 +174,14 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
       description: category.description,
       parent_id: category.parent_id,
       product_count: category.product_count || 0,
-      created_at: category.created_at,
-      updated_at: category.updated_at
+      created_at: ensure_datetime(category.created_at),
+      updated_at: ensure_datetime(category.updated_at)
     }
   end
+
+  defp ensure_datetime(%DateTime{} = datetime), do: datetime
+  defp ensure_datetime(%NaiveDateTime{} = naive_datetime) do
+    DateTime.from_naive!(naive_datetime, "Etc/UTC")
+  end
+  defp ensure_datetime(nil), do: nil
 end

@@ -126,7 +126,7 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
           id: aggregate.id,
           name: CategoryName.new!(command.name),
           description: command.description,
-          parent_id: command.parent_id && EntityId.new!(command.parent_id),
+          parent_id: Map.get(command, :parent_id),
           created_at: DateTime.utc_now()
         })
 

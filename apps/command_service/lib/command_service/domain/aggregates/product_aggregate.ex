@@ -280,10 +280,10 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
           ProductCreated.new(%{
             id: aggregate.id,
             name: product_name,
-            description: command.description,
+            description: Map.get(command.metadata || %{}, :description, ""),
             price: money,
             category_id: cat_id,
-            stock_quantity: command.stock_quantity || 0,
+            stock_quantity: Map.get(command.metadata || %{}, :stock_quantity, 0),
             created_at: DateTime.utc_now()
           })
 
@@ -301,7 +301,7 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
         name: command.name,
         price: command.price,
         category_id: command.category_id,
-        description: command.description
+        description: Map.get(command.metadata || %{}, :description)
       }
 
       with {:ok, updates} <- validate_updates(aggregate, params) do

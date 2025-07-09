@@ -14,6 +14,7 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
     CreateProduct,
     UpdateProduct,
     DeleteProduct,
+    ChangeProductPrice,
     UpdateStock,
     ReserveStock,
     ReleaseStock
@@ -93,20 +94,22 @@ defmodule CommandService.Application.Handlers.ProductCommandHandler do
     end)
   end
 
-  # NOTE: ChangeProductPrice handler is commented out until RPC service is updated
-  # def handle(%ChangeProductPrice{} = command) do
-  #   UnitOfWork.transaction_with_events(fn ->
-  #     with {:ok, aggregate} <- ProductRepository.get(command.id),
-  #          {:ok, updated_aggregate, events} <- ProductAggregate.execute(aggregate, command),
-  #          {:ok, _} <- ProductRepository.save(updated_aggregate) do
-  #       UnitOfWork.add_events(events)
-  #       Enum.each(events, &EventBus.publish(&1, "product"))
-  #       {:ok, updated_aggregate}
-  #     else
-  #       {:error, reason} -> {:error, reason}
-  #     end
-  #   end)
-  # end
+  @doc """
+  商品価格を変更する
+  """
+  def handle(%ChangeProductPrice{} = command) do
+    UnitOfWork.transaction_with_events(fn ->
+      with {:ok, aggregate} <- ProductRepository.get(command.id),
+           {:ok, updated_aggregate, events} <- ProductAggregate.execute(aggregate, command),
+           {:ok, _} <- ProductRepository.save(updated_aggregate) do
+        UnitOfWork.add_events(events)
+        Enum.each(events, &EventBus.publish_event/1)
+        {:ok, updated_aggregate}
+      else
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
 
   @doc """
   在庫更新コマンドを処理する

@@ -45,6 +45,14 @@ defmodule CommandService.Application.Commands.ProductCommands do
     defp validate_price(nil), do: {:error, "Price is required"}
     defp validate_price(price) when is_number(price) and price >= 0, do: {:ok, price}
 
+    defp validate_price(%Decimal{} = price) do
+      if Decimal.compare(price, Decimal.new(0)) != :lt do
+        {:ok, Decimal.to_float(price)}
+      else
+        {:error, "Price must be a non-negative number"}
+      end
+    end
+
     defp validate_price(price) when is_binary(price) do
       case Float.parse(price) do
         {value, ""} when value >= 0 -> {:ok, value}
@@ -138,6 +146,14 @@ defmodule CommandService.Application.Commands.ProductCommands do
 
     defp validate_price(price) when is_number(price) and price >= 0, do: {:ok, price}
 
+    defp validate_price(%Decimal{} = price) do
+      if Decimal.compare(price, Decimal.new(0)) != :lt do
+        {:ok, Decimal.to_float(price)}
+      else
+        {:error, "Price must be a non-negative number"}
+      end
+    end
+
     defp validate_price(price) when is_binary(price) do
       case Float.parse(price) do
         {value, ""} when value >= 0 -> {:ok, value}
@@ -188,6 +204,14 @@ defmodule CommandService.Application.Commands.ProductCommands do
 
     defp validate_price(nil), do: {:error, "New price is required"}
     defp validate_price(price) when is_number(price) and price >= 0, do: {:ok, price}
+
+    defp validate_price(%Decimal{} = price) do
+      if Decimal.compare(price, Decimal.new(0)) != :lt do
+        {:ok, Decimal.to_float(price)}
+      else
+        {:error, "Price must be a non-negative number"}
+      end
+    end
 
     defp validate_price(price) when is_binary(price) do
       case Float.parse(price) do
