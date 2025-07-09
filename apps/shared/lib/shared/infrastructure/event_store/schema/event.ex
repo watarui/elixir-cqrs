@@ -12,6 +12,8 @@ defmodule Shared.Infrastructure.EventStore.Schema.Event do
     field(:event_type, :string)
     field(:event_data, :map)
     field(:event_version, :integer)
+    field(:schema_version, :integer, default: 1)
+    field(:global_sequence, :integer)
     field(:metadata, :map, default: %{})
 
     timestamps()
@@ -20,7 +22,7 @@ defmodule Shared.Infrastructure.EventStore.Schema.Event do
   # 必須フィールド
   @required_fields [:aggregate_id, :aggregate_type, :event_type, :event_data, :event_version]
   # オプションフィールド
-  @optional_fields [:metadata]
+  @optional_fields [:metadata, :schema_version, :global_sequence]
 
   @doc """
   イベントのチェンジセットを作成する

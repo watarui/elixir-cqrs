@@ -14,4 +14,12 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
     # TODO: 注文関連のイベント処理を実装
     :ok
   end
+
+  @doc """
+  すべての注文プロジェクションをクリアする
+  """
+  def clear_all do
+    # TODO: OrderRepository.delete_all() を実装
+    :ok
+  end
 end

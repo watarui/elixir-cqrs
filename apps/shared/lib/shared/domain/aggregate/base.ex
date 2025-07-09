@@ -30,6 +30,33 @@ defmodule Shared.Domain.Aggregate.Base do
       end
 
       @doc """
+      スナップショットとイベントからアグリゲートを再構築する
+      """
+      @spec rebuild_from_snapshot_and_events(map(), [event()]) :: aggregate()
+      def rebuild_from_snapshot_and_events(snapshot_data, events) do
+        aggregate = from_snapshot(snapshot_data)
+        Enum.reduce(events, aggregate, &apply_event(&2, &1))
+      end
+
+      @doc """
+      アグリゲートをスナップショット用のデータに変換する
+      """
+      @spec to_snapshot(aggregate()) :: map()
+      def to_snapshot(aggregate) do
+        aggregate
+        |> Map.from_struct()
+        |> Map.drop([:uncommitted_events])
+      end
+
+      @doc """
+      スナップショットデータからアグリゲートを復元する
+      """
+      @spec from_snapshot(map()) :: aggregate()
+      def from_snapshot(snapshot_data) do
+        struct(__MODULE__, snapshot_data)
+      end
+
+      @doc """
       アグリゲートのバージョンを取得する
       """
       @spec get_version(aggregate()) :: integer()
@@ -84,7 +111,7 @@ defmodule Shared.Domain.Aggregate.Base do
         raise "apply_event/2 must be implemented by #{__MODULE__}"
       end
 
-      defoverridable new: 0, apply_event: 2
+      defoverridable new: 0, apply_event: 2, to_snapshot: 1, from_snapshot: 1
     end
   end
 end

@@ -10,10 +10,11 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     use CommandService.Application.Commands.BaseCommand
 
     @enforce_keys [:name]
-    defstruct [:name, :metadata]
+    defstruct [:name, :description, :metadata]
 
     @type t :: %__MODULE__{
             name: String.t(),
+            description: String.t() | nil,
             metadata: map() | nil
           }
 
@@ -23,6 +24,7 @@ defmodule CommandService.Application.Commands.CategoryCommands do
         {:ok,
          %__MODULE__{
            name: name,
+           description: params["description"] || params[:description],
            metadata: params["metadata"] || params[:metadata]
          }}
       end
@@ -43,11 +45,12 @@ defmodule CommandService.Application.Commands.CategoryCommands do
     use CommandService.Application.Commands.BaseCommand
 
     @enforce_keys [:id, :name]
-    defstruct [:id, :name, :metadata]
+    defstruct [:id, :name, :description, :metadata]
 
     @type t :: %__MODULE__{
             id: String.t(),
             name: String.t(),
+            description: String.t() | nil,
             metadata: map() | nil
           }
 
@@ -59,6 +62,7 @@ defmodule CommandService.Application.Commands.CategoryCommands do
          %__MODULE__{
            id: id,
            name: name,
+           description: params["description"] || params[:description],
            metadata: params["metadata"] || params[:metadata]
          }}
       end

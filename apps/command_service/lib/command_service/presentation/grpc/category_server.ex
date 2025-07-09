@@ -18,7 +18,8 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
     Logger.info("Creating category: #{request.name}")
 
     command = %CategoryCommands.CreateCategory{
-      name: request.name
+      name: request.name,
+      description: request.description
     }
 
     case CommandBus.dispatch(command) do

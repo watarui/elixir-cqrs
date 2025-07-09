@@ -46,6 +46,25 @@ defmodule Shared.Domain.ValueObjects.ProductName do
   def new(_), do: {:error, "Invalid name"}
 
   @doc """
+  新しい ProductName を作成する（例外を発生させる）
+
+  ## 例
+
+      iex> ProductName.new!("ノートパソコン")
+      %ProductName{value: "ノートパソコン"}
+
+      iex> ProductName.new!("")
+      ** (ArgumentError) Name cannot be empty
+  """
+  @spec new!(String.t()) :: t()
+  def new!(name) do
+    case new(name) do
+      {:ok, product_name} -> product_name
+      {:error, reason} -> raise ArgumentError, reason
+    end
+  end
+
+  @doc """
   ProductName を文字列に変換する
   """
   @spec to_string(t()) :: String.t()

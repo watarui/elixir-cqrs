@@ -18,9 +18,7 @@ defmodule QueryService.Infrastructure.Projections.CategoryProjection do
   @doc """
   イベントを処理する
   """
-  def handle_event(%{event_type: "CategoryCreated", event_data: data}) do
-    event = CategoryCreated.from_json(data)
-
+  def handle_event(%CategoryCreated{} = event) do
     attrs = %{
       id: event.id.value,
       name: event.name.value,
@@ -44,9 +42,7 @@ defmodule QueryService.Infrastructure.Projections.CategoryProjection do
     end
   end
 
-  def handle_event(%{event_type: "CategoryUpdated", event_data: data}) do
-    event = CategoryUpdated.from_json(data)
-
+  def handle_event(%CategoryUpdated{} = event) do
     attrs = %{
       name: event.name.value,
       description: event.description,
@@ -64,9 +60,7 @@ defmodule QueryService.Infrastructure.Projections.CategoryProjection do
     end
   end
 
-  def handle_event(%{event_type: "CategoryDeleted", event_data: data}) do
-    event = CategoryDeleted.from_json(data)
-
+  def handle_event(%CategoryDeleted{} = event) do
     case CategoryRepository.delete(event.id.value) do
       {:ok, _} ->
         Logger.info("Category projection deleted: #{event.id.value}")
@@ -81,5 +75,12 @@ defmodule QueryService.Infrastructure.Projections.CategoryProjection do
   def handle_event(_event) do
     # 他のイベントは無視
     :ok
+  end
+
+  @doc """
+  すべてのカテゴリプロジェクションをクリアする
+  """
+  def clear_all do
+    CategoryRepository.delete_all()
   end
 end

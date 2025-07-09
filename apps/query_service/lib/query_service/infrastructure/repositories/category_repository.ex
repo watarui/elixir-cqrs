@@ -142,6 +142,16 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
     end
   end
 
+  @doc """
+  すべてのカテゴリを削除
+  """
+  def delete_all do
+    {count, _} = Repo.delete_all(CategorySchema)
+    {:ok, count}
+  rescue
+    e -> {:error, e}
+  end
+
   # Private functions
 
   defp to_domain_model(schema) do

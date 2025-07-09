@@ -46,6 +46,25 @@ defmodule Shared.Domain.ValueObjects.CategoryName do
   def new(_), do: {:error, "Invalid category name"}
 
   @doc """
+  新しい CategoryName を作成する（例外を発生させる）
+
+  ## 例
+
+      iex> CategoryName.new!("電化製品")
+      %CategoryName{value: "電化製品"}
+
+      iex> CategoryName.new!("")
+      ** (ArgumentError) Name cannot be empty
+  """
+  @spec new!(String.t()) :: t()
+  def new!(name) do
+    case new(name) do
+      {:ok, category_name} -> category_name
+      {:error, reason} -> raise ArgumentError, reason
+    end
+  end
+
+  @doc """
   CategoryName を文字列に変換する
   """
   @spec to_string(t()) :: String.t()

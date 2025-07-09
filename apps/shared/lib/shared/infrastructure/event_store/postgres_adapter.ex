@@ -8,6 +8,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   import Ecto.Query
   alias Shared.Infrastructure.EventBus
   alias Shared.Infrastructure.EventStore.Schema.Event
+  alias Shared.Infrastructure.EventStore.SnapshotStore
   require Logger
 
   @impl true
@@ -69,7 +70,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     query =
       from(e in Event,
         where: e.event_type == ^event_type,
-        order_by: [asc: e.id],
+        order_by: [asc: e.global_sequence],
         limit: ^limit
       )
 
@@ -122,8 +123,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   def get_events_after(after_id, limit) do
     query =
       from(e in Event,
-        where: e.id > ^after_id,
-        order_by: [asc: e.id]
+        where: e.global_sequence > ^after_id,
+        order_by: [asc: e.global_sequence]
       )
 
     query =
@@ -137,7 +138,9 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
     decoded_events =
       Enum.map(events, fn event ->
-        Map.put(decode_event(event), :id, event.id)
+        event
+        |> decode_event()
+        |> Map.put(:id, event.global_sequence)
       end)
 
     {:ok, decoded_events}
@@ -184,8 +187,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
             event_data: encode_event_data(event),
             event_version: expected_version + index,
             metadata: metadata,
-            inserted_at: DateTime.utc_now(),
-            updated_at: DateTime.utc_now()
+            inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+            updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
           }
         end)
 
@@ -206,23 +209,59 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     |> Map.new(fn {k, v} -> {Atom.to_string(k), encode_value(v)} end)
   end
 
-  defp encode_value(%{__struct__: _} = struct) do
+  defp encode_value(%{__struct__: module} = struct) do
     # 値オブジェクトの場合
-    Map.from_struct(struct)
-  end
+    cond do
+      function_exported?(module, :value, 0) ->
+        # EntityId, CategoryNameなどのvalue関数を持つ値オブジェクト
+        Map.get(struct, :value)
 
-  defp encode_value(%DateTime{} = datetime) do
-    DateTime.to_iso8601(datetime)
-  end
+      module == DateTime ->
+        DateTime.to_iso8601(struct)
 
-  defp encode_value(%Decimal{} = decimal) do
-    Decimal.to_string(decimal)
+      module == Decimal ->
+        Decimal.to_string(struct)
+
+      true ->
+        # その他の構造体はMapに変換
+        struct
+        |> Map.from_struct()
+        |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+        |> Map.new(fn {k, v} -> {Atom.to_string(k), encode_value(v)} end)
+    end
   end
 
   defp encode_value(value), do: value
 
   defp decode_event(event_record) do
-    module = String.to_existing_atom("Elixir.#{event_record.event_type}")
+    # イベントタイプからモジュール名を生成
+    module =
+      case event_record.event_type do
+        "category.created" ->
+          Shared.Domain.Events.CategoryEvents.CategoryCreated
+
+        "category.updated" ->
+          Shared.Domain.Events.CategoryEvents.CategoryUpdated
+
+        "category.deleted" ->
+          Shared.Domain.Events.CategoryEvents.CategoryDeleted
+
+        "product.created" ->
+          Shared.Domain.Events.ProductEvents.ProductCreated
+
+        "product.updated" ->
+          Shared.Domain.Events.ProductEvents.ProductUpdated
+
+        "product.deleted" ->
+          Shared.Domain.Events.ProductEvents.ProductDeleted
+
+        "product.price_changed" ->
+          Shared.Domain.Events.ProductEvents.ProductPriceChanged
+
+        _ ->
+          # フォールバック: event_typeをモジュール名として解釈
+          String.to_existing_atom("Elixir.#{event_record.event_type}")
+      end
 
     event_data =
       event_record.event_data
@@ -239,7 +278,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   defp decode_value(key, value) when is_map(value) do
     # 値オブジェクトの復元
     cond do
-      key =~ ~r/_(id|_at)$/ and is_binary(value["value"]) ->
+      # IDフィールドの場合（"id"、"xxx_id"、"parent_id"など）
+      (key == "id" or key =~ ~r/_id$/) and is_binary(value["value"]) ->
         # EntityId の復元
         %Shared.Domain.ValueObjects.EntityId{value: value["value"]}
 
@@ -252,16 +292,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
       key == "name" and Map.has_key?(value, "value") ->
         # ProductName または CategoryName の復元
-        cond do
-          String.contains?(key, "product") ->
-            %Shared.Domain.ValueObjects.ProductName{value: value["value"]}
-
-          String.contains?(key, "category") ->
-            %Shared.Domain.ValueObjects.CategoryName{value: value["value"]}
-
-          true ->
-            value
-        end
+        %Shared.Domain.ValueObjects.CategoryName{value: value["value"]}
 
       true ->
         value
@@ -281,5 +312,15 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   defp publish_event(event_record) do
     event = decode_event(event_record)
     EventBus.publish(String.to_atom(event_record.event_type), event)
+  end
+
+  @impl true
+  def save_snapshot(aggregate_id, aggregate_type, version, data, metadata) do
+    SnapshotStore.save_snapshot(aggregate_id, aggregate_type, version, data, metadata)
+  end
+
+  @impl true
+  def get_snapshot(aggregate_id) do
+    SnapshotStore.get_latest_snapshot(aggregate_id)
   end
 end

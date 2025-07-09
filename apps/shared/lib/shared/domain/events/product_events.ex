@@ -12,12 +12,14 @@ defmodule Shared.Domain.Events.ProductEvents do
     use Shared.Domain.Events.BaseEvent
 
     @enforce_keys [:id, :name, :price, :category_id, :created_at]
-    defstruct [:id, :name, :price, :category_id, :created_at]
+    defstruct [:id, :name, :description, :price, :stock_quantity, :category_id, :created_at]
 
     @type t :: %__MODULE__{
             id: EntityId.t(),
             name: ProductName.t(),
+            description: String.t() | nil,
             price: Money.t(),
+            stock_quantity: integer(),
             category_id: EntityId.t(),
             created_at: DateTime.t()
           }
@@ -27,7 +29,9 @@ defmodule Shared.Domain.Events.ProductEvents do
       %__MODULE__{
         id: params.id,
         name: params.name,
+        description: params[:description],
         price: params.price,
+        stock_quantity: params[:stock_quantity] || 0,
         category_id: params.category_id,
         created_at: params[:created_at] || DateTime.utc_now()
       }
@@ -47,11 +51,12 @@ defmodule Shared.Domain.Events.ProductEvents do
     use Shared.Domain.Events.BaseEvent
 
     @enforce_keys [:id, :updated_at]
-    defstruct [:id, :name, :price, :category_id, :updated_at]
+    defstruct [:id, :name, :description, :price, :category_id, :updated_at]
 
     @type t :: %__MODULE__{
             id: EntityId.t(),
             name: ProductName.t() | nil,
+            description: String.t() | nil,
             price: Money.t() | nil,
             category_id: EntityId.t() | nil,
             updated_at: DateTime.t()
@@ -62,6 +67,7 @@ defmodule Shared.Domain.Events.ProductEvents do
       %__MODULE__{
         id: params.id,
         name: params[:name],
+        description: params[:description],
         price: params[:price],
         category_id: params[:category_id],
         updated_at: params[:updated_at] || DateTime.utc_now()

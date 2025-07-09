@@ -156,4 +156,81 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
 
   defp maybe_offset(query, nil), do: query
   defp maybe_offset(query, offset), do: from(p in query, offset: ^offset)
+
+  @doc """
+  商品を作成
+  """
+  def create(attrs) do
+    changeset =
+      Ecto.Changeset.cast(%ProductSchema{}, attrs, [
+        :id,
+        :name,
+        :description,
+        :price_amount,
+        :price_currency,
+        :stock_quantity,
+        :category_id,
+        :category_name,
+        :active,
+        :metadata,
+        :inserted_at,
+        :updated_at
+      ])
+
+    case Repo.insert(changeset) do
+      {:ok, product} -> {:ok, to_domain_model(product)}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  @doc """
+  商品を更新
+  """
+  def update(id, attrs) do
+    with {:ok, product} <- Repo.get(ProductSchema, id) |> handle_get_result() do
+      changeset =
+        Ecto.Changeset.cast(product, attrs, [
+          :name,
+          :description,
+          :price_amount,
+          :price_currency,
+          :stock_quantity,
+          :category_id,
+          :category_name,
+          :active,
+          :metadata,
+          :updated_at
+        ])
+
+      case Repo.update(changeset) do
+        {:ok, updated} -> {:ok, to_domain_model(updated)}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
+  商品を削除
+  """
+  def delete(id) do
+    with {:ok, product} <- Repo.get(ProductSchema, id) |> handle_get_result() do
+      case Repo.delete(product) do
+        {:ok, _} -> {:ok, nil}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
+  すべての商品を削除
+  """
+  def delete_all do
+    {count, _} = Repo.delete_all(ProductSchema)
+    {:ok, count}
+  rescue
+    e -> {:error, e}
+  end
+
+  defp handle_get_result(nil), do: {:error, :not_found}
+  defp handle_get_result(result), do: {:ok, result}
 end

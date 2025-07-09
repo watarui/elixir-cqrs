@@ -44,6 +44,16 @@ defmodule Shared.Infrastructure.EventStore.EventStore do
               limit :: integer() | nil
             ) :: {:ok, [event()]} | {:error, term()}
 
+  @callback save_snapshot(
+              aggregate_id(),
+              aggregate_type(),
+              version :: integer(),
+              data :: map(),
+              metadata :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
+  @callback get_snapshot(aggregate_id()) :: {:ok, map()} | {:error, :not_found} | {:error, term()}
+
   @doc """
   使用するアダプターを取得する
   """
@@ -95,5 +105,19 @@ defmodule Shared.Infrastructure.EventStore.EventStore do
   """
   def get_events_after(after_id, limit \\ nil) do
     adapter().get_events_after(after_id, limit)
+  end
+
+  @doc """
+  スナップショットを保存する
+  """
+  def save_snapshot(aggregate_id, aggregate_type, version, data, metadata \\ %{}) do
+    adapter().save_snapshot(aggregate_id, aggregate_type, version, data, metadata)
+  end
+
+  @doc """
+  最新のスナップショットを取得する
+  """
+  def get_snapshot(aggregate_id) do
+    adapter().get_snapshot(aggregate_id)
   end
 end

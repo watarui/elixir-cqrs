@@ -11,10 +11,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     ProductCreated,
     ProductUpdated,
     ProductPriceChanged,
-    ProductDeleted,
-    StockUpdated,
-    StockReserved,
-    StockReleased
+    ProductDeleted
   }
 
   require Logger
@@ -22,15 +19,13 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   @doc """
   イベントを処理する
   """
-  def handle_event(%{event_type: "ProductCreated", event_data: data}) do
-    event = ProductCreated.from_json(data)
-
+  def handle_event(%ProductCreated{} = event) do
     attrs = %{
       id: event.id.value,
       name: event.name.value,
       description: event.description,
-      price: Decimal.new(to_string(event.price.amount)),
-      currency: event.price.currency,
+      price_amount: Decimal.new(to_string(event.price.amount)),
+      price_currency: event.price.currency,
       stock_quantity: event.stock_quantity,
       category_id: event.category_id.value,
       active: true,
@@ -50,9 +45,7 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     end
   end
 
-  def handle_event(%{event_type: "ProductUpdated", event_data: data}) do
-    event = ProductUpdated.from_json(data)
-
+  def handle_event(%ProductUpdated{} = event) do
     attrs = %{
       name: event.name.value,
       description: event.description,
@@ -71,11 +64,9 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     end
   end
 
-  def handle_event(%{event_type: "ProductPriceChanged", event_data: data}) do
-    event = ProductPriceChanged.from_json(data)
-
+  def handle_event(%ProductPriceChanged{} = event) do
     attrs = %{
-      price: Decimal.new(to_string(event.new_price.amount)),
+      price_amount: Decimal.new(to_string(event.new_price.amount)),
       updated_at: event.changed_at
     }
 
@@ -90,28 +81,12 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
     end
   end
 
-  def handle_event(%{event_type: "StockUpdated", event_data: data}) do
-    event = StockUpdated.from_json(data)
+  # StockUpdated イベントは今後実装予定
+  # def handle_event(%StockUpdated{} = event) do
+  #   ...
+  # end
 
-    attrs = %{
-      stock_quantity: event.quantity,
-      updated_at: event.updated_at
-    }
-
-    case ProductRepository.update(event.product_id.value, attrs) do
-      {:ok, product} ->
-        Logger.info("Product stock updated: #{product.id}")
-        {:ok, product}
-
-      {:error, reason} ->
-        Logger.error("Failed to update product stock: #{inspect(reason)}")
-        {:error, reason}
-    end
-  end
-
-  def handle_event(%{event_type: "ProductDeleted", event_data: data}) do
-    event = ProductDeleted.from_json(data)
-
+  def handle_event(%ProductDeleted{} = event) do
     case ProductRepository.delete(event.id.value) do
       {:ok, _} ->
         Logger.info("Product projection deleted: #{event.id.value}")
@@ -126,5 +101,12 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   def handle_event(_event) do
     # 他のイベントは無視
     :ok
+  end
+
+  @doc """
+  すべての商品プロジェクションをクリアする
+  """
+  def clear_all do
+    ProductRepository.delete_all()
   end
 end
