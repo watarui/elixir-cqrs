@@ -1,18 +1,7 @@
 defmodule CommandService do
   @moduledoc """
-  Documentation for `CommandService`.
+  Command Service
+  
+  コマンド（書き込み）処理を担当するマイクロサービス
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> CommandService.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end

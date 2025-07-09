@@ -8,6 +8,8 @@ defmodule Shared.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      # イベントストアのリポジトリ
+      Shared.Infrastructure.EventStore.Repo,
       # イベントバス
       Shared.Infrastructure.EventBus
     ]

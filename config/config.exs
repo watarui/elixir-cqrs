@@ -9,10 +9,50 @@
 # move said applications out of the umbrella.
 import Config
 
-# Sample configuration:
-#
-#     config :logger, :console,
-#       level: :info,
-#       format: "$date $time [$level] $metadata$message\n",
-#       metadata: [:user_id]
-#
+# Logger の設定
+config :logger, :console,
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id, :trace_id, :span_id]
+
+# Jason の設定
+config :phoenix, :json_library, Jason
+
+# イベントストアの設定
+config :shared, Shared.Infrastructure.EventStore.Repo,
+  database: "elixir_cqrs_event_store_#{config_env()}",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  pool_size: 10
+
+config :shared,
+  ecto_repos: [Shared.Infrastructure.EventStore.Repo],
+  event_store_adapter: Shared.Infrastructure.EventStore.PostgresAdapter
+
+# Command Service の設定
+config :command_service,
+  ecto_repos: [CommandService.Repo]
+
+config :command_service, CommandService.Repo,
+  database: "elixir_cqrs_command_#{config_env()}",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  pool_size: 10
+
+# Query Service の設定
+config :query_service,
+  ecto_repos: [QueryService.Repo]
+
+config :query_service, QueryService.Repo,
+  database: "elixir_cqrs_query_#{config_env()}",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  pool_size: 10
+
+# gRPC の設定
+config :grpc, start_server: true
+
+# 環境別の設定をインポート
+import_config "#{config_env()}.exs"

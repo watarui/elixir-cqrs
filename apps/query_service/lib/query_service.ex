@@ -1,18 +1,7 @@
 defmodule QueryService do
   @moduledoc """
-  Documentation for `QueryService`.
+  Query Service
+  
+  クエリ（読み取り）処理を担当するマイクロサービス
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> QueryService.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end
