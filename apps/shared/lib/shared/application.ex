@@ -7,6 +7,9 @@ defmodule Shared.Application do
 
   @impl true
   def start(_type, _args) do
+    # OpenTelemetry を初期化
+    Shared.Telemetry.Setup.init()
+    
     children = [
       # イベントストアのリポジトリ
       Shared.Infrastructure.EventStore.Repo,
@@ -15,7 +18,9 @@ defmodule Shared.Application do
       # サガリポジトリ
       Shared.Infrastructure.Saga.SagaRepository,
       # サガコーディネーター
-      Shared.Infrastructure.Saga.SagaCoordinator
+      Shared.Infrastructure.Saga.SagaCoordinator,
+      # サガメトリクス
+      Shared.Telemetry.SagaMetrics
     ]
 
     opts = [strategy: :one_for_one, name: Shared.Supervisor]

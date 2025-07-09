@@ -14,6 +14,23 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id, :trace_id, :span_id]
 
+# OpenTelemetry の設定
+config :opentelemetry,
+  resource: [
+    service: %{
+      name: "elixir-cqrs",
+      namespace: "cqrs"
+    }
+  ],
+  span_processor: :batch,
+  traces_exporter: :otlp
+
+config :opentelemetry_exporter,
+  otlp_protocol: :http_protobuf,
+  otlp_endpoint: "http://localhost:4318",
+  otlp_headers: [],
+  otlp_compression: :gzip
+
 # Jason の設定
 config :phoenix, :json_library, Jason
 
@@ -70,27 +87,6 @@ config :client_service, ClientServiceWeb.Endpoint,
   pubsub_server: ClientService.PubSub,
   live_view: [signing_salt: "7K9BfGu5"]
 
-# Configure esbuild (the version is required)
-config :esbuild,
-  version: "0.17.11",
-  default: [
-    args:
-      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
-    cd: Path.expand("../apps/client_service/assets", __DIR__),
-    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-  ]
-
-# Configure tailwind (the version is required)
-config :tailwind,
-  version: "3.4.0",
-  default: [
-    args: ~w(
-      --config=tailwind.config.js
-      --input=css/app.css
-      --output=../priv/static/assets/app.css
-    ),
-    cd: Path.expand("../apps/client_service/assets", __DIR__)
-  ]
 
 # 環境別の設定をインポート
 import_config "#{config_env()}.exs"

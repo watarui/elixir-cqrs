@@ -28,7 +28,19 @@ defmodule ElixirCqrs.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:excoveralls, "~> 0.18", only: :test}
+      {:excoveralls, "~> 0.18", only: :test},
+      
+      # OpenTelemetry
+      {:opentelemetry_api, "~> 1.2"},
+      {:opentelemetry, "~> 1.3"},
+      {:opentelemetry_exporter, "~> 1.6"},
+      {:opentelemetry_phoenix, "~> 1.1"},
+      {:opentelemetry_ecto, "~> 1.1"},
+      {:opentelemetry_telemetry, "~> 1.0"},
+      
+      # Telemetry
+      {:telemetry_metrics, "~> 0.6"},
+      {:telemetry_poller, "~> 1.0"}
     ]
   end
 
