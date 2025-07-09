@@ -18,7 +18,10 @@ defmodule QueryService.Application do
       QueryService.Infrastructure.ProjectionManager,
       # TODO: キャッシュ (ETS)
       # gRPC サーバー
-      {GRPC.Server.Supervisor, endpoint: QueryService.Presentation.Grpc.Endpoint, port: port}
+      {GRPC.Server.Supervisor, 
+        endpoint: QueryService.Presentation.Grpc.Endpoint, 
+        port: port,
+        start_server: true}
     ]
 
     opts = [strategy: :one_for_one, name: QueryService.Supervisor]

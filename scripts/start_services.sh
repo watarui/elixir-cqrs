@@ -1,61 +1,58 @@
 #!/bin/bash
 
-# Start all services for the Elixir CQRS application
+# スクリプトのディレクトリを取得
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-echo "Starting all services..."
+# ログディレクトリの作成
+mkdir -p "$PROJECT_ROOT/logs"
 
-# Kill existing services
-echo "Stopping existing services..."
-pkill -f "beam.smp.*mix run --no-halt" || true
-pkill -f "beam.smp.*mix phx.server" || true
-sleep 2
+echo "Starting Elixir CQRS Services..."
 
-# Start Command Service
-echo "Starting Command Service on port 50051..."
-cd /Users/w/w/elixir-cqrs/apps/command_service
-mix grpc.server &
-command_service_pid=$!
-echo "Command Service PID: $command_service_pid"
+# Docker コンテナの確認
+echo "Checking Docker containers..."
+docker compose ps
 
-# Wait for Command Service to start
+# Command Service の起動
+echo "Starting Command Service..."
+cd "$PROJECT_ROOT/apps/command_service"
+mix run --no-halt > "$PROJECT_ROOT/logs/command_service.log" 2>&1 &
+COMMAND_PID=$!
+echo "Command Service started with PID: $COMMAND_PID"
+
+# 少し待機
 sleep 5
 
-# Start Query Service (if not already running)
-echo "Checking Query Service..."
-if ! lsof -i :50052 > /dev/null 2>&1; then
-    echo "Starting Query Service on port 50052..."
-    cd /Users/w/w/elixir-cqrs/apps/query_service
-    mix run --no-halt &
-    query_service_pid=$!
-    echo "Query Service PID: $query_service_pid"
-else
-    echo "Query Service already running on port 50052"
-fi
+# Query Service の起動
+echo "Starting Query Service..."
+cd "$PROJECT_ROOT/apps/query_service"
+mix run --no-halt > "$PROJECT_ROOT/logs/query_service.log" 2>&1 &
+QUERY_PID=$!
+echo "Query Service started with PID: $QUERY_PID"
 
-# Wait for services to be ready
+# 少し待機
 sleep 5
 
-# Start Client Service (if not already running)
-echo "Checking Client Service..."
-if ! lsof -i :4000 > /dev/null 2>&1; then
-    echo "Starting Client Service on port 4000..."
-    cd /Users/w/w/elixir-cqrs/apps/client_service
-    mix phx.server &
-    client_service_pid=$!
-    echo "Client Service PID: $client_service_pid"
-else
-    echo "Client Service already running on port 4000"
-fi
-
-# Wait for all services to start
-sleep 5
+# Client Service の起動
+echo "Starting Client Service..."
+cd "$PROJECT_ROOT/apps/client_service"
+mix phx.server > "$PROJECT_ROOT/logs/client_service.log" 2>&1 &
+CLIENT_PID=$!
+echo "Client Service started with PID: $CLIENT_PID"
 
 echo ""
-echo "All services started:"
-echo "- Command Service: http://localhost:50051 (gRPC)"
-echo "- Query Service: http://localhost:50052 (gRPC)"
-echo "- Client Service: http://localhost:4000 (GraphQL)"
+echo "All services started!"
+echo "Command Service PID: $COMMAND_PID"
+echo "Query Service PID: $QUERY_PID"
+echo "Client Service PID: $CLIENT_PID"
 echo ""
 echo "GraphQL Playground: http://localhost:4000/graphql"
+echo "Logs are available in: $PROJECT_ROOT/logs/"
 echo ""
-echo "To stop all services, run: pkill -f beam.smp"
+echo "Press Ctrl+C to stop all services"
+
+# シグナルハンドラーの設定
+trap 'echo "Stopping services..."; kill $COMMAND_PID $QUERY_PID $CLIENT_PID 2>/dev/null; exit' INT TERM
+
+# プロセスの監視
+wait
