@@ -9,6 +9,7 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   alias Shared.Domain.ValueObjects.{CategoryName, EntityId}
   alias Shared.Domain.Events.CategoryEvents.{CategoryCreated, CategoryDeleted, CategoryUpdated}
+  alias CommandService.Application.Commands.CategoryCommands
 
   @enforce_keys [:id]
   defstruct [
@@ -110,19 +111,100 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
     {:ok, apply_and_record_event(aggregate, event)}
   end
 
+  @doc """
+  コマンドを実行する
+  """
+  def execute(
+        aggregate,
+        %CommandService.Application.Commands.CategoryCommands.CreateCategory{} = command
+      ) do
+    if aggregate.created_at do
+      {:error, "Category already created"}
+    else
+      event =
+        CategoryCreated.new(%{
+          id: aggregate.id,
+          name: CategoryName.new!(command.name),
+          description: command.description,
+          parent_id: command.parent_id && EntityId.new!(command.parent_id),
+          created_at: DateTime.utc_now()
+        })
+
+      updated_aggregate = apply_and_record_event(aggregate, event)
+      {:ok, updated_aggregate, [event]}
+    end
+  end
+
+  def execute(
+        aggregate,
+        %CommandService.Application.Commands.CategoryCommands.UpdateCategory{} = command
+      ) do
+    if aggregate.deleted do
+      {:error, "Cannot update deleted category"}
+    else
+      event =
+        CategoryUpdated.new(%{
+          id: aggregate.id,
+          name: command.name && CategoryName.new!(command.name),
+          description: command.description,
+          parent_id: command.parent_id && EntityId.new!(command.parent_id),
+          updated_at: DateTime.utc_now()
+        })
+
+      updated_aggregate = apply_and_record_event(aggregate, event)
+      {:ok, updated_aggregate, [event]}
+    end
+  end
+
+  def execute(aggregate, %CommandService.Application.Commands.CategoryCommands.DeleteCategory{}) do
+    if aggregate.deleted do
+      {:error, "Category already deleted"}
+    else
+      event =
+        CategoryDeleted.new(%{
+          id: aggregate.id,
+          deleted_at: DateTime.utc_now()
+        })
+
+      updated_aggregate = apply_and_record_event(aggregate, event)
+      {:ok, updated_aggregate, [event]}
+    end
+  end
+
   @impl true
   def apply_event(aggregate, %CategoryCreated{} = event) do
     %{
       aggregate
       | id: event.id,
         name: event.name,
+        description: Map.get(event, :description),
+        parent_id: Map.get(event, :parent_id),
         created_at: event.created_at,
         updated_at: event.created_at
     }
   end
 
   def apply_event(aggregate, %CategoryUpdated{} = event) do
-    %{aggregate | name: event.name, updated_at: event.updated_at}
+    updates = %{
+      updated_at: event.updated_at
+    }
+
+    updates =
+      if Map.has_key?(event, :name) && event.name,
+        do: Map.put(updates, :name, event.name),
+        else: updates
+
+    updates =
+      if Map.has_key?(event, :description),
+        do: Map.put(updates, :description, event.description),
+        else: updates
+
+    updates =
+      if Map.has_key?(event, :parent_id),
+        do: Map.put(updates, :parent_id, event.parent_id),
+        else: updates
+
+    Map.merge(aggregate, updates)
   end
 
   def apply_event(aggregate, %CategoryDeleted{} = _event) do

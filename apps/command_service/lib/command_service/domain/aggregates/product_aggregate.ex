@@ -16,6 +16,8 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
     ProductUpdated
   }
 
+  alias CommandService.Application.Commands.ProductCommands
+
   @enforce_keys [:id]
   defstruct [
     :id,
@@ -231,8 +233,10 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
       aggregate
       | id: event.id,
         name: event.name,
+        description: Map.get(event, :description),
         price: event.price,
         category_id: event.category_id,
+        stock_quantity: Map.get(event, :stock_quantity, 0),
         created_at: event.created_at,
         updated_at: event.created_at
     }
@@ -259,6 +263,119 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
       Map.put(aggregate, field, value)
     else
       aggregate
+    end
+  end
+
+  @doc """
+  コマンドを実行する
+  """
+  def execute(aggregate, %ProductCommands.CreateProduct{} = command) do
+    if aggregate.created_at do
+      {:error, "Product already created"}
+    else
+      with {:ok, product_name} <- ProductName.new(command.name),
+           {:ok, money} <- Money.new(command.price),
+           {:ok, cat_id} <- EntityId.from_string(command.category_id) do
+        event =
+          ProductCreated.new(%{
+            id: aggregate.id,
+            name: product_name,
+            description: command.description,
+            price: money,
+            category_id: cat_id,
+            stock_quantity: command.stock_quantity || 0,
+            created_at: DateTime.utc_now()
+          })
+
+        updated_aggregate = apply_and_record_event(aggregate, event)
+        {:ok, updated_aggregate, [event]}
+      end
+    end
+  end
+
+  def execute(aggregate, %ProductCommands.UpdateProduct{} = command) do
+    if aggregate.deleted do
+      {:error, "Cannot update deleted product"}
+    else
+      params = %{
+        name: command.name,
+        price: command.price,
+        category_id: command.category_id,
+        description: command.description
+      }
+
+      with {:ok, updates} <- validate_updates(aggregate, params) do
+        if map_size(updates) == 0 do
+          {:error, "No changes to update"}
+        else
+          event =
+            ProductUpdated.new(
+              Map.merge(updates, %{
+                id: aggregate.id,
+                updated_at: DateTime.utc_now()
+              })
+            )
+
+          updated_aggregate = apply_and_record_event(aggregate, event)
+          {:ok, updated_aggregate, [event]}
+        end
+      end
+    end
+  end
+
+  def execute(aggregate, %ProductCommands.ChangeProductPrice{} = command) do
+    if aggregate.deleted do
+      {:error, "Cannot change price of deleted product"}
+    else
+      with {:ok, new_money} <- Money.new(command.new_price) do
+        case Money.compare(aggregate.price, new_money) do
+          :eq ->
+            {:error, "Price is the same"}
+
+          _ ->
+            event =
+              ProductPriceChanged.new(%{
+                id: aggregate.id,
+                old_price: aggregate.price,
+                new_price: new_money,
+                changed_at: DateTime.utc_now()
+              })
+
+            updated_aggregate = apply_and_record_event(aggregate, event)
+            {:ok, updated_aggregate, [event]}
+        end
+      end
+    end
+  end
+
+  def execute(aggregate, %ProductCommands.DeleteProduct{}) do
+    if aggregate.deleted do
+      {:error, "Product already deleted"}
+    else
+      event =
+        ProductDeleted.new(%{
+          id: aggregate.id,
+          deleted_at: DateTime.utc_now()
+        })
+
+      updated_aggregate = apply_and_record_event(aggregate, event)
+      {:ok, updated_aggregate, [event]}
+    end
+  end
+
+  def execute(aggregate, %ProductCommands.UpdateStock{} = command) do
+    if aggregate.deleted do
+      {:error, "Cannot update stock of deleted product"}
+    else
+      event =
+        ProductUpdated.new(%{
+          id: aggregate.id,
+          stock_quantity: command.quantity,
+          updated_at: DateTime.utc_now()
+        })
+
+      updated_aggregate = apply_and_record_event(aggregate, event)
+      {:ok, updated_aggregate, [event]}
     end
   end
 end

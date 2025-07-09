@@ -17,19 +17,8 @@ config :client_service, ClientServiceWeb.Endpoint,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "Jz8VxwqH6K5y5r3NvKcW8P9YQqGtM5TdU3BhX4Y2Zj9KtL3R5N8S4W9X5M2K7P3Q",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
-  ]
+  watchers: []
 
 # Enable dev routes for dashboard and mailbox
 config :client_service, dev_routes: true
 
-# Watch static and templates for browser reloading.
-config :client_service, ClientServiceWeb.Endpoint,
-  live_reload: [
-    patterns: [
-      ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"lib/client_service_web/(controllers|live|components)/.*(ex|heex)$"
-    ]
-  ]

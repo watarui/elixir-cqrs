@@ -15,8 +15,7 @@ defmodule CommandService.Application do
       # コマンドバス
       CommandService.Infrastructure.CommandBus,
       # gRPC エンドポイント
-      {GRPC.Server.Supervisor,
-       endpoint: CommandService.Presentation.Grpc.Endpoint, port: port, start_server: true}
+      {GRPC.Server.Supervisor, endpoint: CommandService.Presentation.Grpc.Endpoint, port: port}
     ]
 
     opts = [strategy: :one_for_one, name: CommandService.Supervisor]

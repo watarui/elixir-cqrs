@@ -21,7 +21,7 @@ defmodule QueryService.Repo.Migrations.CreateOrders do
 
     create index(:orders, [:user_id])
     create index(:orders, [:status])
-    create index(:orders, [:created_at])
+    create index(:orders, [:inserted_at])
     create unique_index(:orders, [:order_number])
   end
 end

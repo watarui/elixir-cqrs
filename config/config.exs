@@ -40,6 +40,7 @@ config :shared, Shared.Infrastructure.EventStore.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
+  port: 5432,
   pool_size: 10
 
 config :shared,
@@ -56,6 +57,7 @@ config :command_service, CommandService.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
+  port: 5433,
   pool_size: 10
 
 # Query Service の設定
@@ -68,10 +70,9 @@ config :query_service, QueryService.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
+  port: 5434,
   pool_size: 10
 
-# gRPC の設定
-config :grpc, start_server: true
 
 # Client Service の設定
 config :client_service,

@@ -1,78 +1,96 @@
-.PHONY: help setup deps migrate seed reset test check format docs docker-up docker-down docker-logs
+.PHONY: all deps proto setup-db start-command start-query start-client stop clean test
 
 # デフォルトターゲット
-help:
-	@echo "利用可能なコマンド:"
-	@echo "  make setup       - 初期セットアップ（依存関係、DB作成、マイグレーション）"
-	@echo "  make deps        - 依存関係のインストール"
-	@echo "  make migrate     - データベースマイグレーション"
-	@echo "  make seed        - テストデータの投入"
-	@echo "  make reset       - データベースのリセット"
-	@echo "  make test        - テストの実行"
-	@echo "  make check       - コード品質チェック（format, credo, dialyzer）"
-	@echo "  make format      - コードフォーマット"
-	@echo "  make docs        - ドキュメント生成"
-	@echo "  make docker-up   - Docker コンテナ起動"
-	@echo "  make docker-down - Docker コンテナ停止"
-	@echo "  make docker-logs - Docker ログ表示"
-
-# 初期セットアップ
-setup: docker-up deps migrate
-	@echo "セットアップ完了！"
+all: deps proto setup-db
 
 # 依存関係のインストール
 deps:
-	mix deps.get
-	mix deps.compile
+	@echo "Installing dependencies..."
+	@mix deps.get
+	@cd apps/command_service && mix deps.get
+	@cd apps/query_service && mix deps.get
+	@cd apps/client_service && mix deps.get
 
-# データベースマイグレーション
-migrate:
-	mix ecto.create
-	mix ecto.migrate
+# Proto ファイルのコンパイル
+proto:
+	@echo "Compiling proto files..."
+	@./scripts/generate_proto.sh
 
-# テストデータの投入
-seed:
-	mix run apps/shared/priv/repo/seeds.exs
-	mix run apps/command_service/priv/repo/seeds.exs
-	mix run apps/query_service/priv/repo/seeds.exs
+# データベースのセットアップ
+setup-db:
+	@echo "Setting up databases..."
+	@docker compose up -d postgres-event-store postgres-command postgres-query
+	@sleep 5
+	@./scripts/setup_databases.sh
 
-# データベースのリセット
-reset:
-	mix ecto.drop
-	mix ecto.create
-	mix ecto.migrate
+# Command Service の起動
+start-command:
+	@echo "Starting Command Service..."
+	@cd apps/command_service && MIX_ENV=dev mix run --no-halt
 
-# テストの実行
+# Query Service の起動
+start-query:
+	@echo "Starting Query Service..."
+	@cd apps/query_service && MIX_ENV=dev mix run --no-halt
+
+# Client Service の起動
+start-client:
+	@echo "Starting Client Service..."
+	@cd apps/client_service && MIX_ENV=dev mix phx.server
+
+# Docker コンテナの停止
+stop:
+	@echo "Stopping all services..."
+	@docker compose down
+
+# クリーンアップ
+clean:
+	@echo "Cleaning up..."
+	@rm -rf _build deps
+	@cd apps/command_service && rm -rf _build deps
+	@cd apps/query_service && rm -rf _build deps
+	@cd apps/client_service && rm -rf _build deps
+
+# テスト実行
 test:
-	mix test
+	@echo "Running tests..."
+	@mix test
 
-# コード品質チェック
-check:
-	mix format --check-formatted
-	mix compile --warnings-as-errors
-	mix credo --strict
-	mix dialyzer
+# データベースの再作成
+reset-db:
+	@echo "Resetting databases..."
+	@docker compose down -v
+	@docker compose up -d postgres-event-store postgres-command postgres-query
+	@sleep 5
+	@./scripts/setup_databases.sh
 
-# コードフォーマット
-format:
-	mix format
+# ログ確認
+logs-command:
+	@docker compose logs -f command_service
 
-# ドキュメント生成
-docs:
-	mix docs
+logs-query:
+	@docker compose logs -f query_service
 
-# Docker コンテナ起動
-docker-up:
-	docker compose up -d
-	@echo "Docker コンテナが起動しました"
-	@echo "Jaeger UI: http://localhost:16686"
-	@echo "Prometheus: http://localhost:9090"
-	@echo "Grafana: http://localhost:3000 (admin/admin)"
+logs-client:
+	@docker compose logs -f client_service
 
-# Docker コンテナ停止
-docker-down:
-	docker compose down
+logs-db:
+	@docker compose logs -f postgres-event-store postgres-command postgres-query
 
-# Docker ログ表示
-docker-logs:
-	docker compose logs -f
+# ヘルプ
+help:
+	@echo "Available targets:"
+	@echo "  make deps          - Install all dependencies"
+	@echo "  make proto         - Compile proto files"
+	@echo "  make setup-db      - Setup databases"
+	@echo "  make start-command - Start Command Service"
+	@echo "  make start-query   - Start Query Service"
+	@echo "  make start-client  - Start Client Service"
+	@echo "  make stop          - Stop all services"
+	@echo "  make clean         - Clean build artifacts"
+	@echo "  make test          - Run tests"
+	@echo "  make reset-db      - Reset databases"
+	@echo "  make logs-command  - Show Command Service logs"
+	@echo "  make logs-query    - Show Query Service logs"
+	@echo "  make logs-client   - Show Client Service logs"
+	@echo "  make logs-db       - Show database logs"
