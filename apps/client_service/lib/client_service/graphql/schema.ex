@@ -10,7 +10,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Category)
   import_types(ClientService.GraphQL.Types.Product)
 
-  alias ClientService.GraphQL.Resolvers
+  alias ClientService.GraphQL.{Dataloader, Resolvers}
 
   # PubSub版のリゾルバーを使用
   alias ClientService.GraphQL.Resolvers.CategoryResolverPubsub, as: CategoryResolver
@@ -123,4 +123,14 @@ defmodule ClientService.GraphQL.Schema do
   #     end
   #   end
   # end
+
+  # Dataloader の設定
+  def context(ctx) do
+    loader = Dataloader.new()
+    Map.put(ctx, :loader, loader)
+  end
+
+  def plugins do
+    [Absinthe.Middleware.Dataloader] ++ Absinthe.Plugin.defaults()
+  end
 end

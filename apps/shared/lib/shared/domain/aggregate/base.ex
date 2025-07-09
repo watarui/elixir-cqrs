@@ -11,6 +11,7 @@ defmodule Shared.Domain.Aggregate.Base do
 
   @callback new() :: aggregate()
   @callback apply_event(aggregate(), event()) :: aggregate()
+  @callback aggregate_type() :: String.t()
 
   defmacro __using__(_opts) do
     quote do
@@ -111,7 +112,17 @@ defmodule Shared.Domain.Aggregate.Base do
         raise "apply_event/2 must be implemented by #{__MODULE__}"
       end
 
-      defoverridable new: 0, apply_event: 2, to_snapshot: 1, from_snapshot: 1
+      @doc """
+      アグリゲートタイプを返す
+      """
+      def aggregate_type do
+        __MODULE__
+        |> Module.split()
+        |> List.last()
+        |> Macro.underscore()
+      end
+
+      defoverridable new: 0, apply_event: 2, to_snapshot: 1, from_snapshot: 1, aggregate_type: 0
     end
   end
 end

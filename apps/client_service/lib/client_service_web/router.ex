@@ -12,6 +12,7 @@ defmodule ClientServiceWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug(ClientServiceWeb.Plugs.DataloaderPlug)
   end
 
   # GraphQL エンドポイント

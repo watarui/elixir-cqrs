@@ -4,6 +4,7 @@ defmodule ClientService.GraphQL.Types.Category do
   """
 
   use Absinthe.Schema.Notation
+  import Absinthe.Resolution.Helpers, only: [dataloader: 1]
 
   @desc "カテゴリ"
   object :category do
@@ -15,10 +16,7 @@ defmodule ClientService.GraphQL.Types.Category do
     field(:product_count, :integer)
 
     field :products, list_of(:product) do
-      resolve(fn _category, _args, _info ->
-        # TODO: データローダーで実装
-        {:ok, []}
-      end)
+      resolve(dataloader(:query_service))
     end
 
     field(:created_at, non_null(:datetime))

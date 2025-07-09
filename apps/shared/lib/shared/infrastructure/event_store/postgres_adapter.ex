@@ -9,6 +9,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   alias Shared.Infrastructure.EventBus
   alias Shared.Infrastructure.EventStore.Schema.Event
   alias Shared.Infrastructure.EventStore.SnapshotStore
+  alias Shared.Infrastructure.EventStore.VersionConflictError
+  alias Shared.Infrastructure.EventStore.AggregateVersionCache
   require Logger
 
   @impl true
@@ -22,10 +24,17 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
         # イベントバスに発行
         Enum.each(inserted_events, &publish_event/1)
         last_event = List.last(inserted_events)
+        # バージョンキャッシュを更新
+        AggregateVersionCache.set_version(aggregate_id, last_event.event_version)
         {:ok, last_event.event_version}
 
-      {:error, :validate_version, :version_mismatch, _} ->
-        {:error, :version_mismatch}
+      {:error, :validate_version, {:version_mismatch, expected, actual}, _} ->
+        {:error,
+         %VersionConflictError{
+           aggregate_id: aggregate_id,
+           expected_version: expected,
+           actual_version: actual
+         }}
 
       {:error, _operation, reason, _changes} ->
         Logger.error("Failed to append events: #{inspect(reason)}")
@@ -159,19 +168,30 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
       if current_version == expected_version do
         {:ok, :valid}
       else
-        {:error, :version_mismatch}
+        {:error, {:version_mismatch, expected_version, current_version}}
       end
     end)
   end
 
   defp get_current_version(repo, aggregate_id) do
-    query =
-      from(e in Event,
-        where: e.aggregate_id == ^aggregate_id,
-        select: max(e.event_version)
-      )
+    # キャッシュからバージョンを取得
+    case AggregateVersionCache.get_version(aggregate_id) do
+      {:ok, version} ->
+        version
 
-    repo.one(query) || 0
+      {:error, :not_cached} ->
+        # キャッシュにない場合は DB から取得
+        query =
+          from(e in Event,
+            where: e.aggregate_id == ^aggregate_id,
+            select: max(e.event_version)
+          )
+
+        version = repo.one(query) || 0
+        # キャッシュに保存
+        AggregateVersionCache.set_version(aggregate_id, version)
+        version
+    end
   end
 
   defp insert_events(multi, aggregate_id, aggregate_type, events, expected_version, metadata) do
