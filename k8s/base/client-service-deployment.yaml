@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-service
+  namespace: elixir-cqrs
+  labels:
+    app.kubernetes.io/name: client-service
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: elixir-cqrs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: client-service
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: client-service
+        app.kubernetes.io/component: api
+        app.kubernetes.io/version: "1.0.0"
+    spec:
+      containers:
+      - name: client-service
+        image: IMAGE_PLACEHOLDER
+        ports:
+        - containerPort: 4000
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: elixir-cqrs-config
+        - secretRef:
+            name: elixir-cqrs-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - client-service
+              topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+  namespace: elixir-cqrs
+  labels:
+    app.kubernetes.io/name: client-service
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    app.kubernetes.io/name: client-service
+    app.kubernetes.io/component: api
+  ports:
+  - port: 80
+    targetPort: 4000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: client-service-ingress
+  namespace: elixir-cqrs
+  labels:
+    app.kubernetes.io/name: client-service
+    app.kubernetes.io/component: api
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - elixir-cqrs.example.com
+    secretName: client-service-tls
+  rules:
+  - host: elixir-cqrs.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client-service
+            port:
+              number: 80

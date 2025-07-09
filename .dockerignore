@@ -1,41 +1,54 @@
-# Git関連
+# Git
 .git
 .gitignore
 
-# Elixir関連
-_build/
+# Dependencies
 deps/
-*.ez
+_build/
+.elixir_ls/
+.fetch
 
-# ログファイル
-*.log
+# Static artifacts
+apps/*/priv/static/
 
-# テスト関連
-test/
-priv/repo/migrations/
+# Test coverage
+cover/
 
-# 開発環境関連
+# Secrets
 .env
-.env.local
+.env.*
 
-# IDE関連
-.vscode/
-.idea/
+# IDEs
+.idea
+.vscode
 *.swp
 *.swo
+*~
 
-# OS関連
+# OS
 .DS_Store
 Thumbs.db
 
-# Docker関連
-docker-compose*
-.dockerignore
+# Documentation
+doc/
+docs/
 
-# ドキュメント
-README.md
-DEVELOPMENT_GUIDE.md
+# Logs
+*.log
 
-# その他
-node_modules/
-npm-debug.log*
+# Temporary files
+tmp/
+temp/
+
+# CI/CD
+.github/
+k8s/
+scripts/
+
+# Development files
+docker-compose.yml
+docker-compose.*.yml
+Makefile
+
+# Old code
+old/

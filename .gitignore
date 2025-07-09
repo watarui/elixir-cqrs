@@ -10,7 +10,8 @@
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
 
 # Database
 *.db
@@ -52,3 +53,23 @@ temp/
 .claude/
 
 /old/
+
+# Kubernetes secrets
+k8s-secret-*.yaml
+sealed-secret.yaml
+
+# Local kubeconfig
+kubeconfig
+*.kubeconfig
+
+# Generated files
+k8s/generated/
+
+# Coverage reports
+excoveralls.json
+
+# Package tarballs
+shared-*.tar
+command_service-*.tar
+query_service-*.tar
+client_service-*.tar
