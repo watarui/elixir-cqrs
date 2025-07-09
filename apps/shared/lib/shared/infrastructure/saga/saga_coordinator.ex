@@ -110,8 +110,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
             updated_saga_state = update_saga_state_from_event(saga_state, event)
 
             # 完了または失敗したサガをチェック
-            if saga_module.is_completed?(updated_saga_state) or
-                 saga_module.is_failed?(updated_saga_state) do
+            if saga_module.completed?(updated_saga_state) or
+                 saga_module.failed?(updated_saga_state) do
               # サガを永続化してアクティブリストから削除
               persist_saga(saga_id, saga_module, updated_saga_state)
               %{acc_state | active_sagas: Map.delete(acc_state.active_sagas, saga_id)}

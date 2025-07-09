@@ -74,7 +74,7 @@ defmodule Shared.Telemetry.Metrics do
         unit: {:native, :millisecond},
         tags: [:saga_type]
       ),
-      gauge("cqrs.saga.active",
+      last_value("cqrs.saga.active",
         event_name: [:cqrs, :saga, :active],
         tags: [:saga_type]
       ),

@@ -5,6 +5,7 @@ defmodule Shared.Infrastructure.EventBus do
   PubSub を使用してイベントの発行と購読を管理します
   """
 
+  # PubSub の名前を定義
   @pubsub_name :event_bus_pubsub
 
   @doc """

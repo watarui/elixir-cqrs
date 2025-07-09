@@ -6,10 +6,10 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
   """
 
   alias CommandService.Domain.Aggregates.{OrderAggregate, ProductAggregate}
-  alias CommandService.Infrastructure.{UnitOfWork, RepositoryContext}
-  alias Shared.Infrastructure.EventBus
+  alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
   alias Shared.Domain.Events.OrderEvents
   alias Shared.Domain.ValueObjects.{EntityId, Money}
+  alias Shared.Infrastructure.EventBus
   alias Shared.Telemetry.Span
 
   require Logger

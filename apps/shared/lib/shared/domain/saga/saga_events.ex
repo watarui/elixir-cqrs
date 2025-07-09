@@ -21,6 +21,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.started"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaStepCompleted do
@@ -39,6 +42,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.step_completed"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaFailed do
@@ -66,6 +72,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.failed"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaCompensationStarted do
@@ -84,6 +93,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.compensation_started"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaCompensated do
@@ -102,6 +114,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.compensated"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaCompleted do
@@ -120,6 +135,9 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.completed"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 
   defmodule SagaUpdated do
@@ -147,5 +165,8 @@ defmodule Shared.Domain.Saga.SagaEvents do
 
     @impl true
     def event_type, do: "saga.updated"
+
+    @impl true
+    def aggregate_type, do: "Saga"
   end
 end

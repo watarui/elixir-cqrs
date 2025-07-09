@@ -25,6 +25,26 @@ defmodule CommandService.Application.Commands.BaseCommand do
         }
       end
 
+      # バリデーションヘルパー関数
+      defp validate_required(nil, field), do: {:error, "#{field} is required"}
+      defp validate_required("", field), do: {:error, "#{field} is required"}
+      defp validate_required(value, _field), do: :ok
+
+      defp validate_positive_integer(value, field) when is_integer(value) and value > 0, do: :ok
+
+      defp validate_positive_integer(_, field),
+        do: {:error, "#{field} must be a positive integer"}
+
+      defp validate_positive_number(value, field) when is_number(value) and value > 0, do: :ok
+      defp validate_positive_number(_, field), do: {:error, "#{field} must be a positive number"}
+
+      # デフォルト実装を提供
+      def command_type do
+        raise "command_type/0 must be implemented by #{__MODULE__}"
+      end
+
+      defoverridable command_type: 0
+
       defimpl Jason.Encoder do
         def encode(command, opts) do
           command

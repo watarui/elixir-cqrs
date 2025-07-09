@@ -10,11 +10,11 @@ defmodule CommandService.Domain.Aggregates.OrderAggregate do
   alias Shared.Domain.ValueObjects.{EntityId, Money}
 
   alias Shared.Domain.Events.OrderEvents.{
+    OrderCancelled,
+    OrderConfirmed,
     OrderCreated,
     OrderItemReserved,
-    OrderPaymentProcessed,
-    OrderConfirmed,
-    OrderCancelled
+    OrderPaymentProcessed
   }
 
   @enforce_keys [:id]

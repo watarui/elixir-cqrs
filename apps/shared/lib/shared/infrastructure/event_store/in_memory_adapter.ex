@@ -108,9 +108,9 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
   def handle_call({:get_events, aggregate_id, from_version}, _from, state) do
     events =
       state.events
-      |> Enum.filter(fn e -> e.aggregate_id == aggregate_id end)
       |> Enum.filter(fn e ->
-        is_nil(from_version) or e.event_version > from_version
+        e.aggregate_id == aggregate_id and
+          (is_nil(from_version) or e.event_version > from_version)
       end)
       |> Enum.sort_by(& &1.event_version)
       |> Enum.map(& &1.event_data)
@@ -125,9 +125,9 @@ defmodule Shared.Infrastructure.EventStore.InMemoryAdapter do
 
     events =
       state.events
-      |> Enum.filter(fn e -> e.event_type == event_type end)
       |> Enum.filter(fn e ->
-        is_nil(after_id) or e.id > after_id
+        e.event_type == event_type and
+          (is_nil(after_id) or e.id > after_id)
       end)
       |> Enum.sort_by(& &1.id)
       |> Enum.take(limit)

@@ -7,8 +7,8 @@ defmodule CommandService.Domain.Aggregates.CategoryAggregate do
 
   use Shared.Domain.Aggregate.Base
 
-  alias Shared.Domain.ValueObjects.{EntityId, CategoryName}
-  alias Shared.Domain.Events.CategoryEvents.{CategoryCreated, CategoryUpdated, CategoryDeleted}
+  alias Shared.Domain.ValueObjects.{CategoryName, EntityId}
+  alias Shared.Domain.Events.CategoryEvents.{CategoryCreated, CategoryDeleted, CategoryUpdated}
 
   @enforce_keys [:id]
   defstruct [:id, :name, :version, :deleted, :created_at, :updated_at, uncommitted_events: []]

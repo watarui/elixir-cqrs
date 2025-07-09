@@ -17,7 +17,9 @@ defmodule Shared.Infrastructure.EventStore.Schema.Event do
     timestamps()
   end
 
+  # 必須フィールド
   @required_fields [:aggregate_id, :aggregate_type, :event_type, :event_data, :event_version]
+  # オプションフィールド
   @optional_fields [:metadata]
 
   @doc """

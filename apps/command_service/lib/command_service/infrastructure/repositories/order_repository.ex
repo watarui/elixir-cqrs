@@ -6,9 +6,10 @@ defmodule CommandService.Infrastructure.Repositories.OrderRepository do
   @behaviour Shared.Domain.Repository
 
   alias CommandService.Domain.Aggregates.OrderAggregate
-  alias Shared.Infrastructure.EventStore.EventStore
   alias Shared.Domain.ValueObjects.EntityId
+  alias Shared.Infrastructure.EventStore.EventStore
 
+  # アグリゲートタイプ名
   @aggregate_type "Order"
 
   @impl true

@@ -3,10 +3,10 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   注文コマンドハンドラー
   """
 
+  alias CommandService.Application.Commands.OrderCommands
   alias CommandService.Application.Handlers.BaseCommandHandler
   alias CommandService.Domain.Aggregates.OrderAggregate
-  alias CommandService.Infrastructure.{UnitOfWork, RepositoryContext}
-  alias CommandService.Application.Commands.OrderCommands
+  alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
   alias Shared.Infrastructure.EventBus
   alias Shared.Infrastructure.Saga.SagaCoordinator
 
@@ -71,31 +71,38 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     UnitOfWork.transaction(fn context ->
       repo = RepositoryContext.get_repository(:order)
 
-      with {:ok, order} <- repo.find_by_id(command.order_id) do
-        # 各商品の在庫予約を記録
-        results =
-          Enum.map(command.items, fn item ->
-            case OrderAggregate.reserve_item(order, item.product_id, item.quantity) do
-              {:ok, updated_order} ->
-                repo.save(updated_order)
-                EventBus.publish_all(updated_order.uncommitted_events)
-                {:ok, item.product_id}
-
-              {:error, reason} ->
-                {:error, {item.product_id, reason}}
-            end
-          end)
-
-        # 全て成功したかチェック
-        errors = Enum.filter(results, &match?({:error, _}, &1))
-
-        if Enum.empty?(errors) do
-          {:ok, %{reserved_items: Enum.map(results, fn {:ok, id} -> id end)}}
-        else
-          {:error, "Failed to reserve some items: #{inspect(errors)}"}
-        end
+      with {:ok, order} <- repo.find_by_id(command.order_id),
+           {:ok, results} <- reserve_all_items(order, command.items, repo) do
+        {:ok, %{reserved_items: results}}
       end
     end)
+  end
+
+  defp reserve_all_items(order, items, repo) do
+    results =
+      Enum.map(items, fn item ->
+        reserve_single_item(order, item, repo)
+      end)
+
+    errors = Enum.filter(results, &match?({:error, _}, &1))
+
+    if Enum.empty?(errors) do
+      {:ok, Enum.map(results, fn {:ok, id} -> id end)}
+    else
+      {:error, "Failed to reserve some items: #{inspect(errors)}"}
+    end
+  end
+
+  defp reserve_single_item(order, item, repo) do
+    case OrderAggregate.reserve_item(order, item.product_id, item.quantity) do
+      {:ok, updated_order} ->
+        repo.save(updated_order)
+        EventBus.publish_all(updated_order.uncommitted_events)
+        {:ok, item.product_id}
+
+      {:error, reason} ->
+        {:error, {item.product_id, reason}}
+    end
   end
 
   @impl true

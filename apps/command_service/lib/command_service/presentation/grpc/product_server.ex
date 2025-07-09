@@ -6,8 +6,8 @@ defmodule CommandService.Presentation.Grpc.ProductServer do
   use GRPC.Server, service: ElixirCqrs.ProductCommandService.Service
 
   alias CommandService.Domain.Aggregates.ProductAggregate
+  alias ElixirCqrs.Common.{Error, Result}
   alias Shared.Infrastructure.EventStore.EventStore
-  alias ElixirCqrs.Common.{Result, Error}
 
   require Logger
 

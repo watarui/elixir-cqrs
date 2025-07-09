@@ -7,7 +7,7 @@ defmodule CommandService.Application do
 
   @impl true
   def start(_type, _args) do
-    port = Application.get_env(:command_service, :grpc_port, 50051)
+    port = Application.get_env(:command_service, :grpc_port, 50_051)
 
     children = [
       # データベース接続

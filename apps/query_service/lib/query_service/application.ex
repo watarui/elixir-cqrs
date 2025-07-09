@@ -7,7 +7,7 @@ defmodule QueryService.Application do
 
   @impl true
   def start(_type, _args) do
-    port = Application.get_env(:query_service, :grpc_port, 50052)
+    port = Application.get_env(:query_service, :grpc_port, 50_052)
 
     children = [
       # TODO: データベース接続

@@ -7,13 +7,13 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
 
   use Shared.Domain.Aggregate.Base
 
-  alias Shared.Domain.ValueObjects.{EntityId, ProductName, Money}
+  alias Shared.Domain.ValueObjects.{EntityId, Money, ProductName}
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,
-    ProductUpdated,
+    ProductDeleted,
     ProductPriceChanged,
-    ProductDeleted
+    ProductUpdated
   }
 
   @enforce_keys [:id]
@@ -153,76 +153,69 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   # Private functions
 
   defp validate_updates(aggregate, params) do
-    updates = %{}
+    with {:ok, name_update} <- validate_name_update(aggregate, params[:name]),
+         {:ok, price_update} <- validate_price_update(aggregate, params[:price]),
+         {:ok, category_update} <- validate_category_update(aggregate, params[:category_id]) do
+      updates =
+        %{}
+        |> maybe_add_update(:name, name_update)
+        |> maybe_add_update(:price, price_update)
+        |> maybe_add_update(:category_id, category_update)
 
-    updates =
-      if params[:name] do
-        case ProductName.new(params[:name]) do
-          {:ok, name} ->
-            if aggregate.name && aggregate.name.value == name.value do
-              updates
-            else
-              Map.put(updates, :name, name)
-            end
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-      else
-        updates
-      end
-
-    case updates do
-      {:error, _} = error ->
-        error
-
-      _ ->
-        updates =
-          if params[:price] do
-            case Money.new(params[:price]) do
-              {:ok, price} ->
-                if aggregate.price && Money.compare(aggregate.price, price) == :eq do
-                  updates
-                else
-                  Map.put(updates, :price, price)
-                end
-
-              {:error, reason} ->
-                {:error, reason}
-            end
-          else
-            updates
-          end
-
-        case updates do
-          {:error, _} = error ->
-            error
-
-          _ ->
-            updates =
-              if params[:category_id] do
-                case EntityId.from_string(params[:category_id]) do
-                  {:ok, cat_id} ->
-                    if aggregate.category_id && aggregate.category_id.value == cat_id.value do
-                      updates
-                    else
-                      Map.put(updates, :category_id, cat_id)
-                    end
-
-                  {:error, reason} ->
-                    {:error, reason}
-                end
-              else
-                updates
-              end
-
-            case updates do
-              {:error, _} = error -> error
-              _ -> {:ok, updates}
-            end
-        end
+      {:ok, updates}
     end
   end
+
+  defp validate_name_update(_aggregate, nil), do: {:ok, nil}
+
+  defp validate_name_update(aggregate, name) do
+    case ProductName.new(name) do
+      {:ok, new_name} ->
+        if aggregate.name && aggregate.name.value == new_name.value do
+          {:ok, nil}
+        else
+          {:ok, new_name}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp validate_price_update(_aggregate, nil), do: {:ok, nil}
+
+  defp validate_price_update(aggregate, price) do
+    case Money.new(price) do
+      {:ok, new_price} ->
+        if aggregate.price && Money.compare(aggregate.price, new_price) == :eq do
+          {:ok, nil}
+        else
+          {:ok, new_price}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp validate_category_update(_aggregate, nil), do: {:ok, nil}
+
+  defp validate_category_update(aggregate, category_id) do
+    case EntityId.from_string(category_id) do
+      {:ok, new_cat_id} ->
+        if aggregate.category_id && aggregate.category_id.value == new_cat_id.value do
+          {:ok, nil}
+        else
+          {:ok, new_cat_id}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp maybe_add_update(updates, _key, nil), do: updates
+  defp maybe_add_update(updates, key, value), do: Map.put(updates, key, value)
 
   @impl true
   def apply_event(aggregate, %ProductCreated{} = event) do

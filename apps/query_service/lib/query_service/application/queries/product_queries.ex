@@ -142,8 +142,15 @@ defmodule QueryService.Application.Queries.ProductQueries do
 
     defp validate_price(price) when is_binary(price) do
       case Decimal.parse(price) do
-        {decimal, ""} when Decimal.compare(decimal, 0) != :lt -> {:ok, decimal}
-        _ -> {:error, "Invalid price format"}
+        {decimal, ""} ->
+          if Decimal.compare(decimal, 0) != :lt do
+            {:ok, decimal}
+          else
+            {:error, "Price must be non-negative"}
+          end
+
+        _ ->
+          {:error, "Invalid price format"}
       end
     end
 

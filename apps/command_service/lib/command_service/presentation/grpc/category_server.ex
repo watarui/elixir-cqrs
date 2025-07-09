@@ -6,8 +6,8 @@ defmodule CommandService.Presentation.Grpc.CategoryServer do
   use GRPC.Server, service: ElixirCqrs.CategoryCommandService.Service
 
   alias CommandService.Domain.Aggregates.CategoryAggregate
+  alias ElixirCqrs.Common.{Error, Result}
   alias Shared.Infrastructure.EventStore.EventStore
-  alias ElixirCqrs.Common.{Result, Error}
 
   require Logger
 

@@ -7,11 +7,12 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
 
   use GenServer
 
-  alias Shared.Infrastructure.EventStore.EventStore
   alias Shared.Domain.Saga.SagaEvents
+  alias Shared.Infrastructure.EventStore.EventStore
 
   require Logger
 
+  # ETS テーブル名
   @table_name :saga_store
 
   # Client API

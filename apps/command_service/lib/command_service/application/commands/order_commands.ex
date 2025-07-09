@@ -33,6 +33,9 @@ defmodule CommandService.Application.Commands.OrderCommands do
       end
     end
 
+    @impl true
+    def command_type, do: "order.create"
+
     defp validate_items(items) when is_list(items) and length(items) > 0 do
       Enum.reduce_while(items, :ok, fn item, acc ->
         case validate_item(item) do
@@ -48,13 +51,11 @@ defmodule CommandService.Application.Commands.OrderCommands do
       with :ok <-
              validate_required(item[:product_id] || item["product_id"], "product_id in item"),
            :ok <-
-             validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item"),
-           :ok <-
-             validate_positive_number(
-               item[:unit_price] || item["unit_price"],
-               "unit_price in item"
-             ) do
-        :ok
+             validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item") do
+        validate_positive_number(
+          item[:unit_price] || item["unit_price"],
+          "unit_price in item"
+        )
       end
     end
 

@@ -1,15 +1,15 @@
 defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
   use ExUnit.Case, async: false
 
-  alias Shared.Infrastructure.Saga.SagaCoordinator
-  alias Shared.Domain.Events.OrderEvents
   alias CommandService.Domain.Sagas.OrderSaga
+  alias Shared.Domain.Events.OrderEvents
+  alias Shared.Infrastructure.Saga.SagaCoordinator
 
   setup do
     # サガコーディネーターを再起動
     :ok = GenServer.stop(SagaCoordinator, :normal)
     {:ok, _pid} = SagaCoordinator.start_link([])
-    
+
     :ok
   end
 
@@ -19,7 +19,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
         order_id: "order-123",
         user_id: "user-456",
         items: [%{product_id: "prod-1", quantity: 2}],
-        total_amount: 10000
+        total_amount: 10_000
       }
 
       assert {:ok, saga_id} = SagaCoordinator.start_saga(OrderSaga, initial_data)
@@ -58,7 +58,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinatorTest do
         order_id: "order-123",
         user_id: "user-456",
         items: [%{product_id: "prod-1", quantity: 2}],
-        total_amount: 10000
+        total_amount: 10_000
       }
       {:ok, saga_id} = SagaCoordinator.start_saga(OrderSaga, initial_data)
 

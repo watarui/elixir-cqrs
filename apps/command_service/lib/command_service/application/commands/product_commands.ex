@@ -96,62 +96,42 @@ defmodule CommandService.Application.Commands.ProductCommands do
     defp validate_id(_), do: {:error, "ID must be a string"}
 
     defp validate_updates(params) do
-      updates = %{}
+      with {:ok, name} <- maybe_validate_field(params, ["name"], &validate_name/1),
+           {:ok, price} <- maybe_validate_field(params, ["price"], &validate_price/1),
+           {:ok, category_id} <-
+             maybe_validate_field(params, ["category_id"], &validate_category_id/1) do
+        updates =
+          %{}
+          |> maybe_put_field(:name, name)
+          |> maybe_put_field(:price, price)
+          |> maybe_put_field(:category_id, category_id)
 
-      updates =
-        if params["name"] || params[:name] do
-          case validate_name(params["name"] || params[:name]) do
-            {:ok, name} -> Map.put(updates, :name, name)
-            error -> error
-          end
+        if map_size(updates) == 0 do
+          {:error, "At least one field must be updated"}
         else
-          updates
+          {:ok, updates}
         end
-
-      case updates do
-        {:error, _} = error ->
-          error
-
-        _ ->
-          updates =
-            if params["price"] || params[:price] do
-              case validate_price(params["price"] || params[:price]) do
-                {:ok, price} -> Map.put(updates, :price, price)
-                error -> error
-              end
-            else
-              updates
-            end
-
-          case updates do
-            {:error, _} = error ->
-              error
-
-            _ ->
-              updates =
-                if params["category_id"] || params[:category_id] do
-                  case validate_category_id(params["category_id"] || params[:category_id]) do
-                    {:ok, cat_id} -> Map.put(updates, :category_id, cat_id)
-                    error -> error
-                  end
-                else
-                  updates
-                end
-
-              case updates do
-                {:error, _} = error ->
-                  error
-
-                _ ->
-                  if map_size(updates) == 0 do
-                    {:error, "At least one field must be updated"}
-                  else
-                    {:ok, updates}
-                  end
-              end
-          end
       end
     end
+
+    defp maybe_validate_field(params, keys, validator) do
+      value = get_nested_value(params, keys)
+
+      if value do
+        validator.(value)
+      else
+        {:ok, nil}
+      end
+    end
+
+    defp get_nested_value(params, keys) do
+      Enum.find_value(keys, fn key ->
+        params[key] || params[String.to_atom(key)]
+      end)
+    end
+
+    defp maybe_put_field(map, _key, nil), do: map
+    defp maybe_put_field(map, key, value), do: Map.put(map, key, value)
 
     defp validate_name(name) when is_binary(name), do: {:ok, name}
     defp validate_name(_), do: {:error, "Name must be a string"}

@@ -6,8 +6,8 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   @behaviour Shared.Infrastructure.EventStore.EventStore
 
   import Ecto.Query
-  alias Shared.Infrastructure.EventStore.Schema.Event
   alias Shared.Infrastructure.EventBus
+  alias Shared.Infrastructure.EventStore.Schema.Event
   require Logger
 
   @impl true

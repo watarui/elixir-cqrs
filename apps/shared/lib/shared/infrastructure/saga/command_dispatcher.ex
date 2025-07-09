@@ -11,6 +11,7 @@ defmodule Shared.Infrastructure.Saga.CommandDispatcher do
 
   require Logger
 
+  # コマンドサービスの gRPC URL
   @command_service_channel Application.compile_env(
                              :shared,
                              :command_service_grpc_url,

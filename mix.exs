@@ -39,7 +39,7 @@ defmodule ElixirCqrs.MixProject do
       {:opentelemetry_telemetry, "~> 1.0"},
 
       # Telemetry
-      {:telemetry_metrics, "~> 0.6"},
+      {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"}
     ]
   end

@@ -14,7 +14,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
           %{product_id: "prod-1", quantity: 2},
           %{product_id: "prod-2", quantity: 1}
         ],
-        total_amount: 15000
+        total_amount: 15_000
       }
 
       saga = OrderSaga.new(saga_id, initial_data)
@@ -25,7 +25,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       assert saga.state == :started
       assert saga.current_step == :reserve_inventory
       assert length(saga.items) == 2
-      assert saga.total_amount == 15000
+      assert saga.total_amount == 15_000
       refute saga.inventory_reserved
       refute saga.payment_processed
       refute saga.shipping_arranged
@@ -39,7 +39,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
         order_id: "order-456",
         user_id: "user-789",
         items: [%{product_id: "prod-1", quantity: 2}],
-        total_amount: 10000
+        total_amount: 10_000
       })
 
       {:ok, saga: saga}
@@ -59,11 +59,11 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
       [command] = commands
       assert command.command_type == "process_payment"
       assert command.order_id == "order-456"
-      assert command.amount == 10000
+      assert command.amount == 10_000
     end
 
     test "支払い処理成功イベントを処理する", %{saga: saga} do
-      saga = %{saga | 
+      saga = %{saga |
         current_step: :process_payment,
         inventory_reserved: true,
         reservation_ids: ["prod-1"]
@@ -71,7 +71,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
 
       event = %OrderEvents.OrderPaymentProcessed{
         order_id: %{value: "order-456"},
-        amount: %{amount: 10000, currency: "JPY"},
+        amount: %{amount: 10_000, currency: "JPY"},
         payment_id: "payment-123",
         processed_at: DateTime.utc_now()
       }
@@ -85,7 +85,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
     end
 
     test "注文確定イベントを処理する", %{saga: saga} do
-      saga = %{saga | 
+      saga = %{saga |
         current_step: :confirm_order,
         inventory_reserved: true,
         payment_processed: true,
@@ -107,27 +107,27 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
         order_id: "order-456",
         user_id: "user-789",
         items: [%{product_id: "prod-1", quantity: 2}],
-        total_amount: 10000
+        total_amount: 10_000
       })
 
       # 在庫予約済みの場合
-      saga = %{saga | 
+      saga = %{saga |
         inventory_reserved: true,
         reservation_ids: ["prod-1"]
       }
       commands = OrderSaga.get_compensation_commands(saga)
-      
+
       assert Enum.any?(commands, fn cmd ->
         cmd.command_type == "release_inventory"
       end)
 
       # 支払い処理済みの場合
-      saga = %{saga | 
+      saga = %{saga |
         payment_processed: true,
         payment_id: "payment-123"
       }
       commands = OrderSaga.get_compensation_commands(saga)
-      
+
       assert Enum.any?(commands, fn cmd ->
         cmd.command_type == "refund_payment"
       end)
@@ -137,28 +137,28 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
     end
   end
 
-  describe "is_completed?/1" do
+  describe "completed?/1" do
     test "完了状態を正しく判定する" do
       saga = OrderSaga.new("saga-123", %{})
 
-      refute OrderSaga.is_completed?(saga)
+      refute OrderSaga.completed?(saga)
 
       completed_saga = %{saga | state: :completed, order_confirmed: true}
-      assert OrderSaga.is_completed?(completed_saga)
+      assert OrderSaga.completed?(completed_saga)
     end
   end
 
-  describe "is_failed?/1" do
+  describe "failed?/1" do
     test "失敗状態を正しく判定する" do
       saga = OrderSaga.new("saga-123", %{})
 
-      refute OrderSaga.is_failed?(saga)
+      refute OrderSaga.failed?(saga)
 
       failed_saga = %{saga | state: :failed}
-      assert OrderSaga.is_failed?(failed_saga)
+      assert OrderSaga.failed?(failed_saga)
 
       compensated_saga = %{saga | state: :compensated}
-      assert OrderSaga.is_failed?(compensated_saga)
+      assert OrderSaga.failed?(compensated_saga)
     end
   end
 end

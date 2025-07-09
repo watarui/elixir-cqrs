@@ -16,6 +16,11 @@ defmodule Shared.Domain.Aggregate.Base do
     quote do
       @behaviour Shared.Domain.Aggregate.Base
 
+      # 型定義を共有
+      @type aggregate_id :: String.t()
+      @type event :: struct()
+      @type aggregate :: struct()
+
       @doc """
       イベントのリストからアグリゲートを再構築する
       """
@@ -68,6 +73,15 @@ defmodule Shared.Domain.Aggregate.Base do
         |> apply_event(event)
         |> increment_version()
         |> add_uncommitted_event(event)
+      end
+
+      # デフォルト実装を提供
+      def new do
+        raise "new/0 must be implemented by #{__MODULE__}"
+      end
+
+      def apply_event(_aggregate, _event) do
+        raise "apply_event/2 must be implemented by #{__MODULE__}"
       end
 
       defoverridable new: 0, apply_event: 2

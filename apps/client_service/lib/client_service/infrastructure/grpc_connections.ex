@@ -8,8 +8,8 @@ defmodule ClientService.Infrastructure.GrpcConnections do
   use GenServer
   require Logger
 
-  @command_service_port 50051
-  @query_service_port 50052
+  @command_service_port 50_051
+  @query_service_port 50_052
 
   # Client API
 

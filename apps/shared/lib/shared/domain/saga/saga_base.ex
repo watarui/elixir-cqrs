@@ -13,8 +13,8 @@ defmodule Shared.Domain.Saga.SagaBase do
   @callback new(saga_id(), map()) :: map()
   @callback handle_event(event(), map()) :: {:ok, [command()]} | {:error, String.t()}
   @callback get_compensation_commands(map()) :: [command()]
-  @callback is_completed?(map()) :: boolean()
-  @callback is_failed?(map()) :: boolean()
+  @callback completed?(map()) :: boolean()
+  @callback failed?(map()) :: boolean()
 
   defmacro __using__(_opts) do
     quote do
@@ -119,11 +119,32 @@ defmodule Shared.Domain.Saga.SagaBase do
         end
       end
 
+      # デフォルト実装を提供
+      def new(_saga_id, _initial_data) do
+        raise "new/2 must be implemented by #{__MODULE__}"
+      end
+
+      def handle_event(_event, _saga) do
+        raise "handle_event/2 must be implemented by #{__MODULE__}"
+      end
+
+      def get_compensation_commands(_saga) do
+        raise "get_compensation_commands/1 must be implemented by #{__MODULE__}"
+      end
+
+      def completed?(_saga) do
+        raise "completed?/1 must be implemented by #{__MODULE__}"
+      end
+
+      def failed?(_saga) do
+        raise "failed?/1 must be implemented by #{__MODULE__}"
+      end
+
       defoverridable new: 2,
                      handle_event: 2,
                      get_compensation_commands: 1,
-                     is_completed?: 1,
-                     is_failed?: 1
+                     completed?: 1,
+                     failed?: 1
     end
   end
 end

@@ -3,7 +3,7 @@ defmodule Shared.Domain.Events.CategoryEvents do
   カテゴリに関連するドメインイベント
   """
 
-  alias Shared.Domain.ValueObjects.{EntityId, CategoryName}
+  alias Shared.Domain.ValueObjects.{CategoryName, EntityId}
 
   defmodule CategoryCreated do
     @moduledoc """

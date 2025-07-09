@@ -20,7 +20,7 @@ defmodule Shared.Domain.ValueObjects.Money do
 
       iex> Money.new(1000)
       {:ok, %Money{amount: #Decimal<1000>, currency: "JPY"}}
-      
+
       iex> Money.new(-100)
       {:error, "Amount must be non-negative"}
   """

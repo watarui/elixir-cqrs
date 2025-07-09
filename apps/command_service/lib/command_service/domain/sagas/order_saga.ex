@@ -9,6 +9,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
   alias Shared.Domain.ValueObjects.{EntityId, Money}
 
+  # サガのステップ定義
   @steps [:reserve_inventory, :process_payment, :arrange_shipping, :confirm_order]
 
   @impl true
@@ -78,7 +79,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
         {:ok, commands}
 
       # 配送手配完了
-      {:arrange_shipping, _ShippingArranged} ->
+      {:arrange_shipping, _shipping_arranged} ->
         saga =
           saga
           |> Map.put(:shipping_arranged, true)
@@ -100,7 +101,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
         {:ok, []}
 
       # エラーイベント
-      {_, _ErrorEvent} ->
+      {_, _error_event} ->
         saga = record_failure(saga, saga.current_step, "Step failed")
         compensation_commands = get_compensation_commands(saga)
         {:ok, compensation_commands}
@@ -147,12 +148,12 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   end
 
   @impl true
-  def is_completed?(saga) do
+  def completed?(saga) do
     saga.state == :completed && saga.order_confirmed
   end
 
   @impl true
-  def is_failed?(saga) do
+  def failed?(saga) do
     saga.state in [:failed, :compensated]
   end
 

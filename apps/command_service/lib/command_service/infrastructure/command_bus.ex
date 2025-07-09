@@ -9,8 +9,8 @@ defmodule CommandService.Infrastructure.CommandBus do
 
   alias CommandService.Application.Handlers.{
     CategoryCommandHandler,
-    ProductCommandHandler,
     OrderCommandHandler,
+    ProductCommandHandler,
     SagaCommandHandler
   }
 

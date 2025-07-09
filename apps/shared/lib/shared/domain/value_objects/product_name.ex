@@ -20,10 +20,10 @@ defmodule Shared.Domain.ValueObjects.ProductName do
 
       iex> ProductName.new("ノートパソコン")
       {:ok, %ProductName{value: "ノートパソコン"}}
-      
+
       iex> ProductName.new("")
       {:error, "Name cannot be empty"}
-      
+
       iex> ProductName.new(String.duplicate("a", 101))
       {:error, "Name too long (max 100 characters)"}
   """

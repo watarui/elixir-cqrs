@@ -9,13 +9,13 @@ defmodule Shared.Infrastructure.EventStore.Repo.Migrations.CreateEventStore do
       add :event_data, :map, null: false
       add :event_version, :integer, null: false
       add :metadata, :map, default: %{}
-      
+
       timestamps()
     end
 
     # アグリゲートIDとバージョンの複合ユニークインデックス
     create unique_index(:events, [:aggregate_id, :event_version])
-    
+
     # パフォーマンス向上のためのインデックス
     create index(:events, [:aggregate_id])
     create index(:events, [:event_type])

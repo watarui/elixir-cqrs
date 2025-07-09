@@ -20,10 +20,10 @@ defmodule Shared.Domain.ValueObjects.CategoryName do
 
       iex> CategoryName.new("電化製品")
       {:ok, %CategoryName{value: "電化製品"}}
-      
+
       iex> CategoryName.new("")
       {:error, "Name cannot be empty"}
-      
+
       iex> CategoryName.new(String.duplicate("a", 51))
       {:error, "Name too long (max 50 characters)"}
   """

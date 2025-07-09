@@ -3,7 +3,7 @@ defmodule Shared.Domain.Events.ProductEvents do
   商品に関連するドメインイベント
   """
 
-  alias Shared.Domain.ValueObjects.{EntityId, ProductName, Money}
+  alias Shared.Domain.ValueObjects.{EntityId, Money, ProductName}
 
   defmodule ProductCreated do
     @moduledoc """
