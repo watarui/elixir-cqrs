@@ -56,4 +56,22 @@ defmodule Shared.Infrastructure.EventBus do
   def unsubscribe_all do
     Phoenix.PubSub.unsubscribe(@pubsub_name, "events:all")
   end
+
+  @doc """
+  イベントオブジェクトからイベントタイプを取得して発行する
+  """
+  @spec publish_event(struct()) :: :ok
+  def publish_event(event) do
+    event_type = event.__struct__.event_type()
+    publish(event_type, event)
+  end
+
+  @doc """
+  複数のイベントを発行する
+  """
+  @spec publish_all([struct()]) :: :ok
+  def publish_all(events) do
+    Enum.each(events, &publish_event/1)
+    :ok
+  end
 end

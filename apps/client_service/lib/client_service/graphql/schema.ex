@@ -12,11 +12,15 @@ defmodule ClientService.GraphQL.Schema do
 
   alias ClientService.GraphQL.Resolvers
 
+  # PubSub版のリゾルバーを使用
+  alias ClientService.GraphQL.Resolvers.CategoryResolverPubsub, as: CategoryResolver
+  alias ClientService.GraphQL.Resolvers.ProductResolverPubsub, as: ProductResolver
+
   query do
     @desc "カテゴリを取得"
     field :category, :category do
       arg(:id, non_null(:id))
-      resolve(&Resolvers.CategoryResolver.get_category/3)
+      resolve(&CategoryResolver.get_category/3)
     end
 
     @desc "カテゴリ一覧を取得"
@@ -25,7 +29,7 @@ defmodule ClientService.GraphQL.Schema do
       arg(:offset, :integer, default_value: 0)
       arg(:sort_by, :string, default_value: "name")
       arg(:sort_order, :sort_order, default_value: :asc)
-      resolve(&Resolvers.CategoryResolver.list_categories/3)
+      resolve(&CategoryResolver.list_categories/3)
     end
 
     @desc "カテゴリを検索"
@@ -33,13 +37,13 @@ defmodule ClientService.GraphQL.Schema do
       arg(:search_term, non_null(:string))
       arg(:limit, :integer, default_value: 20)
       arg(:offset, :integer, default_value: 0)
-      resolve(&Resolvers.CategoryResolver.search_categories/3)
+      resolve(&CategoryResolver.search_categories/3)
     end
 
     @desc "商品を取得"
     field :product, :product do
       arg(:id, non_null(:id))
-      resolve(&Resolvers.ProductResolver.get_product/3)
+      resolve(&ProductResolver.get_product/3)
     end
 
     @desc "商品一覧を取得"
@@ -51,7 +55,7 @@ defmodule ClientService.GraphQL.Schema do
       arg(:sort_order, :sort_order, default_value: :asc)
       arg(:min_price, :decimal)
       arg(:max_price, :decimal)
-      resolve(&Resolvers.ProductResolver.list_products/3)
+      resolve(&ProductResolver.list_products/3)
     end
 
     @desc "商品を検索"
@@ -60,7 +64,7 @@ defmodule ClientService.GraphQL.Schema do
       arg(:category_id, :id)
       arg(:limit, :integer, default_value: 20)
       arg(:offset, :integer, default_value: 0)
-      resolve(&Resolvers.ProductResolver.search_products/3)
+      resolve(&ProductResolver.search_products/3)
     end
   end
 
@@ -68,46 +72,46 @@ defmodule ClientService.GraphQL.Schema do
     @desc "カテゴリを作成"
     field :create_category, :category do
       arg(:input, non_null(:create_category_input))
-      resolve(&Resolvers.CategoryResolver.create_category/3)
+      resolve(&CategoryResolver.create_category/3)
     end
 
     @desc "カテゴリを更新"
     field :update_category, :category do
       arg(:id, non_null(:id))
       arg(:input, non_null(:update_category_input))
-      resolve(&Resolvers.CategoryResolver.update_category/3)
+      resolve(&CategoryResolver.update_category/3)
     end
 
     @desc "カテゴリを削除"
     field :delete_category, :delete_result do
       arg(:id, non_null(:id))
-      resolve(&Resolvers.CategoryResolver.delete_category/3)
+      resolve(&CategoryResolver.delete_category/3)
     end
 
     @desc "商品を作成"
     field :create_product, :product do
       arg(:input, non_null(:create_product_input))
-      resolve(&Resolvers.ProductResolver.create_product/3)
+      resolve(&ProductResolver.create_product/3)
     end
 
     @desc "商品を更新"
     field :update_product, :product do
       arg(:id, non_null(:id))
       arg(:input, non_null(:update_product_input))
-      resolve(&Resolvers.ProductResolver.update_product/3)
+      resolve(&ProductResolver.update_product/3)
     end
 
     @desc "商品価格を変更"
     field :change_product_price, :product do
       arg(:id, non_null(:id))
       arg(:new_price, non_null(:decimal))
-      resolve(&Resolvers.ProductResolver.change_product_price/3)
+      resolve(&ProductResolver.change_product_price/3)
     end
 
     @desc "商品を削除"
     field :delete_product, :delete_result do
       arg(:id, non_null(:id))
-      resolve(&Resolvers.ProductResolver.delete_product/3)
+      resolve(&ProductResolver.delete_product/3)
     end
   end
 

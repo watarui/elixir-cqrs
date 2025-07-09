@@ -14,6 +14,8 @@ defmodule CommandService.Application do
       CommandService.Repo,
       # コマンドバス
       CommandService.Infrastructure.CommandBus,
+      # コマンドリスナー（PubSub経由でコマンドを受信）
+      CommandService.Infrastructure.CommandListener,
       # gRPC サーバー
       {GRPC.Server.Supervisor,
        endpoint: CommandService.Presentation.Grpc.Endpoint, port: port, start_server: true}

@@ -15,7 +15,9 @@ defmodule QueryService.Application do
       # クエリバス
       QueryService.Infrastructure.QueryBus,
       # プロジェクションマネージャー
-      QueryService.Infrastructure.ProjectionManagerV2,
+      QueryService.Infrastructure.ProjectionManager,
+      # クエリリスナー（PubSub経由でクエリを受信）
+      QueryService.Infrastructure.QueryListener,
       # TODO: キャッシュ (ETS)
       # gRPC サーバー
       {GRPC.Server.Supervisor,

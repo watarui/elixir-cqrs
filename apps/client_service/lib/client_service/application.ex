@@ -14,6 +14,10 @@ defmodule ClientService.Application do
       ClientServiceWeb.Telemetry,
       # PubSub
       {Phoenix.PubSub, name: ClientService.PubSub},
+      # Remote Command Bus (PubSub経由でコマンドを送信)
+      ClientService.Infrastructure.RemoteCommandBus,
+      # Remote Query Bus (PubSub経由でクエリを送信)
+      ClientService.Infrastructure.RemoteQueryBus,
       # Endpoint
       ClientServiceWeb.Endpoint,
       # gRPC 接続プール

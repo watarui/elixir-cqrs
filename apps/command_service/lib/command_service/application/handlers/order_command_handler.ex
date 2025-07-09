@@ -135,7 +135,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
       released_at: DateTime.utc_now()
     }
 
-    EventBus.publish(event)
+    EventBus.publish(event.event_type, event)
     {:ok, %{released: true}}
   end
 
@@ -151,7 +151,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
       refunded_at: DateTime.utc_now()
     }
 
-    EventBus.publish(event)
+    EventBus.publish(event.event_type, event)
     {:ok, %{refunded: true}}
   end
 
@@ -166,7 +166,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
       cancelled_at: DateTime.utc_now()
     }
 
-    EventBus.publish(event)
+    EventBus.publish(event.event_type, event)
     {:ok, %{cancelled: true}}
   end
 

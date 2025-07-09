@@ -32,7 +32,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
               reserved_at: DateTime.utc_now()
             })
 
-          EventBus.publish(event)
+          EventBus.publish(event.event_type, event)
           {:ok, %{reserved: true}}
         end)
       end
@@ -58,7 +58,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
               processed_at: DateTime.utc_now()
             })
 
-          EventBus.publish(event)
+          EventBus.publish(event.event_type, event)
           {:ok, %{payment_id: payment_id}}
         end)
       end
@@ -84,7 +84,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
             arranged_at: DateTime.utc_now()
           }
 
-          EventBus.publish(event)
+          EventBus.publish(event.event_type, event)
           {:ok, %{shipping_id: shipping_id}}
         end)
       end
@@ -136,7 +136,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
           released_at: DateTime.utc_now()
         }
 
-        EventBus.publish(event)
+        EventBus.publish(event.event_type, event)
         {:ok, %{released: true}}
       end
     end
@@ -159,7 +159,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
           refunded_at: DateTime.utc_now()
         }
 
-        EventBus.publish(event)
+        EventBus.publish(event.event_type, event)
         {:ok, %{refunded: true}}
       end
     end
@@ -181,7 +181,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
           cancelled_at: DateTime.utc_now()
         }
 
-        EventBus.publish(event)
+        EventBus.publish(event.event_type, event)
         {:ok, %{cancelled: true}}
       end
     end

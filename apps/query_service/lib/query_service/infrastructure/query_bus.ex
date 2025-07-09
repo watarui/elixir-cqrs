@@ -27,6 +27,12 @@ defmodule QueryService.Infrastructure.QueryBus do
   end
 
   @doc """
+  クエリをディスパッチする（executeのエイリアス）
+  """
+  @spec dispatch(query()) :: result()
+  def dispatch(query), do: execute(query)
+
+  @doc """
   ハンドラーを登録する
   """
   @spec register_handler(String.t(), handler()) :: :ok

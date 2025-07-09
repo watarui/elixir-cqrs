@@ -35,7 +35,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
               # イベントを UnitOfWork に追加
               UnitOfWork.add_events(events)
               # イベントを発行
-              Enum.each(events, &EventBus.publish/1)
+              Enum.each(events, &EventBus.publish_event/1)
               {:ok, updated_aggregate}
 
             {:error, reason} ->
@@ -62,7 +62,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
         # イベントを UnitOfWork に追加
         UnitOfWork.add_events(events)
         # イベントを発行
-        Enum.each(events, &EventBus.publish/1)
+        Enum.each(events, &EventBus.publish_event/1)
         {:ok, updated_aggregate}
       else
         {:error, reason} -> {:error, reason}
@@ -86,7 +86,7 @@ defmodule CommandService.Application.Handlers.CategoryCommandHandler do
         # イベントを UnitOfWork に追加
         UnitOfWork.add_events(events)
         # イベントを発行
-        Enum.each(events, &EventBus.publish/1)
+        Enum.each(events, &EventBus.publish_event/1)
         {:ok, updated_aggregate}
       else
         {:error, reason} -> {:error, reason}
