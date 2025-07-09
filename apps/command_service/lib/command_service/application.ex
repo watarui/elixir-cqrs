@@ -14,11 +14,15 @@ defmodule CommandService.Application do
       CommandService.Repo,
       # コマンドバス
       CommandService.Infrastructure.CommandBus,
-      # gRPC エンドポイント
+      # gRPC サーバー
       {GRPC.Server.Supervisor, endpoint: CommandService.Presentation.Grpc.Endpoint, port: port}
     ]
 
     opts = [strategy: :one_for_one, name: CommandService.Supervisor]
+
+    require Logger
+    Logger.info("Starting Command Service with gRPC server on port #{port}")
+
     Supervisor.start_link(children, opts)
   end
 end

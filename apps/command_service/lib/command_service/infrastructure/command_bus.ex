@@ -99,13 +99,21 @@ defmodule CommandService.Infrastructure.CommandBus do
     ProductCommandHandler.handle(cmd)
   end
 
-  defp route_command(
-         %CommandService.Application.Commands.ProductCommands.ChangeProductPrice{} = cmd
-       ) do
+  # NOTE: ChangeProductPrice is not yet implemented in the RPC service
+
+  defp route_command(%CommandService.Application.Commands.ProductCommands.DeleteProduct{} = cmd) do
     ProductCommandHandler.handle(cmd)
   end
 
-  defp route_command(%CommandService.Application.Commands.ProductCommands.DeleteProduct{} = cmd) do
+  defp route_command(%CommandService.Application.Commands.ProductCommands.UpdateStock{} = cmd) do
+    ProductCommandHandler.handle(cmd)
+  end
+
+  defp route_command(%CommandService.Application.Commands.ProductCommands.ReserveStock{} = cmd) do
+    ProductCommandHandler.handle(cmd)
+  end
+
+  defp route_command(%CommandService.Application.Commands.ProductCommands.ReleaseStock{} = cmd) do
     ProductCommandHandler.handle(cmd)
   end
 

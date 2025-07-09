@@ -84,6 +84,64 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
     {:ok, Enum.map(categories, &to_domain_model/1)}
   end
 
+  @doc """
+  カテゴリを作成
+  """
+  def create(attrs) do
+    changeset =
+      Ecto.Changeset.cast(%CategorySchema{}, attrs, [
+        :id,
+        :name,
+        :description,
+        :parent_id,
+        :active,
+        :product_count,
+        :metadata,
+        :inserted_at,
+        :updated_at
+      ])
+
+    case Repo.insert(changeset) do
+      {:ok, category} -> {:ok, to_domain_model(category)}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  @doc """
+  カテゴリを更新
+  """
+  def update(id, attrs) do
+    with {:ok, category} <- Repo.get(CategorySchema, id) |> handle_get_result() do
+      changeset =
+        Ecto.Changeset.cast(category, attrs, [
+          :name,
+          :description,
+          :parent_id,
+          :active,
+          :product_count,
+          :metadata,
+          :updated_at
+        ])
+
+      case Repo.update(changeset) do
+        {:ok, updated} -> {:ok, to_domain_model(updated)}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
+  カテゴリを削除
+  """
+  def delete(id) do
+    with {:ok, category} <- Repo.get(CategorySchema, id) |> handle_get_result() do
+      case Repo.delete(category) do
+        {:ok, _} -> {:ok, nil}
+        {:error, changeset} -> {:error, changeset}
+      end
+    end
+  end
+
   # Private functions
 
   defp to_domain_model(schema) do
@@ -123,4 +181,7 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
 
   defp maybe_offset(query, nil), do: query
   defp maybe_offset(query, offset), do: from(c in query, offset: ^offset)
+
+  defp handle_get_result(nil), do: {:error, :not_found}
+  defp handle_get_result(result), do: {:ok, result}
 end

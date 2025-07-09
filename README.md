@@ -2,6 +2,33 @@
 
 このプロジェクトは、Elixir/Phoenix を使用して CQRS (Command Query Responsibility Segregation)、Event Sourcing、SAGA パターンを実装したマイクロサービスアーキテクチャの学習用プロジェクトです。
 
+## クイックスタート
+
+```bash
+# 依存関係のインストール
+mix deps.get
+
+# Docker コンテナの起動
+docker compose up -d
+
+# データベースのセットアップ
+./scripts/setup_db.sh
+
+# サービスの起動（3つのターミナルで実行）
+# Terminal 1: Command Service
+cd apps/command_service && iex -S mix
+
+# Terminal 2: Query Service
+cd apps/query_service && iex -S mix
+
+# Terminal 3: Client Service
+cd apps/client_service && mix phx.server
+```
+
+GraphQL Playground: http://localhost:4000/graphql
+
+詳細な手順は [Getting Started Guide](./docs/GETTING_STARTED.md) を参照してください。
+
 ## アーキテクチャ
 
 ### マイクロサービス構成
@@ -30,111 +57,90 @@
 
 ## 技術スタック
 
-- **言語**: Elixir
-- **フレームワーク**: Phoenix
-- **データベース**: PostgreSQL
-- **API**: GraphQL (Absinthe) + gRPC
-- **メッセージング**: イベントバス（プロセス間通信）
-- **監視**: OpenTelemetry + Jaeger + Prometheus + Grafana
+- **言語**: Elixir 1.18+
+- **フレームワーク**: Phoenix Framework
+- **データベース**: PostgreSQL 16+ (3つのインスタンス)
+- **API**: 
+  - GraphQL (Absinthe) - クライアント向け API
+  - gRPC - マイクロサービス間通信
+- **イベントストア**: PostgreSQL ベースの実装
+- **監視**: 
+  - OpenTelemetry - 分散トレーシング
+  - Jaeger - トレース可視化
+  - Prometheus - メトリクス収集
+  - Grafana - ダッシュボード
 
-## セットアップ
+## ドキュメント
 
-### 必要な環境
+- [Getting Started](./docs/GETTING_STARTED.md) - 環境構築と起動手順
+- [アーキテクチャ概要](./docs/ARCHITECTURE.md) - システム設計と構成
+- [開発ガイド](./docs/DEVELOPMENT.md) - 開発規約と新機能の追加方法
+- [API リファレンス](./docs/API_REFERENCE.md) - GraphQL/gRPC API の詳細
 
-- Elixir 1.15+
-- PostgreSQL 16+
-- Docker & Docker Compose
+## API の使用例
 
-### 手順
+### GraphQL Playground
 
-1. 依存関係のインストール
-```bash
-mix deps.get
+http://localhost:4000/graphql でインタラクティブな GraphQL Playground が利用できます。
+
+### カテゴリ作成
+
+```graphql
+mutation {
+  createCategory(input: {
+    name: "Electronics"
+    description: "Electronic devices and gadgets"
+  }) {
+    id
+    name
+    description
+    productCount
+  }
+}
 ```
 
-2. データベースの起動
-```bash
-docker compose up -d
+### 商品作成
+
+```graphql
+mutation {
+  createProduct(input: {
+    name: "MacBook Pro"
+    description: "High-performance laptop"
+    price: 299900
+    stockQuantity: 10
+    categoryId: "category-id-here"
+  }) {
+    id
+    name
+    price
+    stockQuantity
+  }
+}
 ```
 
-3. データベースのセットアップ
-```bash
-mix ecto.setup
-```
+詳細な API ドキュメントは [API Reference](./docs/API_REFERENCE.md) を参照してください。
 
-4. アプリケーションの起動
-```bash
-mix phx.server
-```
+## 監視ツール
 
-## API の使用方法
-
-### GraphQL API
-
-エンドポイント: `http://localhost:4000/api/graphql`
-
-#### カテゴリー作成
-```bash
-curl -X POST http://localhost:4000/api/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createCategory(input: { name: \"電化製品\" }) { id name createdAt } }"
-  }'
-```
-
-#### 商品作成
-```bash
-curl -X POST http://localhost:4000/api/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createProduct(input: { name: \"ノートパソコン\", price: 120000, categoryId: \"1\" }) { id name price { amount currency } } }"
-  }'
-```
-
-#### 注文作成（SAGA パターン）
-```bash
-curl -X POST http://localhost:4000/api/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createOrder(input: { userId: \"user-123\", items: [{ productId: \"1\", quantity: 2, unitPrice: 120000 }] }) { orderId message } }"
-  }'
-```
-
-### テストスクリプト
-
-```bash
-./scripts/test_api.sh
-```
-
-## 監視・デバッグ
-
-### Jaeger（分散トレーシング）
-- URL: http://localhost:16686
-- サービス間の呼び出しをトレース
-
-### Prometheus（メトリクス）
-- URL: http://localhost:9090
-- システムメトリクスの確認
-
-### Grafana（ダッシュボード）
-- URL: http://localhost:3000
-- ログイン: admin/admin
+| ツール | URL | 用途 |
+|--------|-----|------|
+| Jaeger | http://localhost:16686 | 分散トレーシング |
+| Prometheus | http://localhost:9090 | メトリクス収集 |
+| Grafana | http://localhost:3000 | ダッシュボード（admin/admin） |
 
 ## 開発
 
-### テストの実行
 ```bash
+# テストの実行
 mix test
-```
 
-### コード品質チェック
-```bash
-mix check
-```
+# コード品質チェック
+mix format           # コードフォーマット
+mix credo --strict   # 静的解析
+mix dialyzer         # 型チェック
 
-### マイグレーション
-```bash
-mix ecto.migrate
+# カバレッジレポート
+mix coveralls.html
 ```
 
 ## 主要な設計パターン
@@ -163,12 +169,23 @@ mix ecto.migrate
 elixir-cqrs/
 ├── apps/
 │   ├── shared/          # 共通ライブラリ
+│   │   ├── domain/      # ドメインモデル（値オブジェクト、イベント）
+│   │   └── infrastructure/ # イベントストア、テレメトリー
 │   ├── command_service/ # コマンド処理
+│   │   ├── application/ # コマンドハンドラー
+│   │   ├── domain/      # アグリゲート
+│   │   └── presentation/ # gRPC サーバー
 │   ├── query_service/   # クエリ処理
+│   │   ├── application/ # クエリハンドラー
+│   │   ├── infrastructure/ # プロジェクション、リポジトリ
+│   │   └── presentation/ # gRPC サーバー
 │   └── client_service/  # GraphQL API
+│       └── graphql/     # スキーマ、リゾルバー
 ├── config/              # 設定ファイル
 ├── docker-compose.yml   # Docker 設定
 ├── scripts/             # ユーティリティスクリプト
+├── proto/               # Protocol Buffers 定義
+├── docs/                # ドキュメント
 └── README.md
 ```
 

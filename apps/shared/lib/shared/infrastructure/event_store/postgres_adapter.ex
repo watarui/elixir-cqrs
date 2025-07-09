@@ -118,6 +118,35 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     :ok
   end
 
+  @impl true
+  def get_events_after(after_id, limit) do
+    query =
+      from(e in Event,
+        where: e.id > ^after_id,
+        order_by: [asc: e.id]
+      )
+
+    query =
+      if limit do
+        from(e in query, limit: ^limit)
+      else
+        query
+      end
+
+    events = Shared.Infrastructure.EventStore.Repo.all(query)
+
+    decoded_events =
+      Enum.map(events, fn event ->
+        Map.put(decode_event(event), :id, event.id)
+      end)
+
+    {:ok, decoded_events}
+  rescue
+    e ->
+      Logger.error("Failed to get events after id #{after_id}: #{inspect(e)}")
+      {:error, e}
+  end
+
   # Private functions
 
   defp validate_version(multi, aggregate_id, expected_version) do

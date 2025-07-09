@@ -14,13 +14,18 @@ defmodule QueryService.Application do
       QueryService.Repo,
       # クエリバス
       QueryService.Infrastructure.QueryBus,
+      # プロジェクションマネージャー
+      QueryService.Infrastructure.ProjectionManager,
       # TODO: キャッシュ (ETS)
-      # TODO: プロジェクションマネージャー
-      # gRPC エンドポイント
+      # gRPC サーバー
       {GRPC.Server.Supervisor, endpoint: QueryService.Presentation.Grpc.Endpoint, port: port}
     ]
 
     opts = [strategy: :one_for_one, name: QueryService.Supervisor]
+
+    require Logger
+    Logger.info("Starting Query Service with gRPC server on port #{port}")
+
     Supervisor.start_link(children, opts)
   end
 end

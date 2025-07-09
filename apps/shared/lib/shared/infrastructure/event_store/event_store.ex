@@ -39,6 +39,11 @@ defmodule Shared.Infrastructure.EventStore.EventStore do
 
   @callback unsubscribe(subscription :: term()) :: :ok | {:error, term()}
 
+  @callback get_events_after(
+              after_id :: integer(),
+              limit :: integer() | nil
+            ) :: {:ok, [event()]} | {:error, term()}
+
   @doc """
   使用するアダプターを取得する
   """
@@ -83,5 +88,12 @@ defmodule Shared.Infrastructure.EventStore.EventStore do
   """
   def unsubscribe(subscription) do
     adapter().unsubscribe(subscription)
+  end
+
+  @doc """
+  指定したID以降のイベントを取得する
+  """
+  def get_events_after(after_id, limit \\ nil) do
+    adapter().get_events_after(after_id, limit)
   end
 end
