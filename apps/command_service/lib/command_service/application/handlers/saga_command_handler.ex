@@ -208,7 +208,7 @@ defmodule CommandService.Application.Handlers.SagaCommandHandler do
 
             {:error, reason} ->
               # 注文が見つからない場合もキャンセル済みとして扱う
-              Logger.warn("Order not found for cancellation: #{order_id}")
+              Logger.warning("Order not found for cancellation: #{order_id}")
               {:ok, %{cancelled: true}}
           end
         end)

@@ -7,11 +7,6 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
   use Shared.Domain.Saga.SagaBase
 
-  alias Shared.Domain.ValueObjects.{EntityId, Money}
-
-  # サガのステップ定義
-  @steps [:reserve_inventory, :process_payment, :arrange_shipping, :confirm_order]
-
   @impl true
   def new(saga_id, initial_data) do
     %{
@@ -79,7 +74,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
         {:ok, commands}
 
       # 配送手配完了
-      {:arrange_shipping, _shipping_arranged} ->
+      {:arrange_shipping, _shipping_event} ->
         saga =
           saga
           |> Map.put(:shipping_arranged, true)
@@ -92,7 +87,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       # 注文確定
       {:confirm_order, Shared.Domain.Events.OrderEvents.OrderConfirmed} ->
-        saga =
+        _updated_saga =
           saga
           |> Map.put(:order_confirmed, true)
           |> complete_step(:confirm_order)
@@ -102,13 +97,9 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
       # エラーイベント
       {_, _error_event} ->
-        saga = record_failure(saga, saga.current_step, "Step failed")
-        compensation_commands = get_compensation_commands(saga)
+        failed_saga = record_failure(saga, saga.current_step, "Step failed")
+        compensation_commands = get_compensation_commands(failed_saga)
         {:ok, compensation_commands}
-
-      _ ->
-        # 想定外のイベント
-        {:ok, []}
     end
   end
 

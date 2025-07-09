@@ -53,7 +53,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
         reserved_at: DateTime.utc_now()
       }
 
-      assert {:ok, commands} = OrderSaga.handle_event(event, saga)
+      assert {:ok, _commands} = OrderSaga.handle_event(event, saga)
       assert length(commands) == 1
 
       [command] = commands
@@ -76,7 +76,7 @@ defmodule CommandService.Domain.Sagas.OrderSagaTest do
         processed_at: DateTime.utc_now()
       }
 
-      assert {:ok, commands} = OrderSaga.handle_event(event, saga)
+      assert {:ok, _commands} = OrderSaga.handle_event(event, saga)
       assert length(commands) == 1
 
       [command] = commands
