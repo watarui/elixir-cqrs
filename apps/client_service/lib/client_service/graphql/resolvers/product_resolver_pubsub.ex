@@ -269,9 +269,11 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
       name: product.name,
       description: product.description,
       price: product.price,
+      currency: Map.get(product, :currency, "JPY"),  # デフォルトで JPY を設定
       stock_quantity: product.stock_quantity,
       category_id: product.category_id,
       category_name: product.category_name,
+      active: Map.get(product, :active, true),  # active フィールドも追加
       created_at: ensure_datetime(product.created_at),
       updated_at: ensure_datetime(product.updated_at)
     }

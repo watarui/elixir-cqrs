@@ -131,6 +131,8 @@ defmodule ClientService.GraphQL.Schema do
   end
 
   def plugins do
-    [Absinthe.Middleware.Dataloader] ++ Absinthe.Plugin.defaults()
+    # Dataloader の依存関係の問題を回避するため一時的に無効化
+    # [Absinthe.Middleware.Dataloader] ++ Absinthe.Plugin.defaults()
+    Absinthe.Plugin.defaults()
   end
 end

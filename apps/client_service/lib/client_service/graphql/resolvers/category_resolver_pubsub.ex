@@ -173,6 +173,7 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
       name: category.name,
       description: category.description,
       parent_id: category.parent_id,
+      active: Map.get(category, :active, true),
       product_count: category.product_count || 0,
       created_at: ensure_datetime(category.created_at),
       updated_at: ensure_datetime(category.updated_at)
