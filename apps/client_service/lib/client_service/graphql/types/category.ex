@@ -4,7 +4,6 @@ defmodule ClientService.GraphQL.Types.Category do
   """
 
   use Absinthe.Schema.Notation
-  import Absinthe.Resolution.Helpers, only: [dataloader: 1]
 
   @desc "カテゴリ"
   object :category do
@@ -17,9 +16,25 @@ defmodule ClientService.GraphQL.Types.Category do
 
     field :products, list_of(:product) do
       resolve(fn category, _args, _resolution ->
-        # TODO: 実際の商品取得を実装
-        # 現在は Dataloader の依存関係の問題を回避するため空のリストを返す
-        {:ok, []}
+        # カスタム Dataloader を使用したバッチ取得
+        # 実際の実装では、リゾルバー内で RemoteQueryBus を使用
+        alias ClientService.Infrastructure.RemoteQueryBus
+        
+        query = %{
+          __struct__: "QueryService.Application.Queries.ProductQueries.ListProducts",
+          query_type: "product.list",
+          category_id: category.id,
+          limit: 100,
+          offset: 0,
+          metadata: nil
+        }
+        
+        case RemoteQueryBus.send_query(query) do
+          {:ok, products} ->
+            {:ok, products || []}
+          {:error, _reason} ->
+            {:ok, []}
+        end
       end)
     end
 
