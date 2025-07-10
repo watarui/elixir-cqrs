@@ -39,7 +39,8 @@ docker compose up -d
 ```
 
 以下のコンテナが起動します：
-- PostgreSQL (3インスタンス)
+
+- PostgreSQL (3 インスタンス)
   - Event Store DB (ポート: 5432)
   - Command DB (ポート: 5433)
   - Query DB (ポート: 5434)
@@ -59,7 +60,7 @@ docker compose up -d
 
 ## サービスの起動
 
-3つのターミナルウィンドウを開いて、それぞれのサービスを起動します。
+3 つのターミナルウィンドウを開いて、それぞれのサービスを起動します。
 
 ### ターミナル 1: Command Service
 
@@ -69,7 +70,9 @@ iex -S mix
 ```
 
 起動ログで以下を確認：
-- `[info] Starting Command Service with gRPC server on port 50051`
+
+- `[info] Starting Command Service`
+- `[info] Phoenix PubSub started`
 
 ### ターミナル 2: Query Service
 
@@ -79,7 +82,8 @@ iex -S mix
 ```
 
 起動ログで以下を確認：
-- `[info] Starting Query Service with gRPC server on port 50052`
+
+- `[info] Starting Query Service`
 - `[info] Processing X new events` (定期的なイベント処理)
 
 ### ターミナル 3: Client Service
@@ -90,24 +94,25 @@ mix phx.server
 ```
 
 起動ログで以下を確認：
-- `[info] Connected to Command Service at localhost:50051`
-- `[info] Connected to Query Service at localhost:50052`
-- `[info] Running ClientServiceWeb.Endpoint with cowboy 2.13.0 at 127.0.0.1:4000`
+
+- `[info] Running ClientServiceWeb.Endpoint with cowboy 2.x.x at 127.0.0.1:4000`
 
 ## 動作確認
 
 ### GraphQL Playground
 
-ブラウザで http://localhost:4000/graphql にアクセスします。
+ブラウザで http://localhost:4000/graphiql にアクセスします。
 
 ### カテゴリの作成
 
 ```graphql
 mutation {
-  createCategory(input: {
-    name: "Electronics"
-    description: "Electronic devices and gadgets"
-  }) {
+  createCategory(
+    input: {
+      name: "Electronics"
+      description: "Electronic devices and gadgets"
+    }
+  ) {
     id
     name
     description
@@ -134,13 +139,15 @@ query {
 
 ```graphql
 mutation {
-  createProduct(input: {
-    name: "MacBook Pro"
-    description: "High-performance laptop"
-    price: 299900
-    stockQuantity: 10
-    categoryId: "[上記で作成したカテゴリのID]"
-  }) {
+  createProduct(
+    input: {
+      name: "MacBook Pro"
+      description: "High-performance laptop"
+      price: 299900
+      stockQuantity: 10
+      categoryId: "[上記で作成したカテゴリのID]"
+    }
+  ) {
     id
     name
     description
@@ -171,10 +178,12 @@ query {
 ## 監視ツールへのアクセス
 
 - **Jaeger UI**: http://localhost:16686
+
   - 分散トレースの確認
   - サービス間の通信フローの可視化
 
 - **Prometheus**: http://localhost:9090
+
   - メトリクスの確認
   - クエリの実行
 
@@ -184,15 +193,16 @@ query {
 
 ## トラブルシューティング
 
-### gRPC 接続エラー
+### Phoenix PubSub 接続エラー
 
 ```
-[error] Failed to connect to Command Service: :timeout
+[error] Failed to send command: :timeout
 ```
 
 **解決方法**:
+
 1. すべてのサービスが起動していることを確認
-2. ポートが正しく開いているか確認: `lsof -i :50051`
+2. 各サービスのログでエラーがないか確認
 3. Docker コンテナが正常に動作しているか確認: `docker compose ps`
 
 ### データベース接続エラー
@@ -202,6 +212,7 @@ query {
 ```
 
 **解決方法**:
+
 1. Docker コンテナが起動しているか確認
 2. データベースのマイグレーションが完了しているか確認
 3. 接続設定（ポート番号）が正しいか確認
@@ -218,4 +229,4 @@ The OTLP exporter is sending telemetry to...
 
 - [アーキテクチャ概要](./ARCHITECTURE.md)
 - [開発ガイド](./DEVELOPMENT.md)
-- [API リファレンス](./API_REFERENCE.md)
+- [API リファレンス](./API_GRAPHQL.md)

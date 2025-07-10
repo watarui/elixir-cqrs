@@ -1,138 +1,150 @@
-# アーキテクチャ概要
+# システムアーキテクチャ
 
-## システム構成
+## 概要
 
-このプロジェクトは、CQRS (Command Query Responsibility Segregation) とイベントソーシングパターンを採用した Elixir アプリケーションです。
+このシステムは、CQRS (Command Query Responsibility Segregation)、Event Sourcing、SAGA パターンを実装したマイクロサービスアーキテクチャです。Phoenix PubSub を使用してサービス間の非同期通信を実現しています。
+
+## システム構成図
 
 ```
-┌─────────────────┐     GraphQL      ┌─────────────────┐
-│                 │ ◄──────────────► │                 │
-│  Client Service │                  │   Web Client    │
-│  (Phoenix/GraphQL)                 │                 │
-└────────┬────────┘                  └─────────────────┘
-         │
-         │ Phoenix PubSub
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Command Service │     │  Query Service  │
-│   (Write Side)  │     │  (Read Side)    │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         │                       │
-         ▼                       ▼
-┌─────────────────┐     ┌─────────────────┐
-│   Event Store   │     │ Read Model DB   │
-│   (PostgreSQL)  │     │  (PostgreSQL)   │
-└─────────────────┘     └─────────────────┘
+┌─────────────────┐
+│   Client App    │
+│   (Browser)     │
+└────────┬────────┘
+         │ GraphQL
+         ▼
+┌─────────────────┐     Phoenix PubSub     ┌─────────────────┐
+│ Client Service  │ ◄──────────────────────► │ Command Service │
+│   (Port 4000)   │                         │                 │
+└─────────────────┘                         └────────┬────────┘
+         │                                            │
+         │              Phoenix PubSub                │ Events
+         │         ┌──────────────────────┐           ▼
+         └─────────► │  Query Service    │ ◄─── Event Store
+                    │                    │      (PostgreSQL)
+                    └────────────────────┘
 ```
 
-## サービス構成
+## マイクロサービス詳細
 
-### 1. Client Service (apps/client_service)
+### 1. Shared (共通ライブラリ)
 
-- **役割**: Web API レイヤー
-- **技術スタック**: Phoenix Framework, Absinthe (GraphQL)
-- **ポート**: 4000
-- **責務**:
-  - GraphQL API の提供
-  - Phoenix PubSub を使用したバックエンドサービスとの非同期通信
-  - 認証・認可（未実装）
+共通で使用されるコンポーネントを提供：
 
-### 2. Command Service (apps/command_service)
+- **値オブジェクト**
 
-- **役割**: 書き込み処理とビジネスロジック
-- **技術スタック**: Phoenix PubSub
-- **主要コンポーネント**:
-  - **CommandBus**: コマンドのルーティング
-  - **CommandHandlers**: コマンドの処理
-  - **Aggregates**: ドメインロジックとイベントの生成
-  - **EventStore**: イベントの永続化
+  - `Money` - 日本円の金額を表現
+  - `EntityId` - UUID ベースの識別子
+  - `ProductName` - 商品名（1-100 文字）
+  - `CategoryName` - カテゴリ名（1-50 文字）
 
-### 3. Query Service (apps/query_service)
+- **ドメインイベント**
 
-- **役割**: 読み取り専用のデータ提供
-- **技術スタック**: Phoenix PubSub
-- **主要コンポーネント**:
-  - **QueryBus**: クエリのルーティング
-  - **QueryHandlers**: クエリの処理
-  - **ProjectionManager**: イベントから Read Model への変換
-  - **Repositories**: Read Model からのデータ取得
+  - カテゴリイベント（作成、更新、削除）
+  - 商品イベント（作成、更新、価格変更、削除）
+  - 注文イベント（作成、確認、支払い処理、キャンセル）
 
-### 4. Shared (apps/shared)
+- **インフラストラクチャ**
+  - `EventStore` - イベントの永続化
+  - `EventBus` - Phoenix PubSub を使用したイベント配信
+  - `SagaCoordinator` - SAGA の実行管理
 
-- **役割**: 共通ライブラリ
-- **提供する機能**:
-  - ドメインイベント定義
-  - 値オブジェクト
-  - イベントストア実装
-  - テレメトリー設定
-  - イベントバス実装
+### 2. Command Service
+
+書き込み操作を担当：
+
+- **アグリゲート**
+
+  - `CategoryAggregate` - カテゴリの状態とビジネスロジック
+  - `ProductAggregate` - 商品の状態とビジネスロジック
+  - `OrderAggregate` - 注文の状態とビジネスロジック
+
+- **コマンドハンドラ**
+
+  - カテゴリ、商品、注文の作成・更新・削除を処理
+  - イベントストアへの永続化
+  - イベントバスへの発行
+
+- **SAGA**
+  - `OrderSaga` - 注文処理の分散トランザクション管理
+
+### 3. Query Service
+
+読み取り操作を担当：
+
+- **プロジェクション**
+
+  - イベントからリードモデルを構築
+  - カテゴリ、商品、注文の集計情報を管理
+
+- **リポジトリ**
+
+  - 最適化されたクエリ用データストア
+  - キャッシュ層（ETS）を使用した高速化
+
+- **クエリハンドラ**
+  - Phoenix PubSub 経由でクエリを受信
+  - リードモデルから効率的にデータを取得
+
+### 4. Client Service
+
+クライアント向け API を提供：
+
+- **GraphQL API**
+
+  - Absinthe を使用した GraphQL 実装
+  - Dataloader による N+1 問題の解決
+  - リアルタイムサブスクリプション（将来実装予定）
+
+- **通信層**
+  - Phoenix PubSub を使用した非同期通信
+  - タイムアウト処理とエラーハンドリング
 
 ## データフロー
 
-### 書き込みフロー
+### コマンド（書き込み）フロー
 
-1. クライアントが GraphQL Mutation を送信
-2. Client Service が PubSub 経由でコマンドを Command Service に送信
-3. CommandBus がコマンドを適切なハンドラーにルーティング
-4. CommandHandler がアグリゲートを読み込み、コマンドを実行
-5. アグリゲートがイベントを生成
-6. イベントが Event Store に保存
-7. イベントがイベントバスに発行
+1. クライアントが GraphQL mutation を送信
+2. Client Service がコマンドを Phoenix PubSub 経由で Command Service に送信
+3. Command Service がコマンドを処理し、アグリゲートを更新
+4. イベントがイベントストアに保存される
+5. イベントが Phoenix PubSub 経由で配信される
+6. Query Service がイベントを受信し、プロジェクションを更新
 
-### 読み取りフロー
+### クエリ（読み取り）フロー
 
-1. ProjectionManager が EventBus からイベントをリアルタイムで受信
-2. 各 Projection がイベントを処理し、Read Model を更新
-3. クライアントが GraphQL Query を送信
-4. Client Service が PubSub 経由でクエリを Query Service に送信
-5. QueryHandler が Read Model からデータを取得
-6. 結果がクライアントに返される
+1. クライアントが GraphQL query を送信
+2. Client Service がクエリを Phoenix PubSub 経由で Query Service に送信
+3. Query Service がリードモデルからデータを取得
+4. 結果が Client Service に返される
+5. GraphQL レスポンスとしてクライアントに返される
 
-## ドメインモデル
+## 技術的な選択
 
-### Category (カテゴリ)
+### Phoenix PubSub を選択した理由
 
-- **属性**: id, name, description, parent_id, active
-- **イベント**: CategoryCreated, CategoryUpdated, CategoryDeleted
+- Elixir/Phoenix エコシステムとの親和性
+- 低レイテンシの通信
+- 組み込みのクラスタリングサポート
+- シンプルな実装
 
-### Product (商品)
+### PostgreSQL ベースのイベントストア
 
-- **属性**: id, name, description, price, stock_quantity, category_id
-- **イベント**: ProductCreated, ProductUpdated, ProductPriceChanged, ProductDeleted, StockUpdated
+- トランザクションの保証
+- 既存の運用知識の活用
+- スナップショット機能のサポート
+- 高い信頼性
 
-### Order (注文)
+### ETS によるキャッシュ
 
-- **属性**: id, customer_id, items, total_amount, status
-- **イベント**: OrderCreated, OrderConfirmed, OrderCancelled
-- **サガ**: OrderFulfillmentSaga（未実装）
+- インメモリの高速アクセス
+- プロセス間での共有
+- TTL とサイズ制限のサポート
+- Erlang VM のネイティブ機能
 
-## 技術的な設計判断
+## スケーラビリティ
 
-### なぜ CQRS？
-
-- **スケーラビリティ**: 読み取りと書き込みを独立してスケール可能
-- **パフォーマンス**: Read Model を最適化してクエリ性能を向上
-- **柔軟性**: 異なる要件に応じて読み取り側と書き込み側を最適化
-
-### なぜイベントソーシング？
-
-- **監査証跡**: すべての変更履歴を保持
-- **時系列分析**: 任意の時点の状態を再現可能
-- **イベント駆動**: 他のシステムとの統合が容易
-
-### なぜ gRPC？
-
-- **型安全性**: Protocol Buffers による厳密な型定義
-- **パフォーマンス**: バイナリプロトコルによる高速通信
-- **ストリーミング**: 将来的なリアルタイム機能の実装が容易
-
-## 拡張ポイント
-
-1. **認証・認可**: Guardian または独自実装の追加
-2. **キャッシング**: ETS または Redis の導入
-3. **サガ実装**: 複雑なビジネスプロセスの処理
-4. **イベントストリーミング**: Kafka や RabbitMQ との統合
-5. **マルチテナント**: テナント分離の実装
+- 各サービスは独立してスケール可能
+- Phoenix PubSub のクラスタリング対応
+- リードモデルの複製による読み取りスケール
+- イベントストアの分割（将来実装予定）

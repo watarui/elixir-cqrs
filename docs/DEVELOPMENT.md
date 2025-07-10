@@ -2,20 +2,144 @@
 
 ## 開発環境のセットアップ
 
-### エディタ設定
+### 必要なツール
 
-推奨エディタ: Visual Studio Code with ElixirLS extension
+#### 必須
+
+- **Elixir**: 1.18 以上
+- **Erlang/OTP**: 26 以上
+- **Docker**: 20.10 以上
+- **Docker Compose**: 2.0 以上
+- **PostgreSQL クライアント**: psql コマンド
+
+#### 推奨
+
+- **asdf**: バージョン管理ツール
+- **direnv**: 環境変数管理
+- **VS Code**: エディタ
+  - ElixirLS 拡張機能
+  - GraphQL 拡張機能
+
+### インストール手順
+
+#### 1. Elixir/Erlang のインストール
+
+##### asdf を使用する場合（推奨）
+
+```bash
+# asdf のインストール
+git clone https://github.com/asdf-vm/asdf.git ~/.asdf
+echo '. "$HOME/.asdf/asdf.sh"' >> ~/.bashrc
+
+# Elixir/Erlang プラグインの追加
+asdf plugin add erlang
+asdf plugin add elixir
+
+# バージョンのインストール
+asdf install erlang 26.0
+asdf install elixir 1.18-otp-26
+
+# デフォルトバージョンの設定
+asdf global erlang 26.0
+asdf global elixir 1.18-otp-26
+```
+
+##### Homebrew を使用する場合（macOS）
+
+```bash
+brew install elixir
+```
+
+#### 2. プロジェクトのセットアップ
+
+```bash
+# リポジトリのクローン
+git clone <repository-url>
+cd elixir-cqrs
+
+# 依存関係のインストール
+mix deps.get
+mix deps.compile
+```
+
+#### 3. Docker 環境の構築
+
+```bash
+# Docker イメージのビルドとコンテナ起動
+docker compose up -d
+
+# コンテナの状態確認
+docker compose ps
+
+# ログの確認
+docker compose logs -f
+```
+
+#### 4. データベースの初期化
+
+```bash
+# データベースとテーブルの作成
+./scripts/setup_db.sh
+
+# 手動で実行する場合
+mix ecto.create
+mix ecto.migrate
+```
+
+### 環境変数の設定
+
+#### 開発環境用の .env ファイル
+
+```bash
+# .env.local を作成
+cp .env.example .env.local
+
+# 必要に応じて編集
+vim .env.local
+```
+
+#### 重要な環境変数
+
+```bash
+# データベース接続
+DATABASE_URL_COMMAND=postgres://postgres:postgres@localhost:5432/cqrs_command_dev
+DATABASE_URL_QUERY=postgres://postgres:postgres@localhost:5433/cqrs_query_dev
+DATABASE_URL_EVENT=postgres://postgres:postgres@localhost:5434/cqrs_event_dev
+
+# Phoenix
+SECRET_KEY_BASE=your-secret-key-base
+
+# 監視ツール
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+```
+
+### VS Code の設定
+
+#### .vscode/settings.json
 
 ```json
-// .vscode/settings.json
 {
-  "elixirLS.suggestSpecs": true,
+  "elixirLS.mixEnv": "dev",
   "elixirLS.dialyzerEnabled": true,
   "elixirLS.fetchDeps": true,
+  "elixirLS.suggestSpecs": true,
   "editor.formatOnSave": true,
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "files.associations": {
+    "*.ex": "elixir",
+    "*.exs": "elixir",
+    "*.eex": "html-eex",
+    "*.leex": "html-eex"
+  }
 }
 ```
+
+#### 推奨拡張機能
+
+- ElixirLS: Elixir support and debugger
+- GraphQL: GraphQL syntax support
+- Docker
+- GitLens
 
 ### 開発ツール
 
@@ -34,6 +158,9 @@ mix test
 
 # カバレッジレポート
 mix coveralls.html
+
+# すべてをチェック
+mix check
 ```
 
 ## コーディング規約
@@ -91,6 +218,50 @@ else
 end
 ```
 
+## 開発ワークフロー
+
+### 1. サービスの起動
+
+```bash
+# すべてのサービスを起動
+./scripts/start_services.sh
+
+# または個別に起動
+iex -S mix run --no-halt # Command Service
+iex -S mix run --no-halt # Query Service
+iex -S mix phx.server    # Client Service
+```
+
+### 2. 対話的な開発
+
+```elixir
+# IEx で接続
+iex -S mix
+
+# モジュールのリロード
+r ModuleName
+
+# デバッグ
+require IEx
+IEx.pry # ブレークポイント
+```
+
+### 3. テストの実行
+
+```bash
+# すべてのテスト
+mix test
+
+# 特定のファイル
+mix test test/path/to/test.exs
+
+# 特定の行
+mix test test/path/to/test.exs:42
+
+# カバレッジ付き
+mix coveralls.html
+```
+
 ## 新機能の追加
 
 ### 1. 新しいコマンドの追加
@@ -116,7 +287,7 @@ def execute(aggregate, %DiscountProduct{} = command) do
     discount_percentage: command.discount_percentage,
     discounted_at: DateTime.utc_now()
   })
-  
+
   {:ok, apply_event(aggregate, event), [event]}
 end
 
@@ -125,34 +296,24 @@ end
 def handle(%DiscountProduct{} = command) do
   # 実装
 end
-
-# 4. CommandBus にルーティングを追加
-# apps/command_service/lib/command_service/infrastructure/command_bus.ex
-defp route_command(%DiscountProduct{} = cmd), do: ProductCommandHandler.handle(cmd)
 ```
 
 ### 2. 新しいクエリの追加
 
 ```elixir
-# 1. クエリの定義
-# apps/query_service/lib/query_service/application/queries/product_queries.ex
-defmodule QueryService.Application.Queries.GetDiscountedProducts do
-  defstruct [:min_discount]
-end
-
-# 2. ハンドラーの実装
+# 1. クエリハンドラーの実装
 # apps/query_service/lib/query_service/application/handlers/product_query_handler.ex
-def handle(%GetDiscountedProducts{min_discount: min_discount}) do
+def handle_query(%{type: "get_discounted_products", min_discount: min_discount}) do
   ProductRepository.get_discounted_products(min_discount)
 end
 
-# 3. リポジトリメソッドの追加
+# 2. リポジトリメソッドの追加
 # apps/query_service/lib/query_service/infrastructure/repositories/product_repository.ex
 def get_discounted_products(min_discount) do
-  query = from p in ProductSchema,
+  query = from p in Product,
     where: p.discount_percentage >= ^min_discount,
     order_by: [desc: p.discount_percentage]
-  
+
   products = Repo.all(query)
   {:ok, Enum.map(products, &to_domain_model/1)}
 end
@@ -162,20 +323,27 @@ end
 
 ```elixir
 # 1. スキーマに型を追加
-# apps/client_service/lib/client_service/graphql/schema/product_types.ex
-object :product_mutations do
-  field :discount_product, :product do
-    arg :product_id, non_null(:id)
-    arg :discount_percentage, non_null(:integer)
-    
-    resolve &ProductResolver.discount_product/3
-  end
+# apps/client_service/lib/client_service/graphql/types/product.ex
+field :discount_product, :product do
+  arg :product_id, non_null(:id)
+  arg :discount_percentage, non_null(:integer)
+
+  resolve &ProductResolver.discount_product/3
 end
 
 # 2. リゾルバーの実装
-# apps/client_service/lib/client_service/graphql/resolvers/product_resolver.ex
+# apps/client_service/lib/client_service/graphql/resolvers/product_resolver_pubsub.ex
 def discount_product(_parent, %{product_id: id, discount_percentage: discount}, _resolution) do
-  # gRPC 呼び出しの実装
+  command = %{
+    type: "discount_product",
+    product_id: id,
+    discount_percentage: discount
+  }
+
+  case send_command(command) do
+    {:ok, result} -> {:ok, result}
+    {:error, reason} -> {:error, reason}
+  end
 end
 ```
 
@@ -208,14 +376,14 @@ end
 # test/integration/command_flow_test.exs
 defmodule CommandFlowTest do
   use ExUnit.Case
-  
+
   setup do
     # データベースのクリーンアップ
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    
+
     # テストデータの準備
     {:ok, category} = create_test_category()
-    
+
     {:ok, category: category}
   end
 
@@ -225,13 +393,13 @@ defmodule CommandFlowTest do
       name: "Test Product",
       category_id: category.id
     }
-    
+
     assert {:ok, aggregate} = CommandBus.dispatch(command)
-    
+
     # イベントの確認
     assert {:ok, events} = EventStore.get_events(aggregate.id)
     assert length(events) == 1
-    
+
     # Read Model の確認
     Process.sleep(100) # プロジェクションの処理待ち
     assert {:ok, product} = ProductRepository.get(aggregate.id)
@@ -240,40 +408,105 @@ defmodule CommandFlowTest do
 end
 ```
 
-## デバッグ
+## デバッグツール
+
+### Observer
+
+```elixir
+# IEx から起動
+:observer.start()
+```
+
+プロセス、メモリ、ETS テーブルなどを監視できます。
+
+### ログレベルの変更
+
+```elixir
+# 実行時に変更
+Logger.configure(level: :debug)
+
+# 特定のモジュールのみ
+Logger.configure_backend(:console,
+  [metadata: [:module],
+   format: "$time $metadata[$level] $message\n"])
+```
+
+### リモートシェル
+
+```bash
+# 実行中のノードに接続
+iex --name debug@localhost --cookie my-cookie --remsh app@localhost
+```
 
 ### IEx での調査
 
 ```elixir
 # プロセスの状態を確認
-:sys.get_state(CommandService.Infrastructure.CommandBus)
+:sys.get_state(ProcessName)
 
 # イベントストアの内容を確認
 EventStore.get_events("aggregate-id")
 
 # Read Model のデータを確認
-QueryService.Infrastructure.Repositories.ProductRepository.get_all()
+QueryService.Infrastructure.Repositories.ProductRepository.list()
 
 # メトリクスの確認
 :telemetry.execute([:my_app, :metric], %{count: 1}, %{})
 ```
 
-### ログ設定
+## トラブルシューティング
+
+### 依存関係の問題
+
+```bash
+# キャッシュをクリア
+mix deps.clean --all
+rm -rf _build
+mix deps.get
+```
+
+### データベース接続エラー
+
+```bash
+# PostgreSQL の状態確認
+docker compose ps
+docker compose logs postgres-command
+
+# 接続テスト
+psql -h localhost -p 5432 -U postgres -d cqrs_command_dev
+```
+
+### Phoenix PubSub の問題
 
 ```elixir
-# config/dev.exs
-config :logger, :console,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :trace_id, :span_id]
+# ノードの確認
+Node.list()
 
-# 特定モジュールのログレベル変更
-config :logger,
-  compile_time_purge_matching: [
-    [application: :grpc, level_lower_than: :info]
-  ]
+# PubSub の状態確認
+Phoenix.PubSub.Local.list(Shared.PubSub)
 ```
 
 ## パフォーマンスチューニング
+
+### ETS テーブルの監視
+
+```elixir
+# テーブル一覧
+:ets.all()
+
+# テーブルの情報
+:ets.info(:table_name)
+```
+
+### プロセスの監視
+
+```elixir
+# プロセス数
+length(Process.list())
+
+# メモリ使用量
+:erlang.memory()
+```
 
 ### データベース
 
@@ -299,7 +532,7 @@ results = Task.await_many(tasks, 5000)
 # GenStage による処理
 defmodule Producer do
   use GenStage
-  
+
   def handle_demand(demand, state) do
     events = fetch_events(demand)
     {:noreply, events, state}
@@ -307,23 +540,7 @@ defmodule Producer do
 end
 ```
 
-## リリース
+## 次のステップ
 
-### ビルド
-
-```bash
-# リリースビルド
-MIX_ENV=prod mix release
-
-# Docker イメージ
-docker build -t myapp:latest .
-```
-
-### 環境変数
-
-```bash
-# 本番環境設定
-DATABASE_URL=postgres://user:pass@host/db
-SECRET_KEY_BASE=your-secret-key
-GRPC_PORT=50051
-```
+- [SAGA 実行例](./SAGA_EXAMPLE.md) - SAGA パターンの実行例
+- [GraphQL API リファレンス](./API_GRAPHQL.md) - API の完全なリファレンス
