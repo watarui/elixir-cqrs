@@ -539,8 +539,3 @@ defmodule Producer do
   end
 end
 ```
-
-## 次のステップ
-
-- [SAGA 実行例](./SAGA_EXAMPLE.md) - SAGA パターンの実行例
-- [GraphQL API リファレンス](./API_GRAPHQL.md) - API の完全なリファレンス
