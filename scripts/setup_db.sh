@@ -4,6 +4,10 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# 環境変数を設定してElixirの警告を抑制
+export MIX_QUIET=1
+export PGPASSWORD=postgres
+
 echo "=== Elixir CQRS データベースセットアップ ==="
 echo "プロジェクト root: $PROJECT_ROOT"
 echo ""
@@ -48,7 +52,7 @@ cd "$PROJECT_ROOT"
 
 # 依存関係の確認
 echo "依存関係を確認しています..."
-if ! mix deps.get; then
+if ! mix deps.get >/dev/null 2>&1; then
     echo "依存関係の取得に失敗しました"
     exit 1
 fi
@@ -56,13 +60,15 @@ fi
 # 各アプリケーションのデータベースセットアップ
 echo "=== Shared Service (Event Store) のセットアップ ==="
 cd "$PROJECT_ROOT/apps/shared"
-if mix ecto.create; then
+mix ecto.create >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Event Store データベースが作成されました"
 else
     echo "Event Store データベースは既に存在します"
 fi
 
-if mix ecto.migrate; then
+mix ecto.migrate >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Event Store マイグレーションが完了しました"
 else
     echo "Event Store マイグレーションに失敗しました"
@@ -72,13 +78,15 @@ fi
 echo ""
 echo "=== Command Service のセットアップ ==="
 cd "$PROJECT_ROOT/apps/command_service"
-if mix ecto.create; then
+mix ecto.create >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Command Service データベースが作成されました"
 else
     echo "Command Service データベースは既に存在します"
 fi
 
-if mix ecto.migrate; then
+mix ecto.migrate >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Command Service マイグレーションが完了しました"
 else
     echo "Command Service マイグレーションに失敗しました"
@@ -88,13 +96,15 @@ fi
 echo ""
 echo "=== Query Service のセットアップ ==="
 cd "$PROJECT_ROOT/apps/query_service"
-if mix ecto.create; then
+mix ecto.create >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Query Service データベースが作成されました"
 else
     echo "Query Service データベースは既に存在します"
 fi
 
-if mix ecto.migrate; then
+mix ecto.migrate >/dev/null 2>&1
+if [ $? -eq 0 ]; then
     echo "Query Service マイグレーションが完了しました"
 else
     echo "Query Service マイグレーションに失敗しました"
@@ -108,11 +118,7 @@ echo ""
 echo "=== データベースセットアップが完了しました ==="
 echo ""
 echo "次のステップ:"
-echo "1. サービスを起動: ./scripts/start_services_clustered.sh"
-echo "2. または個別に起動:"
-echo "   - Command Service: cd apps/command_service && mix run --no-halt"
-echo "   - Query Service: cd apps/query_service && mix run --no-halt"
-echo "   - Client Service: cd apps/client_service && mix phx.server"
+echo "サービスを起動: ./scripts/start_services.sh"
 echo ""
 echo "GraphQL Playground: http://localhost:4000/graphiql"
 echo ""
@@ -120,15 +126,15 @@ echo ""
 # データベースの状態確認
 echo "=== データベースの状態確認 ==="
 echo "Event Store Database (5432):"
-psql -h localhost -p 5432 -U postgres -d elixir_cqrs_event_store_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
+PGPASSWORD=$PGPASSWORD psql -h localhost -p 5432 -U postgres -d elixir_cqrs_event_store_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
 
 echo ""
 echo "Command Service Database (5433):"
-psql -h localhost -p 5433 -U postgres -d elixir_cqrs_command_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
+PGPASSWORD=$PGPASSWORD psql -h localhost -p 5433 -U postgres -d elixir_cqrs_command_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
 
 echo ""
 echo "Query Service Database (5434):"
-psql -h localhost -p 5434 -U postgres -d elixir_cqrs_query_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
+PGPASSWORD=$PGPASSWORD psql -h localhost -p 5434 -U postgres -d elixir_cqrs_query_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
 
 echo ""
 echo "セットアップが完了しました！"

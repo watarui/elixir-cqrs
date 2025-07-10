@@ -5,7 +5,9 @@
 ## 前提条件
 
 - Elixir 1.18 以上
+- Erlang/OTP 26 以上
 - Docker と Docker Compose
+- PostgreSQL クライアント（psql）
 - Git
 
 ## セットアップ手順
@@ -44,24 +46,8 @@ docker compose up -d
 
 ### 5. アプリケーションの起動
 
-3 つのターミナルを開いて、それぞれのサービスを起動します：
-
-**ターミナル 1: Command Service**
-
 ```bash
-cd apps/command_service && mix run --no-halt
-```
-
-**ターミナル 2: Query Service**
-
-```bash
-cd apps/query_service && mix run --no-halt
-```
-
-**ターミナル 3: Client Service**
-
-```bash
-cd apps/client_service && mix phx.server
+./scripts/start_services.sh
 ```
 
 ## 動作確認
@@ -120,11 +106,58 @@ query {
 ## 監視ツール
 
 - **Jaeger UI**: http://localhost:16686
+
+  - 分散トレースの確認
+  - サービス間の通信フローの可視化
+
 - **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin/admin)
+
+  - メトリクスの確認
+  - クエリの実行
+
+- **Grafana**: http://localhost:3000
+  - ダッシュボードの表示
+  - デフォルト認証: admin/admin
+
+## トラブルシューティング
+
+### Phoenix PubSub 接続エラー
+
+```
+[error] Failed to send command: :timeout
+```
+
+**解決方法**:
+
+1. すべてのサービスが起動していることを確認
+2. 各サービスのログでエラーがないか確認
+3. Docker コンテナが正常に動作しているか確認: `docker compose ps`
+
+### データベース接続エラー
+
+```
+** (DBConnection.ConnectionError) connection not available
+```
+
+**解決方法**:
+
+1. Docker コンテナが起動しているか確認
+2. データベースのマイグレーションが完了しているか確認
+3. 接続設定（ポート番号）が正しいか確認
+
+### Elixir 警告メッセージ
+
+```
+warning: :otel_telemetry.with_span/4 is undefined
+```
+
+**解決方法**:
+
+これは開発環境では正常な警告です。`setup_db.sh` スクリプトは自動的にこれらの警告を抑制します。
 
 ## 次のステップ
 
-- [開発環境セットアップ](./DEVELOPMENT_SETUP.md) - より詳細な開発環境の設定
+- [開発ガイド](./DEVELOPMENT.md) - 開発環境の詳細設定と開発ガイドライン
+- [アーキテクチャ概要](./ARCHITECTURE.md) - システム設計の詳細
 - [GraphQL API リファレンス](./API_GRAPHQL.md) - API の完全なリファレンス
 - [SAGA 実行例](./SAGA_EXAMPLE.md) - SAGA パターンの実行例
