@@ -17,8 +17,6 @@ defmodule Shared.Application do
       Shared.Infrastructure.EventBus,
       # アグリゲートバージョンキャッシュ
       Shared.Infrastructure.EventStore.AggregateVersionCache,
-      # サガリポジトリ
-      Shared.Infrastructure.Saga.SagaRepository,
       # サガコーディネーター
       Shared.Infrastructure.Saga.SagaCoordinator,
       # サガメトリクス

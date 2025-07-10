@@ -155,7 +155,11 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
 
   defp get_event_type(event) do
     cond do
-      function_exported?(event.__struct__, :event_type, 0) ->
+      # コマンドレスポンスの場合はスキップ
+      Map.has_key?(event, :request_id) and Map.has_key?(event, :result) ->
+        nil
+
+      is_map(event) and Map.has_key?(event, :__struct__) and function_exported?(event.__struct__, :event_type, 0) ->
         event.__struct__.event_type()
 
       Map.has_key?(event, :event_type) ->

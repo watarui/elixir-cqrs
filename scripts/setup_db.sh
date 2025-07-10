@@ -137,4 +137,22 @@ echo "Query Service Database (5434):"
 PGPASSWORD=$PGPASSWORD psql -h localhost -p 5434 -U postgres -d elixir_cqrs_query_dev -c "\dt" 2>/dev/null || echo "  接続エラーまたはテーブルが存在しません"
 
 echo ""
+
+# デモデータの投入オプション
+if [ "$1" = "--with-demo-data" ]; then
+    echo "=== デモデータの投入 ==="
+    cd "$PROJECT_ROOT"
+    mix run scripts/seed_demo_data.exs
+    echo "デモデータの投入が完了しました"
+    echo ""
+fi
+
 echo "セットアップが完了しました！"
+
+if [ "$1" != "--with-demo-data" ]; then
+    echo ""
+    echo "デモデータを投入する場合は以下を実行してください："
+    echo "  mix run scripts/seed_demo_data.exs"
+    echo "または："
+    echo "  ./scripts/setup_db.sh --with-demo-data"
+fi

@@ -408,6 +408,38 @@ defmodule CommandFlowTest do
 end
 ```
 
+## プロジェクションの管理
+
+### プロジェクションの再構築
+
+イベントストアからRead Modelを再構築する必要がある場合：
+
+```bash
+# すべてのプロジェクションを再構築
+mix run scripts/simple_rebuild_projections.exs
+
+# カテゴリのみ再構築（手動）
+mix run -e "
+  QueryService.Infrastructure.Repositories.CategoryRepository.delete_all()
+  # イベントを再処理
+  QueryService.Infrastructure.ProjectionManager.rebuild_all()
+"
+```
+
+### リアルタイムプロジェクションの確認
+
+```bash
+# 新しいイベントがリアルタイムで処理されているか確認
+mix run scripts/test_realtime_projection.exs
+```
+
+### プロジェクションのステータス確認
+
+```elixir
+# IEx で実行
+GenServer.call(QueryService.Infrastructure.ProjectionManager, :get_status)
+```
+
 ## デバッグツール
 
 ### Observer

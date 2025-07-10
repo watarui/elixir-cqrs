@@ -106,10 +106,28 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   end
 
   @impl true
-  def handle_info({:event, event_type, event}, state) do
-    # リアルタイムイベント処理
-    state = process_realtime_event(event_type, event, state)
-    {:noreply, state}
+  def handle_info({:event, event}, state) do
+    # イベントタイプを取得
+    event_type = get_event_type(event)
+    
+    if event_type do
+      # リアルタイムイベント処理
+      state = process_realtime_event(event_type, event, state)
+      {:noreply, state}
+    else
+      Logger.debug("Ignoring event without event_type: #{inspect(event)}")
+      {:noreply, state}
+    end
+  end
+  
+  defp get_event_type(event) do
+    cond do
+      is_map(event) and Map.has_key?(event, :__struct__) and function_exported?(event.__struct__, :event_type, 0) ->
+        String.to_atom(event.__struct__.event_type())
+      
+      true ->
+        nil
+    end
   end
 
   # Private functions
@@ -117,24 +135,24 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   defp subscribe_to_events(state) do
     # 各イベントタイプに購読
     event_types = [
-      :category_created,
-      :category_updated,
-      :category_deleted,
-      :product_created,
-      :product_updated,
-      :product_price_changed,
-      :product_deleted,
-      :order_placed,
-      :order_payment_completed,
-      :order_shipped,
-      :order_delivered,
-      :order_cancelled
+      :"category.created",
+      :"category.updated",
+      :"category.deleted",
+      :"product.created",
+      :"product.updated",
+      :"product.price_changed",
+      :"product.deleted",
+      :"order.placed",
+      :"order.payment_completed",
+      :"order.shipped",
+      :"order.delivered",
+      :"order.cancelled"
     ]
 
     subscriptions =
       Enum.reduce(event_types, %{}, fn event_type, acc ->
         :ok = EventBus.subscribe(event_type)
-        Map.put(acc, event_type, event_type)
+        Map.put(acc, Atom.to_string(event_type), event_type)
       end)
 
     %{state | subscriptions: subscriptions}
@@ -171,20 +189,20 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   defp get_projections_for_event(event_type) do
     # イベントタイプに基づいて更新すべきプロジェクションを決定
     case event_type do
-      event when event in [:category_created, :category_updated, :category_deleted] ->
+      event when event in [:"category.created", :"category.updated", :"category.deleted"] ->
         [CategoryProjection]
 
       event
-      when event in [:product_created, :product_updated, :product_price_changed, :product_deleted] ->
+      when event in [:"product.created", :"product.updated", :"product.price_changed", :"product.deleted"] ->
         [ProductProjection]
 
       event
       when event in [
-             :order_placed,
-             :order_payment_completed,
-             :order_shipped,
-             :order_delivered,
-             :order_cancelled
+             :"order.placed",
+             :"order.payment_completed",
+             :"order.shipped",
+             :"order.delivered",
+             :"order.cancelled"
            ] ->
         [OrderProjection]
 
@@ -214,6 +232,10 @@ defmodule QueryService.Infrastructure.ProjectionManager do
     # プロジェクションをクリア
     case projection_module.clear_all() do
       :ok ->
+        # すべてのイベントを再処理
+        rebuild_from_event_store(projection_module)
+
+      {:ok, _count} ->
         # すべてのイベントを再処理
         rebuild_from_event_store(projection_module)
 
@@ -263,15 +285,15 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   end
 
   defp get_handled_events(CategoryProjection) do
-    [:category_created, :category_updated, :category_deleted]
+    [:"category.created", :"category.updated", :"category.deleted"]
   end
 
   defp get_handled_events(ProductProjection) do
-    [:product_created, :product_updated, :product_price_changed, :product_deleted]
+    [:"product.created", :"product.updated", :"product.price_changed", :"product.deleted"]
   end
 
   defp get_handled_events(OrderProjection) do
-    [:order_placed, :order_payment_completed, :order_shipped, :order_delivered, :order_cancelled]
+    [:"order.placed", :"order.payment_completed", :"order.shipped", :"order.delivered", :"order.cancelled"]
   end
 
   defp update_projection_status(projections, projection_module, :processed) do
