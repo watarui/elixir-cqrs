@@ -25,18 +25,21 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
         order = %{
           id: aggregate.id.value,
           user_id: aggregate.user_id.value,
-          status: :pending,  # 初期状態はpending
+          # 初期状態はpending
+          status: :pending,
           total_amount: calculate_total_amount(aggregate.items),
           items: Enum.map(aggregate.items, &transform_aggregate_item/1),
           created_at: aggregate.created_at,
           updated_at: aggregate.updated_at
         }
-        
+
         {:ok, %{success: true, order: order, message: "Order created successfully"}}
 
       {:error, reason} ->
         Logger.error("Failed to create order: #{inspect(reason)}")
-        {:ok, %{success: false, order: nil, message: "Failed to create order: #{inspect(reason)}"}}
+
+        {:ok,
+         %{success: false, order: nil, message: "Failed to create order: #{inspect(reason)}"}}
     end
   end
 

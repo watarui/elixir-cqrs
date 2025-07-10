@@ -19,7 +19,7 @@ defmodule ClientService.GraphQL.Types.Category do
         # カスタム Dataloader を使用したバッチ取得
         # 実際の実装では、リゾルバー内で RemoteQueryBus を使用
         alias ClientService.Infrastructure.RemoteQueryBus
-        
+
         query = %{
           __struct__: "QueryService.Application.Queries.ProductQueries.ListProducts",
           query_type: "product.list",
@@ -28,10 +28,11 @@ defmodule ClientService.GraphQL.Types.Category do
           offset: 0,
           metadata: nil
         }
-        
+
         case RemoteQueryBus.send_query(query) do
           {:ok, products} ->
             {:ok, products || []}
+
           {:error, _reason} ->
             {:ok, []}
         end

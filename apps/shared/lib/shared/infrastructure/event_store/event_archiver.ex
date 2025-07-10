@@ -169,7 +169,7 @@ defmodule Shared.Infrastructure.EventStore.EventArchiver do
     Ecto.Multi.new()
     |> Ecto.Multi.run(:insert_to_archive, fn repo, _changes ->
       # イベントをアーカイブテーブルに挿入
-      event_maps =
+      _event_maps =
         Enum.map(events, fn event ->
           event
           |> Map.from_struct()

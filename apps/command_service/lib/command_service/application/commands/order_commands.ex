@@ -37,7 +37,7 @@ defmodule CommandService.Application.Commands.OrderCommands do
     def command_type, do: "order.create"
 
     defp validate_items(items) when is_list(items) and length(items) > 0 do
-      Enum.reduce_while(items, :ok, fn item, acc ->
+      Enum.reduce_while(items, :ok, fn item, _acc ->
         case validate_item(item) do
           :ok -> {:cont, :ok}
           error -> {:halt, error}

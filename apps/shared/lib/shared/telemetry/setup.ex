@@ -110,7 +110,7 @@ defmodule Shared.Telemetry.Setup do
   end
 
   # Phoenix イベントハンドラー
-  defp handle_phoenix_event(event, measurements, metadata, _config) do
+  defp handle_phoenix_event(event, _measurements, metadata, _config) do
     case event do
       [:phoenix, :endpoint, :start] ->
         # HTTPリクエストの開始
@@ -155,7 +155,7 @@ defmodule Shared.Telemetry.Setup do
   end
 
   # Absinthe イベントハンドラー
-  defp handle_absinthe_event(event, measurements, metadata, _config) do
+  defp handle_absinthe_event(event, _measurements, metadata, _config) do
     case event do
       [:absinthe, :execute, :operation, :start] ->
         :otel_telemetry.start_telemetry_span(
@@ -197,7 +197,7 @@ defmodule Shared.Telemetry.Setup do
   end
 
   # カスタムイベントハンドラー
-  defp handle_custom_event(event, measurements, metadata, _config) do
+  defp handle_custom_event(event, _measurements, metadata, _config) do
     span_name =
       case event do
         [:cqrs, :command, _] -> "Command #{metadata[:command_type] || "Unknown"}"

@@ -60,7 +60,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ConfirmOrder{} = command) do
-    UnitOfWork.transaction(fn context ->
+    UnitOfWork.transaction(fn _context ->
       repo = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
@@ -75,7 +75,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.CancelOrder{} = command) do
-    UnitOfWork.transaction(fn context ->
+    UnitOfWork.transaction(fn _context ->
       repo = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
@@ -90,7 +90,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ReserveInventory{} = command) do
-    UnitOfWork.transaction(fn context ->
+    UnitOfWork.transaction(fn _context ->
       repo = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
@@ -129,7 +129,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ProcessPayment{} = command) do
-    UnitOfWork.transaction(fn context ->
+    UnitOfWork.transaction(fn _context ->
       repo = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),

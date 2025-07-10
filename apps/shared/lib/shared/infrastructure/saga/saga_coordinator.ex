@@ -8,7 +8,6 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   use GenServer
 
   alias Shared.Infrastructure.EventBus
-  alias Shared.Infrastructure.EventStore.EventStore
 
   require Logger
 
@@ -65,10 +64,10 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
 
     # サガを保存
     new_active_sagas = Map.put(state.active_sagas, saga_id, {saga_module, saga_state})
-    persist_saga(saga_id, saga_module, saga_state)
+    persist_saga(saga_id, saga_state)
 
     # 初期コマンドを発行
-    case get_next_commands(saga_module, saga_state) do
+    case get_next_commands(saga_state) do
       {:ok, commands} ->
         Enum.each(commands, &dispatch_command/1)
         {:reply, {:ok, saga_id}, %{state | active_sagas: new_active_sagas}}
@@ -114,7 +113,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
             if saga_module.completed?(updated_saga_state) or
                  saga_module.failed?(updated_saga_state) do
               # サガを永続化してアクティブリストから削除
-              persist_saga(saga_id, saga_module, updated_saga_state)
+              persist_saga(saga_id, updated_saga_state)
               %{acc_state | active_sagas: Map.delete(acc_state.active_sagas, saga_id)}
             else
               # サガの状態を更新
@@ -181,7 +180,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
       saga_state = saga_module.new(saga_id, initial_data)
 
       # 最初のコマンドを発行
-      case get_next_commands(saga_module, saga_state) do
+      case get_next_commands(saga_state) do
         {:ok, commands} ->
           Enum.each(commands, &dispatch_command/1)
           %{state | active_sagas: Map.put(state.active_sagas, saga_id, {saga_module, saga_state})}
@@ -194,7 +193,7 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     end
   end
 
-  defp get_next_commands(saga_module, saga_state) do
+  defp get_next_commands(saga_state) do
     # 現在のステップに基づいて次のコマンドを生成
     case saga_state.current_step do
       :reserve_inventory ->
@@ -219,6 +218,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
   defp update_saga_state_from_event(saga_state, event) do
     # イベントの情報でサガの状態を更新
     saga_state
+    |> Map.put(:updated_at, DateTime.utc_now())
+    |> Map.update(:processed_events, [event.__struct__], &[event.__struct__ | &1])
   end
 
   defp dispatch_command(command) do
@@ -236,9 +237,11 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     dispatcher.dispatch_command(command)
   end
 
-  defp persist_saga(saga_id, saga_module, saga_state) do
+  defp persist_saga(saga_id, saga_state) do
     # サガの最終状態を永続化
     Logger.info("Persisting saga #{saga_id} with state: #{saga_state.state}")
-    # TODO: サガリポジトリの実装
+
+    alias Shared.Infrastructure.Saga.SagaRepository
+    SagaRepository.save_saga(saga_id, saga_state)
   end
 end

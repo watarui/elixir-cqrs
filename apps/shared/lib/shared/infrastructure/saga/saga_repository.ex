@@ -1,161 +1,101 @@
 defmodule Shared.Infrastructure.Saga.SagaRepository do
   @moduledoc """
-  サガリポジトリ
+  SAGA の永続化を管理するリポジトリ
 
-  サガの永続化と読み込みを管理します
+  SAGA の状態を PostgreSQL に保存し、障害時の復旧を可能にします
   """
 
-  use GenServer
-
-  alias Shared.Domain.Saga.SagaEvents
-  alias Shared.Infrastructure.EventStore.EventStore
+  alias Shared.Infrastructure.EventStore.Repo
+  import Ecto.Query
 
   require Logger
 
-  # ETS テーブル名
-  @table_name :saga_store
-
-  # Client API
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @doc """
-  サガを保存する
+  SAGA の状態を保存する
   """
-  @spec save(String.t(), module(), map()) :: :ok | {:error, String.t()}
-  def save(saga_id, saga_module, saga_state) do
-    GenServer.call(__MODULE__, {:save, saga_id, saga_module, saga_state})
-  end
+  def save_saga(saga_id, saga_state) do
+    now = DateTime.utc_now()
 
-  @doc """
-  サガを読み込む
-  """
-  @spec load(String.t()) :: {:ok, {module(), map()}} | {:error, :not_found}
-  def load(saga_id) do
-    GenServer.call(__MODULE__, {:load, saga_id})
-  end
-
-  @doc """
-  アクティブなサガを全て取得する
-  """
-  @spec get_active_sagas() :: [{String.t(), module(), map()}]
-  def get_active_sagas do
-    GenServer.call(__MODULE__, :get_active_sagas)
-  end
-
-  @doc """
-  サガを削除する
-  """
-  @spec delete(String.t()) :: :ok
-  def delete(saga_id) do
-    GenServer.call(__MODULE__, {:delete, saga_id})
-  end
-
-  # Server callbacks
-
-  @impl true
-  def init(_opts) do
-    # ETS テーブルを作成
-    table = :ets.new(@table_name, [:set, :private])
-
-    state = %{
-      table: table,
-      event_store:
-        Application.get_env(
-          :shared,
-          :event_store_adapter,
-          Shared.Infrastructure.EventStore.InMemoryAdapter
-        )
-    }
-
-    {:ok, state}
-  end
-
-  @impl true
-  def handle_call({:save, saga_id, saga_module, saga_state}, _from, state) do
-    # サガの状態を保存
-    saga_data = %{
-      saga_id: saga_id,
-      saga_module: saga_module,
-      saga_state: saga_state,
-      saved_at: DateTime.utc_now()
-    }
-
-    :ets.insert(state.table, {saga_id, saga_data})
-
-    # イベントとして記録
-    event = create_saga_event(saga_state)
-
-    case EventStore.append_events(saga_id, [event], 0, state.event_store) do
-      {:ok, _} ->
-        Logger.info("Saga saved: #{saga_id}")
-        {:reply, :ok, state}
-
-      {:error, reason} ->
-        Logger.error("Failed to save saga event: #{reason}")
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl true
-  def handle_call({:load, saga_id}, _from, state) do
-    case :ets.lookup(state.table, saga_id) do
-      [{^saga_id, saga_data}] ->
-        {:reply, {:ok, {saga_data.saga_module, saga_data.saga_state}}, state}
-
-      [] ->
-        {:reply, {:error, :not_found}, state}
-    end
-  end
-
-  @impl true
-  def handle_call(:get_active_sagas, _from, state) do
-    active_sagas =
-      :ets.tab2list(state.table)
-      |> Enum.filter(fn {_, saga_data} ->
-        saga_state = saga_data.saga_state
-        saga_state[:state] not in [:completed, :compensated, :failed]
-      end)
-      |> Enum.map(fn {saga_id, saga_data} ->
-        {saga_id, saga_data.saga_module, saga_data.saga_state}
-      end)
-
-    {:reply, active_sagas, state}
-  end
-
-  @impl true
-  def handle_call({:delete, saga_id}, _from, state) do
-    :ets.delete(state.table, saga_id)
-    {:reply, :ok, state}
-  end
-
-  # Private functions
-
-  defp create_saga_event(saga_state) do
-    event_type =
-      case saga_state[:state] do
-        :started -> SagaEvents.SagaStarted
-        :processing -> SagaEvents.SagaStepCompleted
-        :failed -> SagaEvents.SagaFailed
-        :compensating -> SagaEvents.SagaCompensationStarted
-        :compensated -> SagaEvents.SagaCompensated
-        :completed -> SagaEvents.SagaCompleted
-        _ -> SagaEvents.SagaUpdated
-      end
-
-    event_type.new(%{
-      saga_id: saga_state[:saga_id],
+    saga_record = %{
+      id: saga_id,
       saga_type: saga_state[:saga_type] || "OrderSaga",
-      current_step: saga_state[:current_step],
-      state: saga_state[:state],
-      metadata: %{
-        order_id: saga_state[:order_id],
-        user_id: saga_state[:user_id],
-        completed_steps: saga_state[:completed_steps] || []
-      },
-      occurred_at: DateTime.utc_now()
-    })
+      state: Jason.encode!(saga_state),
+      current_step: to_string(saga_state[:current_step] || "unknown"),
+      status: to_string(saga_state[:state] || "active"),
+      created_at: saga_state[:created_at] || now,
+      updated_at: now
+    }
+
+    case Repo.insert_all(
+           "sagas",
+           [saga_record],
+           on_conflict: {:replace_all_except, [:id, :created_at]},
+           conflict_target: :id
+         ) do
+      {1, _} ->
+        Logger.info("Saga #{saga_id} persisted successfully")
+        :ok
+
+      error ->
+        Logger.error("Failed to persist saga #{saga_id}: #{inspect(error)}")
+        {:error, "Failed to persist saga"}
+    end
+  end
+
+  @doc """
+  SAGA の状態を取得する
+  """
+  def get_saga(saga_id) do
+    query = from(s in "sagas", where: s.id == ^saga_id, select: s)
+
+    case Repo.one(query) do
+      nil ->
+        {:error, :not_found}
+
+      saga ->
+        {:ok, decode_saga(saga)}
+    end
+  end
+
+  @doc """
+  未完了の SAGA を取得する
+  """
+  def get_incomplete_sagas do
+    query =
+      from(s in "sagas",
+        where: s.status not in ["completed", "failed", "compensated"],
+        select: s
+      )
+
+    sagas = Repo.all(query)
+    Enum.map(sagas, &decode_saga/1)
+  end
+
+  @doc """
+  SAGA を削除する
+  """
+  def delete_saga(saga_id) do
+    query = from(s in "sagas", where: s.id == ^saga_id)
+
+    case Repo.delete_all(query) do
+      {1, _} -> :ok
+      _ -> {:error, :not_found}
+    end
+  end
+
+  # プライベート関数
+
+  defp decode_saga(saga_record) do
+    state = Jason.decode!(saga_record.state, keys: :atoms)
+
+    %{
+      saga_id: saga_record.id,
+      saga_type: saga_record.saga_type,
+      state: state,
+      current_step: String.to_atom(saga_record.current_step),
+      status: String.to_atom(saga_record.status),
+      created_at: saga_record.created_at,
+      updated_at: saga_record.updated_at
+    }
   end
 end
