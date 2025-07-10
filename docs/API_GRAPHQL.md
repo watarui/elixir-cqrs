@@ -285,6 +285,52 @@ mutation DeleteProduct($id: ID!) {
 }
 ```
 
+#### 注文関連
+
+##### `createOrder`
+
+新しい注文を作成し、SAGA パターンによる処理を開始します。
+
+```graphql
+mutation CreateOrder($input: CreateOrderInput!) {
+  createOrder(input: $input) {
+    id
+    status
+    totalAmount
+    items {
+      productId
+      productName
+      quantity
+      unitPrice
+      subtotal
+    }
+    createdAt
+  }
+}
+
+# 入力例
+{
+  "input": {
+    "userId": "user-123",
+    "items": [
+      {
+        "productId": "123e4567-e89b-12d3-a456-426614174000",
+        "productName": "スマートフォン",
+        "quantity": 2,
+        "unitPrice": 80000
+      }
+    ]
+  }
+}
+```
+
+**注意事項**:
+
+- この mutation は SAGA パターンを使用して実行されます
+- 在庫予約、支払い処理、注文確認の各ステップが順次実行されます
+- いずれかのステップが失敗した場合、自動的に補償処理が実行されます
+- 注文のステータスは初期状態では "pending" で、SAGA の完了後に "confirmed" または "cancelled" に更新されます
+
 ## 型定義
 
 ### Category
@@ -318,6 +364,35 @@ type Product {
   active: Boolean
   createdAt: DateTime!
   updatedAt: DateTime!
+}
+```
+
+### Order
+
+```graphql
+type Order {
+  id: ID!
+  userId: String!
+  status: OrderStatus!
+  totalAmount: Decimal!
+  items: [OrderItem!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type OrderItem {
+  productId: ID!
+  productName: String!
+  quantity: Int!
+  unitPrice: Decimal!
+  subtotal: Decimal!
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  FAILED
 }
 ```
 
@@ -364,6 +439,22 @@ input UpdateProductInput {
   price: Decimal
   categoryId: ID
   stockQuantity: Int
+}
+```
+
+#### CreateOrderInput
+
+```graphql
+input CreateOrderInput {
+  userId: String!
+  items: [OrderItemInput!]!
+}
+
+input OrderItemInput {
+  productId: ID!
+  productName: String!
+  quantity: Int!
+  unitPrice: Decimal!
 }
 ```
 

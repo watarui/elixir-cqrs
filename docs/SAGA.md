@@ -366,3 +366,151 @@ def resume_from_checkpoint(saga_id) do
   end
 end
 ```
+
+## 実装例：OrderSaga
+
+### 概要
+
+OrderSaga は、注文処理フローを SAGA パターンで実装した例です。以下のステップで構成されています：
+
+1. **在庫予約** - 商品の在庫を予約
+2. **支払い処理** - 支払いを実行
+3. **注文確認** - 注文を確定
+
+### 実行フロー
+
+#### 成功シナリオ
+
+```
+1. CreateOrder コマンド受信
+   ↓
+2. OrderCreated イベント発行
+   ↓
+3. OrderSaga 開始
+   ↓
+4. ReserveInventory コマンド送信
+   ↓
+5. InventoryReserved イベント受信
+   ↓
+6. ProcessPayment コマンド送信
+   ↓
+7. PaymentProcessed イベント受信
+   ↓
+8. ConfirmOrder コマンド送信
+   ↓
+9. OrderConfirmed イベント受信
+   ↓
+10. SAGA 完了
+```
+
+#### 失敗シナリオ（支払い失敗）
+
+```
+1-5. 在庫予約まで成功
+   ↓
+6. ProcessPayment コマンド送信
+   ↓
+7. PaymentFailed イベント受信
+   ↓
+8. 補償処理開始
+   ↓
+9. ReleaseInventory コマンド送信（在庫解放）
+   ↓
+10. CancelOrder コマンド送信
+   ↓
+11. SAGA 完了（注文キャンセル）
+```
+
+### GraphQL での使用例
+
+#### 事前準備
+
+```graphql
+# カテゴリ作成
+mutation {
+  createCategory(input: { name: "電子機器", description: "電子機器カテゴリ" }) {
+    id
+    name
+  }
+}
+
+# 商品作成（カテゴリIDを使用）
+mutation {
+  createProduct(
+    input: {
+      name: "スマートフォン"
+      description: "最新モデル"
+      price: 80000
+      categoryId: "上で作成したカテゴリID"
+      stockQuantity: 5
+    }
+  ) {
+    id
+    name
+    stockQuantity
+  }
+}
+```
+
+#### 注文作成（SAGA 開始）
+
+```graphql
+mutation CreateOrder {
+  createOrder(
+    input: {
+      userId: "user-123"
+      items: [
+        {
+          productId: "上で作成した商品ID"
+          productName: "スマートフォン"
+          quantity: 2
+          unitPrice: 80000
+        }
+      ]
+    }
+  ) {
+    id
+    status
+    totalAmount
+    items {
+      productName
+      quantity
+      unitPrice
+    }
+  }
+}
+```
+
+### テストシナリオ
+
+1. **正常系テスト**: 十分な在庫がある商品で注文を作成し、すべてのステップが成功することを確認
+2. **在庫不足テスト**: 在庫以上の数量で注文を作成し、SAGA が適切に失敗することを確認
+3. **支払い失敗テスト**: 特定の金額（例：999999）で注文を作成し、支払いステップで失敗させ、補償処理が実行されることを確認
+4. **タイムアウトテスト**: サービスを停止した状態で注文を作成し、タイムアウトが発生することを確認
+
+### トラブルシューティング
+
+#### SAGA が進まない場合
+
+1. すべてのサービスが起動していることを確認
+2. Phoenix PubSub の接続を確認
+3. イベントストアのログを確認
+
+#### 補償処理が実行されない場合
+
+1. SAGA の状態を確認
+
+   ```sql
+   SELECT * FROM sagas WHERE id = 'saga-id';
+   ```
+
+2. イベントログを確認
+   ```sql
+   SELECT * FROM events WHERE aggregate_id = 'order-id' ORDER BY created_at;
+   ```
+
+#### パフォーマンスの問題
+
+1. Jaeger でボトルネックを特定（http://localhost:16686）
+2. 各ステップのタイムアウト設定を調整
+3. 並列実行可能なステップを識別
