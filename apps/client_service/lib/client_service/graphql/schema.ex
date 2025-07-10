@@ -9,12 +9,14 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Common)
   import_types(ClientService.GraphQL.Types.Category)
   import_types(ClientService.GraphQL.Types.Product)
+  import_types(ClientService.GraphQL.Types.Order)
 
   alias ClientService.GraphQL.{Dataloader, Resolvers}
 
   # PubSub版のリゾルバーを使用
   alias ClientService.GraphQL.Resolvers.CategoryResolverPubsub, as: CategoryResolver
   alias ClientService.GraphQL.Resolvers.ProductResolverPubsub, as: ProductResolver
+  alias ClientService.GraphQL.Resolvers.OrderResolverPubsub, as: OrderResolver
 
   query do
     @desc "カテゴリを取得"
@@ -66,6 +68,29 @@ defmodule ClientService.GraphQL.Schema do
       arg(:offset, :integer, default_value: 0)
       resolve(&ProductResolver.search_products/3)
     end
+
+    @desc "注文を取得"
+    field :order, :order do
+      arg(:id, non_null(:id))
+      resolve(&OrderResolver.get_order/3)
+    end
+
+    @desc "注文一覧を取得"
+    field :orders, list_of(:order) do
+      arg(:user_id, :string)
+      arg(:status, :order_status)
+      arg(:limit, :integer, default_value: 20)
+      arg(:offset, :integer, default_value: 0)
+      resolve(&OrderResolver.list_orders/3)
+    end
+
+    @desc "ユーザーの注文一覧を取得"
+    field :user_orders, list_of(:order) do
+      arg(:user_id, non_null(:string))
+      arg(:limit, :integer, default_value: 20)
+      arg(:offset, :integer, default_value: 0)
+      resolve(&OrderResolver.list_user_orders/3)
+    end
   end
 
   mutation do
@@ -112,6 +137,12 @@ defmodule ClientService.GraphQL.Schema do
     field :delete_product, :delete_result do
       arg(:id, non_null(:id))
       resolve(&ProductResolver.delete_product/3)
+    end
+
+    @desc "注文を作成（SAGAを開始）"
+    field :create_order, :order_result do
+      arg(:input, non_null(:create_order_input))
+      resolve(&OrderResolver.create_order/3)
     end
   end
 
