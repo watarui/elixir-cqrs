@@ -7,6 +7,8 @@ config :logger, :console,
   format: "[$level] [$metadata] $message\n",
   metadata: [:node, :request_id]
 
+config :logger, level: :debug
+
 
 # ホットリロードの設定
 config :phoenix, :plug_init_mode, :runtime

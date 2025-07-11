@@ -30,7 +30,12 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
       started_at: DateTime.utc_now(),
       updated_at: DateTime.utc_now(),
       completed_steps: [],
-      processed_events: []
+      processed_events: [],
+      last_event_id: nil,
+      # エラー情報
+      failed_step: nil,
+      failure_reason: nil,
+      failed_at: nil
     }
   end
 
@@ -40,33 +45,27 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
     case {saga.current_step, event.__struct__} do
       # 在庫予約完了
-      {:reserve_inventory, Shared.Domain.Events.OrderEvents.OrderItemReserved} ->
+      {:reserve_inventory, Shared.Domain.Events.SagaEvents.InventoryReserved} ->
         saga = %{
           saga
           | inventory_reserved: true,
-            reservation_ids: [event.product_id | saga.reservation_ids]
+            reservation_ids: Enum.map(event.items, & &1.product_id)
         }
+        
+        saga =
+          saga
+          |> complete_step(:reserve_inventory)
+          |> Map.put(:current_step, :process_payment)
 
-        # すべての商品の在庫が予約されたかチェック
-        if all_items_reserved?(saga) do
-          saga =
-            saga
-            |> complete_step(:reserve_inventory)
-            |> Map.put(:current_step, :process_payment)
-
-          commands = [create_payment_command(saga)]
-          {:ok, commands}
-        else
-          # まだ予約が必要な商品がある
-          {:ok, []}
-        end
+        commands = [create_payment_command(saga)]
+        {:ok, commands}
 
       # 支払い処理完了
-      {:process_payment, Shared.Domain.Events.OrderEvents.OrderPaymentProcessed} ->
+      {:process_payment, Shared.Domain.Events.SagaEvents.PaymentProcessed} ->
         saga =
           saga
           |> Map.put(:payment_processed, true)
-          |> Map.put(:payment_id, event.payment_id)
+          |> Map.put(:payment_id, event.transaction_id)
           |> complete_step(:process_payment)
           |> Map.put(:current_step, :arrange_shipping)
 
@@ -74,7 +73,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
         {:ok, commands}
 
       # 配送手配完了
-      {:arrange_shipping, _shipping_event} ->
+      {:arrange_shipping, Shared.Domain.Events.SagaEvents.ShippingArranged} ->
         saga =
           saga
           |> Map.put(:shipping_arranged, true)
@@ -86,7 +85,7 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
         {:ok, commands}
 
       # 注文確定
-      {:confirm_order, Shared.Domain.Events.OrderEvents.OrderConfirmed} ->
+      {:confirm_order, Shared.Domain.Events.SagaEvents.OrderConfirmed} ->
         _updated_saga =
           saga
           |> Map.put(:order_confirmed, true)
@@ -95,11 +94,28 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
 
         {:ok, []}
 
-      # エラーイベント
-      {_, _error_event} ->
-        failed_saga = record_failure(saga, saga.current_step, "Step failed")
+      # 在庫予約失敗
+      {:reserve_inventory, Shared.Domain.Events.SagaEvents.InventoryReservationFailed} ->
+        failed_saga = record_failure(saga, :reserve_inventory, event.reason)
         compensation_commands = get_compensation_commands(failed_saga)
         {:ok, compensation_commands}
+
+      # 支払い処理失敗
+      {:process_payment, Shared.Domain.Events.SagaEvents.PaymentFailed} ->
+        failed_saga = record_failure(saga, :process_payment, event.reason)
+        compensation_commands = get_compensation_commands(failed_saga)
+        {:ok, compensation_commands}
+
+      # 配送手配失敗
+      {:arrange_shipping, Shared.Domain.Events.SagaEvents.ShippingFailed} ->
+        failed_saga = record_failure(saga, :arrange_shipping, event.reason)
+        compensation_commands = get_compensation_commands(failed_saga)
+        {:ok, compensation_commands}
+
+      # その他のイベント
+      _ ->
+        # 未処理のイベントは無視
+        {:ok, []}
     end
   end
 
@@ -149,12 +165,6 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
   end
 
   # Private functions
-
-  defp all_items_reserved?(saga) do
-    item_count = length(saga.items)
-    reserved_count = length(saga.reservation_ids)
-    item_count == reserved_count
-  end
 
   defp create_payment_command(saga) do
     %{

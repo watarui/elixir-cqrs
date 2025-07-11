@@ -261,16 +261,38 @@ defmodule CommandService.Domain.Aggregates.OrderAggregate do
     case map[field] || map[String.to_atom(field)] do
       nil -> {:error, "#{field} is required"}
       value when is_number(value) -> {:ok, value}
+      %Decimal{} = value -> {:ok, Decimal.to_float(value)}
+      value when is_binary(value) ->
+        case Decimal.parse(value) do
+          {decimal, ""} -> {:ok, Decimal.to_float(decimal)}
+          _ -> {:error, "#{field} must be a valid number"}
+        end
       _ -> {:error, "#{field} must be a number"}
     end
   end
 
   defp calculate_total(items) do
     total =
-      Enum.reduce(items, 0, fn item, acc ->
+      Enum.reduce(items, Decimal.new(0), fn item, acc ->
         quantity = item["quantity"] || item[:quantity]
         unit_price = item["unit_price"] || item[:unit_price]
-        acc + quantity * unit_price
+        
+        # unit_price を Decimal に変換
+        price_decimal = 
+          case unit_price do
+            %Decimal{} = d -> d
+            n when is_number(n) -> Decimal.new(n)
+            s when is_binary(s) -> 
+              case Decimal.parse(s) do
+                {d, ""} -> d
+                _ -> Decimal.new(0)
+              end
+            _ -> Decimal.new(0)
+          end
+        
+        # 数量と価格を掛ける
+        item_total = Decimal.mult(price_decimal, Decimal.new(quantity))
+        Decimal.add(acc, item_total)
       end)
 
     Money.new(total)

@@ -12,6 +12,11 @@ defmodule QueryService.Application.Handlers.OrderQueryHandler do
   @doc """
   クエリを処理する
   """
+  def handle(%{query_type: "order.get", id: id}) do
+    Logger.info("Getting order by id: #{id}")
+    OrderRepository.get(id)
+  end
+
   def handle(%{query_type: "order.get_by_id", id: id}) do
     Logger.info("Getting order by id: #{id}")
     OrderRepository.get(id)

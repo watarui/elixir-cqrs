@@ -26,12 +26,8 @@ defmodule Shared.Infrastructure.Saga.CommandDispatcher do
                "cancel_shipping",
                "cancel_order"
              ] ->
-          # PubSub 経由でコマンドサービスに送信
-          Phoenix.PubSub.broadcast(
-            ClientService.PubSub,
-            "commands",
-            {:command, command}
-          )
+          # EventBus 経由でコマンドサービスに送信
+          Shared.Infrastructure.EventBus.publish(:commands, command)
 
           {:ok, %{dispatched: true}}
 

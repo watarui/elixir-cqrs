@@ -48,22 +48,31 @@ defmodule CommandService.Application.Commands.OrderCommands do
     defp validate_items(_), do: {:error, "Items must be a non-empty list"}
 
     defp validate_item(item) do
+      # デバッグ用ログ
+      require Logger
+      Logger.debug("Validating item: #{inspect(item)}")
+      
       with :ok <-
              validate_required(item[:product_id] || item["product_id"], "product_id in item"),
            :ok <-
              validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item") do
-        validate_positive_number(
-          item[:unit_price] || item["unit_price"],
-          "unit_price in item"
-        )
+        # unit_price を取得して検証
+        unit_price = item[:unit_price] || item["unit_price"]
+        Logger.debug("unit_price value: #{inspect(unit_price)}, type: #{inspect(type_of(unit_price))}")
+        validate_positive_number(unit_price, "unit_price in item")
+      end
+    end
+    
+    defp type_of(value) do
+      cond do
+        is_integer(value) -> :integer
+        is_float(value) -> :float
+        is_binary(value) -> :string
+        is_struct(value, Decimal) -> :decimal
+        true -> :unknown
       end
     end
 
-    defp validate_positive_integer(value, field) when is_integer(value) and value > 0, do: :ok
-    defp validate_positive_integer(_, field), do: {:error, "#{field} must be a positive integer"}
-
-    defp validate_positive_number(value, field) when is_number(value) and value > 0, do: :ok
-    defp validate_positive_number(_, field), do: {:error, "#{field} must be a positive number"}
   end
 
   defmodule ConfirmOrder do

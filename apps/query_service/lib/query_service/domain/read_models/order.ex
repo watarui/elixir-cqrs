@@ -20,6 +20,11 @@ defmodule QueryService.Domain.ReadModels.Order do
     field(:payment_id, :string)
     field(:shipping_id, :string)
     field(:cancellation_reason, :string)
+    
+    # SAGA 関連フィールド
+    field(:saga_id, :string)
+    field(:saga_status, :string)
+    field(:saga_current_step, :string)
 
     # タイムスタンプ
     field(:confirmed_at, :utc_datetime)
@@ -44,6 +49,9 @@ defmodule QueryService.Domain.ReadModels.Order do
       :payment_id,
       :shipping_id,
       :cancellation_reason,
+      :saga_id,
+      :saga_status,
+      :saga_current_step,
       :confirmed_at,
       :payment_processed_at,
       :shipped_at,
@@ -54,10 +62,11 @@ defmodule QueryService.Domain.ReadModels.Order do
     |> validate_number(:total_amount, greater_than_or_equal_to: 0)
     |> validate_inclusion(:status, [
       "pending",
-      "confirmed",
+      "inventory_reserved",
       "payment_processed",
       "shipped",
       "delivered",
+      "confirmed",
       "cancelled"
     ])
   end

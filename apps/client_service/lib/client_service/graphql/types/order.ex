@@ -8,9 +8,18 @@ defmodule ClientService.GraphQL.Types.Order do
   @desc "注文ステータス"
   enum :order_status do
     value(:pending, description: "保留中")
-    value(:processing, description: "処理中")
+    value(:inventory_reserved, description: "在庫予約済み")
+    value(:payment_processed, description: "支払い処理済み")
+    value(:shipped, description: "配送手配済み")
     value(:confirmed, description: "確定済み")
     value(:cancelled, description: "キャンセル済み")
+    value(:failed, description: "失敗")
+  end
+
+  @desc "SAGA ステータス"
+  enum :saga_status do
+    value(:started, description: "開始済み")
+    value(:completed, description: "完了")
     value(:failed, description: "失敗")
   end
 
@@ -21,6 +30,11 @@ defmodule ClientService.GraphQL.Types.Order do
     field(:status, non_null(:order_status))
     field(:total_amount, non_null(:decimal))
     field(:items, non_null(list_of(:order_item)))
+    field(:saga_id, :string, description: "SAGA ID")
+    field(:saga_status, :saga_status, description: "SAGA ステータス")
+    field(:saga_current_step, :string, description: "SAGA 現在のステップ")
+    field(:payment_id, :string, description: "支払い ID")
+    field(:shipping_id, :string, description: "配送 ID")
     field(:created_at, non_null(:datetime))
     field(:updated_at, non_null(:datetime))
   end

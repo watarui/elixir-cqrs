@@ -45,9 +45,12 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     # イベントバスに登録
     EventBus.subscribe_all()
 
+    # アクティブなSAGAを復元
+    active_sagas = restore_active_sagas()
+
     state = %{
       # saga_id => {saga_module, saga_state}
-      active_sagas: %{},
+      active_sagas: active_sagas,
       # event_type => [saga_modules]
       saga_mappings: %{
         :order_created => [CommandService.Domain.Sagas.OrderSaga],
@@ -101,33 +104,41 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     updated_state =
       Enum.reduce(new_state.active_sagas, new_state, fn {saga_id, {saga_module, saga_state}},
                                                         acc_state ->
-        case saga_module.handle_event(event, saga_state) do
-          {:ok, commands} ->
-            # コマンドを発行
-            Enum.each(commands, &dispatch_command/1)
+        # saga_id がイベントの saga_id と一致するかチェック
+        if Map.get(event, :saga_id) == saga_id do
+          case saga_module.handle_event(event, saga_state) do
+            {:ok, commands} ->
+              # コマンドを発行
+              Enum.each(commands, &dispatch_command/1)
 
-            # サガの状態を更新
-            updated_saga_state = update_saga_state_from_event(saga_state, event)
+              # handle_event内で更新されたsaga_stateを取得
+              # (本来はhandle_eventが更新されたsaga_stateを返すべきだが、現在はコマンドのみ返している)
+              # そのため、イベントに基づいて手動で更新する必要がある
+              updated_saga_state = apply_event_to_saga(saga_module, saga_state, event)
 
-            # 完了または失敗したサガをチェック
-            if saga_module.completed?(updated_saga_state) or
-                 saga_module.failed?(updated_saga_state) do
-              # サガを永続化してアクティブリストから削除
-              persist_saga(saga_id, updated_saga_state)
-              %{acc_state | active_sagas: Map.delete(acc_state.active_sagas, saga_id)}
-            else
-              # サガの状態を更新
-              %{
-                acc_state
-                | active_sagas:
-                    Map.put(acc_state.active_sagas, saga_id, {saga_module, updated_saga_state})
-              }
-            end
+              # 完了または失敗したサガをチェック
+              if saga_module.completed?(updated_saga_state) or
+                   saga_module.failed?(updated_saga_state) do
+                # サガを永続化してアクティブリストから削除
+                persist_saga(saga_id, updated_saga_state)
+                %{acc_state | active_sagas: Map.delete(acc_state.active_sagas, saga_id)}
+              else
+                # サガの状態を更新して永続化
+                persist_saga(saga_id, updated_saga_state)
+                %{
+                  acc_state
+                  | active_sagas:
+                      Map.put(acc_state.active_sagas, saga_id, {saga_module, updated_saga_state})
+                }
+              end
 
-          {:error, _reason} ->
-            # エラーをログに記録
-            Logger.error("Saga #{saga_id} failed to handle event: #{inspect(event)}")
-            acc_state
+            {:error, _reason} ->
+              # エラーをログに記録
+              Logger.error("Saga #{saga_id} failed to handle event: #{inspect(event)}")
+              acc_state
+          end
+        else
+          acc_state
         end
       end)
 
@@ -136,8 +147,8 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
 
   @impl true
   def handle_info({:event, event_type, event}, state) do
-    # コマンドとクエリイベントは無視する
-    if event_type in [:commands, :queries] do
+    # コマンド、クエリ、レスポンスイベントは無視する
+    if event_type in [:commands, :queries, :command_responses_client_at_127_0_0_1] do
       {:noreply, state}
     else
       # EventBus からのイベントを処理
@@ -226,6 +237,72 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
     |> Map.update(:processed_events, [event.__struct__], &[event.__struct__ | &1])
   end
 
+  defp apply_event_to_saga(saga_module, saga_state, event) do
+    # OrderSagaの場合の特別な処理
+    if saga_module == CommandService.Domain.Sagas.OrderSaga do
+      case {saga_state.current_step, event.__struct__} do
+        {:reserve_inventory, Shared.Domain.Events.SagaEvents.InventoryReserved} ->
+          saga_state
+          |> Map.put(:inventory_reserved, true)
+          |> Map.put(:reservation_ids, Enum.map(event.items, & &1.product_id))
+          |> Map.put(:current_step, :process_payment)
+          |> Map.update(:completed_steps, [:reserve_inventory], &[:reserve_inventory | &1])
+          |> Map.put(:updated_at, DateTime.utc_now())
+
+        {:process_payment, Shared.Domain.Events.SagaEvents.PaymentProcessed} ->
+          saga_state
+          |> Map.put(:payment_processed, true)
+          |> Map.put(:payment_id, event.transaction_id)
+          |> Map.put(:current_step, :arrange_shipping)
+          |> Map.update(:completed_steps, [:process_payment], &[:process_payment | &1])
+          |> Map.put(:updated_at, DateTime.utc_now())
+
+        {:arrange_shipping, Shared.Domain.Events.SagaEvents.ShippingArranged} ->
+          saga_state
+          |> Map.put(:shipping_arranged, true)
+          |> Map.put(:shipping_id, event.shipping_id)
+          |> Map.put(:current_step, :confirm_order)
+          |> Map.update(:completed_steps, [:arrange_shipping], &[:arrange_shipping | &1])
+          |> Map.put(:updated_at, DateTime.utc_now())
+
+        {:confirm_order, Shared.Domain.Events.SagaEvents.OrderConfirmed} ->
+          saga_state
+          |> Map.put(:order_confirmed, true)
+          |> Map.put(:state, :completed)
+          |> Map.update(:completed_steps, [:confirm_order], &[:confirm_order | &1])
+          |> Map.put(:updated_at, DateTime.utc_now())
+
+        # エラーイベントの処理
+        {step, _} when step == :reserve_inventory ->
+          if event.__struct__ == Shared.Domain.Events.SagaEvents.InventoryReservationFailed do
+            saga_state
+            |> Map.put(:state, :failed)
+            |> Map.put(:failed_step, step)
+            |> Map.put(:failure_reason, event.reason)
+            |> Map.put(:failed_at, DateTime.utc_now())
+          else
+            saga_state
+          end
+
+        {step, _} when step == :process_payment ->
+          if event.__struct__ == Shared.Domain.Events.SagaEvents.PaymentFailed do
+            saga_state
+            |> Map.put(:state, :failed)
+            |> Map.put(:failed_step, step)
+            |> Map.put(:failure_reason, event.reason)
+            |> Map.put(:failed_at, DateTime.utc_now())
+          else
+            saga_state
+          end
+
+        _ ->
+          saga_state
+      end
+    else
+      update_saga_state_from_event(saga_state, event)
+    end
+  end
+
   defp dispatch_command(command) do
     # コマンドをコマンドバスに送信
     Logger.info("Dispatching command: #{inspect(command)}")
@@ -247,5 +324,38 @@ defmodule Shared.Infrastructure.Saga.SagaCoordinator do
 
     alias Shared.Infrastructure.Saga.SagaRepository
     SagaRepository.save_saga(saga_id, saga_state)
+  end
+
+  defp restore_active_sagas() do
+    Logger.info("Restoring active sagas...")
+    
+    alias Shared.Infrastructure.Saga.SagaRepository
+    
+    case SagaRepository.get_active_sagas() do
+      {:ok, sagas} ->
+        Enum.reduce(sagas, %{}, fn saga_data, acc ->
+          saga_id = saga_data.saga_id
+          saga_type = saga_data.saga_type
+          saga_state = saga_data.state
+          
+          # SAGA typeからmoduleを決定
+          saga_module = case saga_type do
+            "OrderSaga" -> CommandService.Domain.Sagas.OrderSaga
+            _ -> nil
+          end
+          
+          if saga_module do
+            Logger.info("Restored saga: #{inspect(saga_id)} (#{saga_type})")
+            Map.put(acc, saga_id, {saga_module, saga_state})
+          else
+            Logger.warning("Unknown saga type: #{saga_type}")
+            acc
+          end
+        end)
+        
+      {:error, reason} ->
+        Logger.error("Failed to restore sagas: #{inspect(reason)}")
+        %{}
+    end
   end
 end

@@ -278,6 +278,21 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
         "product.price_changed" ->
           Shared.Domain.Events.ProductEvents.ProductPriceChanged
 
+        "order.created" ->
+          Shared.Domain.Events.OrderEvents.OrderCreated
+
+        "order.confirmed" ->
+          Shared.Domain.Events.OrderEvents.OrderConfirmed
+
+        "order.cancelled" ->
+          Shared.Domain.Events.OrderEvents.OrderCancelled
+
+        "order.item_reserved" ->
+          Shared.Domain.Events.OrderEvents.OrderItemReserved
+
+        "order.payment_processed" ->
+          Shared.Domain.Events.OrderEvents.OrderPaymentProcessed
+
         _ ->
           # フォールバック: event_typeをモジュール名として解釈
           String.to_existing_atom("Elixir.#{event_record.event_type}")

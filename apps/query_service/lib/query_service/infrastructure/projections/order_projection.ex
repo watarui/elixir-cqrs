@@ -16,6 +16,13 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
     OrderItemReserved
   }
 
+  alias Shared.Domain.Events.SagaEvents.{
+    InventoryReserved,
+    PaymentProcessed,
+    ShippingArranged
+  }
+  alias Shared.Domain.Events.SagaEvents.OrderConfirmed, as: SagaOrderConfirmed
+
   require Logger
 
   @doc """
@@ -29,6 +36,9 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       currency: event.total_amount.currency,
       status: "pending",
       items: Enum.map(event.items, &transform_item/1),
+      saga_id: if(Map.has_key?(event, :saga_id), do: event.saga_id.value, else: nil),
+      saga_status: "started",
+      saga_current_step: "reserve_inventory",
       created_at: event.created_at,
       updated_at: event.created_at
     }
@@ -82,6 +92,53 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
     # 在庫予約イベント
     Logger.debug("Order item reserved: #{event.order_id.value} - #{event.product_id}")
     :ok
+  end
+
+  # SAGA イベントのハンドラー
+  def handle_event(%InventoryReserved{} = event) do
+    attrs = %{
+      status: "inventory_reserved",
+      saga_current_step: "process_payment",
+      updated_at: event.occurred_at
+    }
+
+    update_order(event.order_id, attrs)
+  end
+
+  def handle_event(%PaymentProcessed{} = event) do
+    attrs = %{
+      status: "payment_processed",
+      payment_id: event.transaction_id,
+      payment_processed_at: event.occurred_at,
+      saga_current_step: "arrange_shipping",
+      updated_at: event.occurred_at
+    }
+
+    update_order(event.order_id, attrs)
+  end
+
+  def handle_event(%ShippingArranged{} = event) do
+    attrs = %{
+      status: "shipped",
+      shipping_id: event.shipping_id,
+      shipped_at: event.occurred_at,
+      saga_current_step: "confirm_order",
+      updated_at: event.occurred_at
+    }
+
+    update_order(event.order_id, attrs)
+  end
+
+  def handle_event(%SagaOrderConfirmed{} = event) do
+    attrs = %{
+      status: "confirmed",
+      confirmed_at: event.occurred_at,
+      saga_status: "completed",
+      saga_current_step: "completed",
+      updated_at: event.occurred_at
+    }
+
+    update_order(event.order_id, attrs)
   end
 
   def handle_event(_event) do

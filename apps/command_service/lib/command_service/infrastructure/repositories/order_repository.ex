@@ -37,15 +37,16 @@ defmodule CommandService.Infrastructure.Repositories.OrderRepository do
 
   @impl true
   def save(aggregate) do
-    stream_name = "#{@aggregate_type}-#{aggregate.id.value}"
-
-    case EventStore.append_events(stream_name, aggregate.uncommitted_events, aggregate.version) do
+    # 新しいアグリゲートの場合、バージョンは0から始まる
+    # uncommitted_eventsが適用される前のバージョンを使用
+    expected_version = aggregate.version - length(aggregate.uncommitted_events)
+    
+    case EventStore.append_events(aggregate.id.value, @aggregate_type, aggregate.uncommitted_events, expected_version, %{}) do
       {:ok, _} ->
         # uncommitted_events をクリア
         updated_aggregate = %{
           aggregate
-          | uncommitted_events: [],
-            version: aggregate.version + length(aggregate.uncommitted_events)
+          | uncommitted_events: []
         }
 
         {:ok, updated_aggregate}

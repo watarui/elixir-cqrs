@@ -20,19 +20,21 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
     }
 
     case RemoteCommandBus.send_command(command) do
-      {:ok, aggregate} ->
+      {:ok, %{order_id: order_id, saga_id: saga_id}} ->
         # SAGAが開始され、注文が作成された
+        # 注文詳細を取得して返す
         order = %{
-          id: aggregate.id.value,
-          user_id: aggregate.user_id.value,
+          id: order_id,
+          user_id: input.user_id,
           # 初期状態はpending
           status: :pending,
-          total_amount: calculate_total_amount(aggregate.items),
-          items: Enum.map(aggregate.items, &transform_aggregate_item/1),
-          created_at: aggregate.created_at,
-          updated_at: aggregate.updated_at
+          total_amount: calculate_total_amount(input.items),
+          items: Enum.map(input.items, &transform_input_item/1),
+          created_at: DateTime.utc_now(),
+          updated_at: DateTime.utc_now()
         }
 
+        Logger.info("Order created with id: #{order_id}, saga_id: #{saga_id}")
         {:ok, %{success: true, order: order, message: "Order created successfully"}}
 
       {:error, reason} ->
@@ -127,7 +129,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       product_id: item.product_id,
       product_name: item.product_name,
       quantity: item.quantity,
-      unit_price: Decimal.new(item.unit_price)
+      unit_price: item.unit_price  # Decimal変換を削除
     }
   end
 
@@ -138,6 +140,16 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       quantity: item.quantity,
       unit_price: item.unit_price,
       subtotal: Decimal.mult(item.unit_price, item.quantity)
+    }
+  end
+
+  defp transform_input_item(item) do
+    %{
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      subtotal: Decimal.mult(Decimal.new(item.unit_price), Decimal.new(item.quantity))
     }
   end
 
@@ -156,18 +168,23 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       status: String.to_atom(order.status),
       total_amount: order.total_amount,
       items: Enum.map(order.items || [], &transform_order_item_from_read/1),
-      created_at: ensure_datetime(order.created_at),
-      updated_at: ensure_datetime(order.updated_at)
+      created_at: ensure_datetime(order.inserted_at),
+      updated_at: ensure_datetime(order.updated_at),
+      saga_id: order.saga_id,
+      saga_status: order.saga_status && String.to_atom(order.saga_status),
+      saga_current_step: order.saga_current_step,
+      payment_id: order.payment_id,
+      shipping_id: order.shipping_id
     }
   end
 
   defp transform_order_item_from_read(item) do
     %{
-      product_id: item.product_id,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      subtotal: item.subtotal || Decimal.mult(item.unit_price, item.quantity)
+      product_id: item["product_id"] || item[:product_id],
+      product_name: item["product_name"] || item[:product_name],
+      quantity: item["quantity"] || item[:quantity],
+      unit_price: Decimal.new(item["unit_price"] || item[:unit_price] || "0"),
+      subtotal: Decimal.new(item["subtotal"] || item[:subtotal] || "0")
     }
   end
 

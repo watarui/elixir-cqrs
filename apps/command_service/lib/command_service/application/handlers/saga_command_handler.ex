@@ -1,227 +1,300 @@
 defmodule CommandService.Application.Handlers.SagaCommandHandler do
   @moduledoc """
   サガコマンドハンドラー
-
-  サガから発行されるコマンドを処理します
+  
+  サガから発行されたコマンドを処理し、結果をイベントとして返します。
   """
-
-  alias CommandService.Domain.Aggregates.{OrderAggregate, ProductAggregate}
-  alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
-  alias Shared.Domain.Events.OrderEvents
-  alias Shared.Domain.ValueObjects.{EntityId, Money}
-  alias Shared.Infrastructure.EventBus
-  alias Shared.Telemetry.Span
 
   require Logger
 
   @doc """
-  在庫予約コマンドを処理する
+  サガコマンドを処理する
   """
-  def handle_reserve_inventory(command) do
-    Span.with_span "saga_command.reserve_inventory", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id),
-           {:ok, product_id} <- validate_entity_id(command.product_id) do
-        UnitOfWork.transaction(fn context ->
-          # 在庫確認と予約のロジック（実際の実装では ProductAggregate で処理）
-          # ここではシミュレーション
-          event =
-            OrderEvents.OrderItemReserved.new(%{
-              order_id: order_id,
-              product_id: product_id,
-              quantity: command.quantity,
-              reserved_at: DateTime.utc_now()
-            })
-
-          EventBus.publish(event.event_type, event)
-          {:ok, %{reserved: true}}
-        end)
-      end
+  def handle(command) do
+    Logger.info("SagaCommandHandler processing command: #{inspect(command)}")
+    
+    case command do
+      %CommandService.Application.Commands.SagaCommands.ReserveInventory{} ->
+        handle_reserve_inventory(command)
+        
+      %CommandService.Application.Commands.SagaCommands.ProcessPayment{} ->
+        handle_process_payment(command)
+        
+      %CommandService.Application.Commands.SagaCommands.ArrangeShipping{} ->
+        handle_arrange_shipping(command)
+        
+      %CommandService.Application.Commands.SagaCommands.ConfirmOrder{} ->
+        handle_confirm_order(command)
+        
+      %CommandService.Application.Commands.SagaCommands.ReleaseInventory{} ->
+        handle_release_inventory(command)
+        
+      %CommandService.Application.Commands.SagaCommands.RefundPayment{} ->
+        handle_refund_payment(command)
+        
+      %CommandService.Application.Commands.SagaCommands.CancelShipping{} ->
+        handle_cancel_shipping(command)
+        
+      %CommandService.Application.Commands.SagaCommands.CancelOrder{} ->
+        handle_cancel_order(command)
+        
+      _ ->
+        {:error, "Unknown saga command type"}
     end
   end
-
-  @doc """
-  支払い処理コマンドを処理する
-  """
-  def handle_process_payment(command) do
-    Span.with_span "saga_command.process_payment", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id),
-           {:ok, amount} <- Money.new(command.amount) do
-        UnitOfWork.transaction(fn context ->
-          # 支払い処理のロジック（実際の実装では決済サービスと連携）
-          payment_id = UUID.uuid4()
-
-          event =
-            OrderEvents.OrderPaymentProcessed.new(%{
-              order_id: order_id,
-              amount: amount,
-              payment_id: payment_id,
-              processed_at: DateTime.utc_now()
-            })
-
-          EventBus.publish(event.event_type, event)
-          {:ok, %{payment_id: payment_id}}
-        end)
-      end
-    end
-  end
-
-  @doc """
-  配送手配コマンドを処理する
-  """
-  def handle_arrange_shipping(command) do
-    Span.with_span "saga_command.arrange_shipping", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id) do
-        UnitOfWork.transaction(fn context ->
-          # 配送手配のロジック（実際の実装では配送サービスと連携）
-          shipping_id = UUID.uuid4()
-
-          # イベント定義がまだないのでマップで代用
-          event = %{
-            event_type: "shipping_arranged",
-            order_id: order_id,
-            shipping_id: shipping_id,
-            items: command.items,
-            arranged_at: DateTime.utc_now()
-          }
-
-          EventBus.publish(event.event_type, event)
-          {:ok, %{shipping_id: shipping_id}}
-        end)
-      end
-    end
-  end
-
-  @doc """
-  注文確定コマンドを処理する
-  """
-  def handle_confirm_order(command) do
-    Span.with_span "saga_command.confirm_order", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id) do
-        UnitOfWork.transaction(fn context ->
-          # 注文アグリゲートを読み込んで確定する
-          case RepositoryContext.get_repository(:order).find_by_id(order_id) do
-            {:ok, order} ->
-              case OrderAggregate.confirm(order) do
-                {:ok, updated_order} ->
-                  RepositoryContext.get_repository(:order).save(updated_order)
-                  EventBus.publish_all(updated_order.uncommitted_events)
-                  {:ok, %{confirmed: true}}
-
-                {:error, reason} ->
-                  {:error, reason}
-              end
-
-            {:error, reason} ->
-              {:error, reason}
-          end
-        end)
-      end
-    end
-  end
-
-  @doc """
-  在庫解放コマンドを処理する（補償）
-  """
-  def handle_release_inventory(command) do
-    Span.with_span "saga_command.release_inventory", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id),
-           {:ok, product_id} <- validate_entity_id(command.product_id) do
-        Logger.info("Releasing inventory for order #{order_id}, product #{product_id}")
-
-        # 在庫解放のロジック
+  
+  defp handle_reserve_inventory(command) do
+    Logger.info("Reserving inventory for order: #{command.order_id}")
+    
+    # 在庫予約のデモ実装
+    # 実際のアプリケーションでは、在庫サービスに問い合わせる
+    case simulate_inventory_check(command.items) do
+      {:ok, _} ->
+        # 在庫予約成功イベントを発行
         event = %{
-          event_type: "inventory_released",
-          order_id: order_id,
-          product_id: product_id,
-          released_at: DateTime.utc_now()
+          __struct__: Shared.Domain.Events.SagaEvents.InventoryReserved,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
+          items: command.items,
+          event_type: "inventory.reserved",
+          occurred_at: DateTime.utc_now()
         }
-
-        EventBus.publish(event.event_type, event)
-        {:ok, %{released: true}}
-      end
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: true, event: event}}
+        
+      {:error, reason} ->
+        # 在庫予約失敗イベントを発行
+        event = %{
+          __struct__: Shared.Domain.Events.SagaEvents.InventoryReservationFailed,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
+          reason: reason,
+          event_type: "inventory.reservation_failed",
+          occurred_at: DateTime.utc_now()
+        }
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: false, event: event}}
     end
   end
-
-  @doc """
-  支払い返金コマンドを処理する（補償）
-  """
-  def handle_refund_payment(command) do
-    Span.with_span "saga_command.refund_payment", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id) do
-        Logger.info("Refunding payment for order #{order_id}, payment #{command.payment_id}")
-
-        # 返金処理のロジック
+  
+  defp handle_process_payment(command) do
+    Logger.info("Processing payment for order: #{command.order_id}")
+    
+    # 支払い処理のデモ実装
+    case simulate_payment_processing(command.amount, command.user_id) do
+      {:ok, transaction_id} ->
+        # 支払い成功イベントを発行
         event = %{
-          event_type: "payment_refunded",
-          order_id: order_id,
-          payment_id: command.payment_id,
+          __struct__: Shared.Domain.Events.SagaEvents.PaymentProcessed,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
           amount: command.amount,
-          refunded_at: DateTime.utc_now()
+          transaction_id: transaction_id,
+          event_type: "payment.processed",
+          occurred_at: DateTime.utc_now()
         }
-
-        EventBus.publish(event.event_type, event)
-        {:ok, %{refunded: true}}
-      end
-    end
-  end
-
-  @doc """
-  配送キャンセルコマンドを処理する（補償）
-  """
-  def handle_cancel_shipping(command) do
-    Span.with_span "saga_command.cancel_shipping", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id) do
-        Logger.info("Cancelling shipping for order #{order_id}, shipping #{command.shipping_id}")
-
-        # 配送キャンセルのロジック
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: true, event: event}}
+        
+      {:error, reason} ->
+        # 支払い失敗イベントを発行
         event = %{
-          event_type: "shipping_cancelled",
-          order_id: order_id,
-          shipping_id: command.shipping_id,
-          cancelled_at: DateTime.utc_now()
+          __struct__: Shared.Domain.Events.SagaEvents.PaymentFailed,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
+          reason: reason,
+          event_type: "payment.failed",
+          occurred_at: DateTime.utc_now()
         }
-
-        EventBus.publish(event.event_type, event)
-        {:ok, %{cancelled: true}}
-      end
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: false, event: event}}
     end
   end
-
-  @doc """
-  注文キャンセルコマンドを処理する（補償）
-  """
-  def handle_cancel_order(command) do
-    Span.with_span "saga_command.cancel_order", command do
-      with {:ok, order_id} <- validate_entity_id(command.order_id) do
-        UnitOfWork.transaction(fn context ->
-          case RepositoryContext.get_repository(:order).find_by_id(order_id) do
-            {:ok, order} ->
-              case OrderAggregate.cancel(order, command.reason) do
-                {:ok, updated_order} ->
-                  RepositoryContext.get_repository(:order).save(updated_order)
-                  EventBus.publish_all(updated_order.uncommitted_events)
-                  {:ok, %{cancelled: true}}
-
-                {:error, reason} ->
-                  {:error, reason}
-              end
-
-            {:error, reason} ->
-              # 注文が見つからない場合もキャンセル済みとして扱う
-              Logger.warning("Order not found for cancellation: #{order_id}")
-              {:ok, %{cancelled: true}}
-          end
-        end)
-      end
+  
+  defp handle_arrange_shipping(command) do
+    Logger.info("Arranging shipping for order: #{command.order_id}")
+    
+    # 配送手配のデモ実装
+    case simulate_shipping_arrangement(command.order_id, command.user_id) do
+      {:ok, shipping_id} ->
+        # 配送手配成功イベントを発行
+        event = %{
+          __struct__: Shared.Domain.Events.SagaEvents.ShippingArranged,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
+          shipping_id: shipping_id,
+          event_type: "shipping.arranged",
+          occurred_at: DateTime.utc_now()
+        }
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: true, event: event}}
+        
+      {:error, reason} ->
+        # 配送手配失敗イベントを発行
+        event = %{
+          __struct__: Shared.Domain.Events.SagaEvents.ShippingArrangementFailed,
+          saga_id: command.saga_id,
+          order_id: command.order_id,
+          reason: reason,
+          event_type: "shipping.arrangement_failed",
+          occurred_at: DateTime.utc_now()
+        }
+        
+        # イベントを発行
+        event_topic = String.to_atom("events:#{event.event_type}")
+        Shared.Infrastructure.EventBus.publish(event_topic, event)
+        
+        {:ok, %{success: false, event: event}}
     end
   end
-
-  # Private functions
-
-  defp validate_entity_id(id) when is_binary(id) do
-    EntityId.from_string(id)
+  
+  defp handle_confirm_order(command) do
+    Logger.info("Confirming order: #{command.order_id}")
+    
+    # 注文確定処理
+    # 実際のアプリケーションでは、注文サービスのコマンドハンドラーを呼び出す
+    event = %{
+      __struct__: Shared.Domain.Events.SagaEvents.OrderConfirmed,
+      saga_id: command.saga_id,
+      order_id: command.order_id,
+      event_type: "order.confirmed",
+      occurred_at: DateTime.utc_now()
+    }
+    
+    # イベントを発行
+    event_topic = String.to_atom("events:#{event.event_type}")
+    Shared.Infrastructure.EventBus.publish(event_topic, event)
+    
+    {:ok, %{success: true, event: event}}
   end
-
-  defp validate_entity_id(%EntityId{} = id), do: {:ok, id}
-  defp validate_entity_id(_), do: {:error, "Invalid entity ID"}
+  
+  defp handle_release_inventory(command) do
+    Logger.info("Releasing inventory for order: #{command.order_id}")
+    
+    # 在庫解放処理
+    event = %{
+      __struct__: Shared.Domain.Events.SagaEvents.InventoryReleased,
+      saga_id: command.saga_id,
+      order_id: command.order_id,
+      items: command.items,
+      event_type: "inventory.released",
+      occurred_at: DateTime.utc_now()
+    }
+    
+    # イベントを発行
+    event_topic = String.to_atom("events:#{event.event_type}")
+    Shared.Infrastructure.EventBus.publish(event_topic, event)
+    
+    {:ok, %{success: true, event: event}}
+  end
+  
+  defp handle_refund_payment(command) do
+    Logger.info("Refunding payment for order: #{command.order_id}")
+    
+    # 返金処理
+    event = %{
+      __struct__: Shared.Domain.Events.SagaEvents.PaymentRefunded,
+      saga_id: command.saga_id,
+      order_id: command.order_id,
+      amount: command.amount,
+      event_type: "payment.refunded",
+      occurred_at: DateTime.utc_now()
+    }
+    
+    # イベントを発行
+    event_topic = String.to_atom("events:#{event.event_type}")
+    Shared.Infrastructure.EventBus.publish(event_topic, event)
+    
+    {:ok, %{success: true, event: event}}
+  end
+  
+  defp handle_cancel_shipping(command) do
+    Logger.info("Cancelling shipping for order: #{command.order_id}")
+    
+    # 配送キャンセル処理
+    event = %{
+      __struct__: Shared.Domain.Events.SagaEvents.ShippingCancelled,
+      saga_id: command.saga_id,
+      order_id: command.order_id,
+      event_type: "shipping.cancelled",
+      occurred_at: DateTime.utc_now()
+    }
+    
+    # イベントを発行
+    event_topic = String.to_atom("events:#{event.event_type}")
+    Shared.Infrastructure.EventBus.publish(event_topic, event)
+    
+    {:ok, %{success: true, event: event}}
+  end
+  
+  defp handle_cancel_order(command) do
+    Logger.info("Cancelling order: #{command.order_id}")
+    
+    # 注文キャンセル処理
+    event = %{
+      __struct__: Shared.Domain.Events.SagaEvents.OrderCancelled,
+      saga_id: command.saga_id,
+      order_id: command.order_id,
+      reason: command.reason,
+      event_type: "order.cancelled",
+      occurred_at: DateTime.utc_now()
+    }
+    
+    # イベントを発行
+    event_topic = String.to_atom("events:#{event.event_type}")
+    Shared.Infrastructure.EventBus.publish(event_topic, event)
+    
+    {:ok, %{success: true, event: event}}
+  end
+  
+  # シミュレーション関数
+  
+  defp simulate_inventory_check(_items) do
+    # 80%の確率で成功
+    if :rand.uniform() < 0.8 do
+      {:ok, "Inventory reserved"}
+    else
+      {:error, "Insufficient inventory for some items"}
+    end
+  end
+  
+  defp simulate_payment_processing(amount, _user_id) do
+    # 90%の確率で成功
+    if :rand.uniform() < 0.9 do
+      transaction_id = UUID.uuid4()
+      {:ok, transaction_id}
+    else
+      {:error, "Payment declined"}
+    end
+  end
+  
+  defp simulate_shipping_arrangement(order_id, _user_id) do
+    # 95%の確率で成功
+    if :rand.uniform() < 0.95 do
+      shipping_id = "SHIP-#{order_id}"
+      {:ok, shipping_id}
+    else
+      {:error, "Shipping service unavailable"}
+    end
+  end
 end

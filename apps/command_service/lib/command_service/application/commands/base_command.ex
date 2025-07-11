@@ -36,7 +36,24 @@ defmodule CommandService.Application.Commands.BaseCommand do
         do: {:error, "#{field} must be a positive integer"}
 
       defp validate_positive_number(value, field) when is_number(value) and value > 0, do: :ok
-      defp validate_positive_number(_, field), do: {:error, "#{field} must be a positive number"}
+      defp validate_positive_number(value, field) when is_binary(value) do
+        case Float.parse(value) do
+          {float_val, ""} when float_val > 0 -> :ok
+          _ -> {:error, "#{field} must be a positive number"}
+        end
+      end
+      defp validate_positive_number(value, field) do
+        # Decimal型の処理
+        if Code.ensure_loaded?(Decimal) and is_struct(value, Decimal) do
+          if Decimal.compare(value, Decimal.new(0)) == :gt do
+            :ok
+          else
+            {:error, "#{field} must be a positive number"}
+          end
+        else
+          {:error, "#{field} must be a positive number"}
+        end
+      end
 
       # デフォルト実装を提供
       def command_type do

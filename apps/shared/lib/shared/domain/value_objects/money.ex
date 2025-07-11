@@ -24,7 +24,19 @@ defmodule Shared.Domain.ValueObjects.Money do
       iex> Money.new(-100)
       {:error, "Amount must be non-negative"}
   """
-  @spec new(number()) :: {:ok, t()} | {:error, String.t()}
+  @spec new(number() | Decimal.t()) :: {:ok, t()} | {:error, String.t()}
+  def new(%Decimal{} = amount) do
+    if Decimal.compare(amount, Decimal.new(0)) in [:gt, :eq] do
+      {:ok,
+       %__MODULE__{
+         amount: amount,
+         currency: "JPY"
+       }}
+    else
+      {:error, "Amount must be non-negative"}
+    end
+  end
+  
   def new(amount) when is_number(amount) and amount >= 0 do
     # Decimal.new は整数または文字列のみ受け付けるため、数値を文字列に変換
     decimal_amount =

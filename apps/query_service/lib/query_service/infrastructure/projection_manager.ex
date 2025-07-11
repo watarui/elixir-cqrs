@@ -122,8 +122,22 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   
   defp get_event_type(event) do
     cond do
-      is_map(event) and Map.has_key?(event, :__struct__) and function_exported?(event.__struct__, :event_type, 0) ->
+      # イベント構造体に event_type メソッドがある場合
+      is_struct(event) and function_exported?(event.__struct__, :event_type, 0) ->
         String.to_atom(event.__struct__.event_type())
+      
+      # event_type フィールドを直接持っている場合
+      is_map(event) and Map.has_key?(event, :event_type) ->
+        String.to_atom(event.event_type)
+      
+      # __struct__ から推測（OrderCreated -> order.created）
+      is_struct(event) ->
+        event.__struct__
+        |> Module.split()
+        |> List.last()
+        |> Macro.underscore()
+        |> String.replace("_", ".")
+        |> String.to_atom()
       
       true ->
         nil
@@ -142,11 +156,19 @@ defmodule QueryService.Infrastructure.ProjectionManager do
       :"product.updated",
       :"product.price_changed",
       :"product.deleted",
-      :"order.placed",
+      :"order.created",
       :"order.payment_completed",
       :"order.shipped",
       :"order.delivered",
-      :"order.cancelled"
+      :"order.cancelled",
+      # SAGA イベント
+      :"inventory.reserved",
+      :"inventory.reservation_failed",
+      :"payment.processed",
+      :"payment.failed",
+      :"shipping.arranged",
+      :"shipping.arrangement_failed",
+      :"order.confirmed"
     ]
 
     subscriptions =
@@ -198,11 +220,18 @@ defmodule QueryService.Infrastructure.ProjectionManager do
 
       event
       when event in [
-             :"order.placed",
+             :"order.created",
              :"order.payment_completed",
              :"order.shipped",
              :"order.delivered",
-             :"order.cancelled"
+             :"order.cancelled",
+             :"inventory.reserved",
+             :"inventory.reservation_failed",
+             :"payment.processed",
+             :"payment.failed",
+             :"shipping.arranged",
+             :"shipping.arrangement_failed",
+             :"order.confirmed"
            ] ->
         [OrderProjection]
 
@@ -293,7 +322,20 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   end
 
   defp get_handled_events(OrderProjection) do
-    [:"order.placed", :"order.payment_completed", :"order.shipped", :"order.delivered", :"order.cancelled"]
+    [
+      :"order.created",
+      :"order.payment_completed",
+      :"order.shipped",
+      :"order.delivered",
+      :"order.cancelled",
+      :"inventory.reserved",
+      :"inventory.reservation_failed",
+      :"payment.processed",
+      :"payment.failed",
+      :"shipping.arranged",
+      :"shipping.arrangement_failed",
+      :"order.confirmed"
+    ]
   end
 
   defp update_projection_status(projections, projection_module, :processed) do

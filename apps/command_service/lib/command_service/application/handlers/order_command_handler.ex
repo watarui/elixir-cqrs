@@ -15,11 +15,11 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.CreateOrder{} = command) do
-    UnitOfWork.transaction(fn _context ->
+    UnitOfWork.transaction(fn ->
       case OrderAggregate.create(command.user_id, command.items) do
         {:ok, order} ->
           # イベントストアに保存
-          repo = RepositoryContext.get_repository(:order)
+          {:ok, repo} = RepositoryContext.get_repository(:order)
           {:ok, _} = repo.save(order)
 
           # イベントを発行
@@ -60,8 +60,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ConfirmOrder{} = command) do
-    UnitOfWork.transaction(fn _context ->
-      repo = RepositoryContext.get_repository(:order)
+    UnitOfWork.transaction(fn ->
+      {:ok, repo} = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
            {:ok, updated_order} <- OrderAggregate.confirm(order) do
@@ -75,8 +75,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.CancelOrder{} = command) do
-    UnitOfWork.transaction(fn _context ->
-      repo = RepositoryContext.get_repository(:order)
+    UnitOfWork.transaction(fn ->
+      {:ok, repo} = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
            {:ok, updated_order} <- OrderAggregate.cancel(order, command.reason) do
@@ -90,8 +90,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ReserveInventory{} = command) do
-    UnitOfWork.transaction(fn _context ->
-      repo = RepositoryContext.get_repository(:order)
+    UnitOfWork.transaction(fn ->
+      {:ok, repo} = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
            {:ok, results} <- reserve_all_items(order, command.items, repo) do
@@ -129,8 +129,8 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
 
   @impl true
   def handle(%OrderCommands.ProcessPayment{} = command) do
-    UnitOfWork.transaction(fn _context ->
-      repo = RepositoryContext.get_repository(:order)
+    UnitOfWork.transaction(fn ->
+      {:ok, repo} = RepositoryContext.get_repository(:order)
 
       with {:ok, order} <- repo.find_by_id(command.order_id),
            {:ok, updated_order} <-

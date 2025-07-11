@@ -134,36 +134,36 @@ defmodule CommandService.Infrastructure.CommandBus do
   end
 
   # サガコマンドのルーティング
-  defp route_command(%{command_type: "reserve_inventory"} = cmd) do
-    SagaCommandHandler.handle_reserve_inventory(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.ReserveInventory{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "process_payment"} = cmd) do
-    SagaCommandHandler.handle_process_payment(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.ProcessPayment{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "arrange_shipping"} = cmd) do
-    SagaCommandHandler.handle_arrange_shipping(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.ArrangeShipping{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "confirm_order"} = cmd) do
-    SagaCommandHandler.handle_confirm_order(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.ConfirmOrder{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "release_inventory"} = cmd) do
-    SagaCommandHandler.handle_release_inventory(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.ReleaseInventory{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "refund_payment"} = cmd) do
-    SagaCommandHandler.handle_refund_payment(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.RefundPayment{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "cancel_shipping"} = cmd) do
-    SagaCommandHandler.handle_cancel_shipping(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.CancelShipping{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
-  defp route_command(%{command_type: "cancel_order"} = cmd) do
-    SagaCommandHandler.handle_cancel_order(cmd)
+  defp route_command(%CommandService.Application.Commands.SagaCommands.CancelOrder{} = cmd) do
+    SagaCommandHandler.handle(cmd)
   end
 
   defp route_command(command) do
