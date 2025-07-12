@@ -71,7 +71,7 @@ services:
       - "14268:14268"
       - "14250:14250"
       - "9411:9411"
-      - "4317:4317"   # OTLP gRPC
+      - "4317:4317"   # OTLP
       - "4318:4318"   # OTLP HTTP
     networks:
       - elixir-cqrs-network

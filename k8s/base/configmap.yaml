@@ -9,22 +9,22 @@ data:
   # 共通設定
   MIX_ENV: "prod"
   POOL_SIZE: "10"
-  
+
   # PostgreSQL 設定
   DATABASE_HOST: "postgres-service"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "event_store"
-  
-  # gRPC 設定
+
+  # pubsub 設定
   COMMAND_SERVICE_HOST: "command-service"
   COMMAND_SERVICE_PORT: "50051"
   QUERY_SERVICE_HOST: "query-service"
   QUERY_SERVICE_PORT: "50052"
-  
+
   # Client Service 設定
   PHX_HOST: "elixir-cqrs.example.com"
   PORT: "4000"
-  
+
   # 監視設定
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger-collector:4318"
   OTEL_SERVICE_NAME: "elixir-cqrs"

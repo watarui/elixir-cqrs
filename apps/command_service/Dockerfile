@@ -66,9 +66,6 @@ USER elixir
 # ポートを公開
 EXPOSE 50051
 
-# 環境変数
-ENV GRPC_PORT=50051
-
 # ヘルスチェック
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD /app/bin/command_service pid || exit 1
