@@ -2,16 +2,17 @@ import { ApolloClient, InMemoryCache, createHttpLink, split } from "@apollo/clie
 import { getMainDefinition } from "@apollo/client/utilities"
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions"
 import { createClient } from "graphql-ws"
+import { config } from "./config"
 
 const httpLink = createHttpLink({
-  uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql",
+  uri: config.graphql.httpEndpoint,
 })
 
 // WebSocket link for subscriptions
 const wsLink = typeof window !== "undefined"
   ? new GraphQLWsLink(
       createClient({
-        url: process.env.NEXT_PUBLIC_WS_ENDPOINT || "ws://localhost:4000/socket/websocket",
+        url: config.graphql.wsEndpoint,
       })
     )
   : null

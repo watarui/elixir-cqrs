@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Activity, GitBranch, Database, MessageSquare, RefreshCw, Pause, Play, BarChart3, Gauge, Search, Code } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { config } from "@/lib/config"
 
 export default function Home() {
   const [isPaused, setIsPaused] = useState(false)
@@ -345,7 +346,7 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <a href="http://localhost:5050" target="_blank" rel="noopener noreferrer">
+              <a href={config.databases.eventStore} target="_blank" rel="noopener noreferrer">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -360,7 +361,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               </a>
-              <a href="http://localhost:5051" target="_blank" rel="noopener noreferrer">
+              <a href={config.databases.commandDb} target="_blank" rel="noopener noreferrer">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -375,7 +376,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               </a>
-              <a href="http://localhost:5052" target="_blank" rel="noopener noreferrer">
+              <a href={config.databases.queryDb} target="_blank" rel="noopener noreferrer">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -401,7 +402,7 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <a href="http://localhost:4000/graphiql" target="_blank" rel="noopener noreferrer">
+              <a href={`${config.graphql.httpEndpoint.replace('/graphql', '/graphiql')}`} target="_blank" rel="noopener noreferrer">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -416,7 +417,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               </a>
-              <a href="http://localhost:16686" target="_blank" rel="noopener noreferrer">
+              <a href={config.external.jaeger} target="_blank" rel="noopener noreferrer">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}

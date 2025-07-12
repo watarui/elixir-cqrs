@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { EnhancedMetricsDashboard } from '@/components/enhanced-metrics-dashboard'
 import { Search, Filter, Download, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { config } from '@/lib/config'
 
 export default function MetricsPage() {
   const [filter, setFilter] = useState('')
@@ -33,13 +34,13 @@ export default function MetricsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="http://localhost:4000/metrics" target="_blank" rel="noopener noreferrer">
+          <Link href={config.metrics.endpoint} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm">
               <ExternalLink className="w-4 h-4 mr-2" />
               Raw Metrics
             </Button>
           </Link>
-          <Link href="http://localhost:16686" target="_blank" rel="noopener noreferrer">
+          <Link href={config.external.jaeger} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm">
               <ExternalLink className="w-4 h-4 mr-2" />
               Jaeger

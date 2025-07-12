@@ -63,15 +63,15 @@ def metrics do
     # コマンド処理
     counter("command.dispatched.count", tags: [:command_type]),
     summary("command.processing.duration", tags: [:command_type], unit: {:native, :millisecond}),
-    
+
     # イベント処理
     counter("event.stored.count", tags: [:event_type]),
     summary("event.processing.duration", tags: [:event_type], unit: {:native, :millisecond}),
-    
+
     # クエリ処理
     counter("query.executed.count", tags: [:query_type]),
     summary("query.execution.duration", tags: [:query_type], unit: {:native, :millisecond}),
-    
+
     # Saga メトリクス
     counter("saga.started.count", tags: [:saga_type]),
     counter("saga.completed.count", tags: [:saga_type, :status]),
@@ -147,15 +147,15 @@ def process_order(order_params) do
       {"order.id", order_id},
       {"order.total", order_total}
     ])
-    
+
     # 処理ロジック
     result = do_process(order_params)
-    
+
     # イベントの記録
     OpenTelemetry.Tracer.add_event("order_processed", [
       {"items_count", length(order_params.items)}
     ])
-    
+
     result
   end
 end
@@ -183,7 +183,7 @@ config :logger, :console,
 
 ```elixir
 # ログにメタデータを追加
-Logger.info("Order created", 
+Logger.info("Order created",
   order_id: order.id,
   user_id: user.id,
   total: order.total
@@ -213,6 +213,79 @@ docker-compose logs -f | grep ERROR
 docker-compose logs -f --no-color | jq 'select(.level == "error")'
 ```
 
+## リアルタイムモニタリング
+
+### PubSubBroadcaster
+
+PubSubBroadcaster は、システム全体のメッセージフローをリアルタイムで監視する機能を提供します。
+
+#### 機能
+
+- メッセージの一時キャッシュ（最大 1000 件）
+- トピック別の統計収集
+- GraphQL サブスクリプションへの配信
+- メッセージレートの計測
+
+#### トピック
+
+- `events` - ドメインイベント
+- `commands` - コマンドメッセージ
+- `queries` - クエリメッセージ
+- `sagas` - Saga 関連メッセージ
+
+### GraphQL サブスクリプション
+
+リアルタイムデータを取得するためのサブスクリプション：
+
+```graphql
+subscription {
+  pubsubStream(topic: "events") {
+    id
+    topic
+    payload
+    timestamp
+    source
+  }
+}
+```
+
+### Frontend モニタリングコンポーネント
+
+#### MetricsDashboard
+
+システムメトリクスをリアルタイムで表示：
+
+- コマンド/クエリ実行数
+- イベント出力率
+- Saga の状態
+- エラー率
+- 平均実行時間
+
+#### EventStream
+
+イベントのリアルタイムストリーム表示：
+
+- イベントタイプ別のフィルタリング
+- イベントデータの詳細表示
+- タイムスタンプとソース情報
+
+#### FlowVisualization
+
+システムフローの可視化：
+
+- サービス間のメッセージフロー
+- ノードの健全性状態
+- リアルタイムのトラフィック表示
+
+### WebSocket 監視
+
+```elixir
+# WebSocket 接続数のメトリクス
+counter("websocket.connections.count", tags: [:status]),
+summary("websocket.connection.duration", unit: {:native, :second}),
+counter("websocket.messages.count", tags: [:direction, :type])
+```
+
 ## ダッシュボード
 
 ### Grafana ダッシュボード
@@ -220,6 +293,7 @@ docker-compose logs -f --no-color | jq 'select(.level == "error")'
 #### 1. システム概要ダッシュボード
 
 主要メトリクス：
+
 - リクエストレート（req/s）
 - レスポンスタイム（p50, p95, p99）
 - エラー率
@@ -280,7 +354,7 @@ groups:
         annotations:
           summary: "High error rate detected"
           description: "Error rate is above 5% for 5 minutes"
-      
+
       - alert: SlowResponseTime
         expr: histogram_quantile(0.95, phoenix_request_duration_seconds_bucket) > 1
         for: 10m
@@ -289,7 +363,7 @@ groups:
         annotations:
           summary: "Slow response times"
           description: "95th percentile response time is above 1 second"
-      
+
       - alert: SagaFailureRate
         expr: rate(saga_completed_count{status="failed"}[10m]) > 0.1
         for: 5m
@@ -321,8 +395,8 @@ ALTER SYSTEM SET log_min_duration_statement = 100; -- 100ms 以上のクエリ�
 SELECT pg_reload_conf();
 
 -- 実行中のクエリを確認
-SELECT pid, now() - pg_stat_activity.query_start AS duration, query 
-FROM pg_stat_activity 
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+FROM pg_stat_activity
 WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';
 ```
 
@@ -340,6 +414,7 @@ WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';
 #### 3. トレースベースの分析
 
 Jaeger でのレイテンシ分析：
+
 1. サービスマップでボトルネックを視覚的に確認
 2. トレース比較機能で正常時と異常時を比較
 3. 依存関係グラフでサービス間の遅延を特定

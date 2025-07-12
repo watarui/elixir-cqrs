@@ -334,6 +334,37 @@ def discount_product(_parent, %{product_id: id, discount_percentage: discount}, 
 end
 ```
 
+#### Subscription の追加
+
+```elixir
+# 1. スキーマにサブスクリプションを追加
+# apps/client_service/lib/client_service/graphql/schema.ex
+subscription do
+  field :product_updated, :product do
+    arg :product_id, non_null(:id)
+
+    config fn args, _res ->
+      {:ok, topic: "product:#{args.product_id}"}
+    end
+
+    trigger [:update_product, :discount_product],
+      topic: fn
+        %{product_id: id} -> "product:#{id}"
+        _ -> []
+      end
+  end
+end
+
+# 2. WebSocket エンドポイントの確認
+# apps/client_service/lib/client_service_web/endpoint.ex
+socket "/socket", ClientServiceWeb.AbsintheSocket,
+  websocket: true,
+  longpoll: false
+
+# 3. クライアント側の実装
+# WebSocket 接続: ws://localhost:4000/socket
+```
+
 ## テスト
 
 ### ユニットテスト
@@ -402,14 +433,14 @@ end
 ### 基本的な操作
 
 ```bash
-# すべてのプロジェクションを再構築
-mix run scripts/simple_rebuild_projections.exs
+# デモデータを投入してプロジェクションをテスト
+mix run scripts/seed_demo_data.exs
 
 # プロジェクションのステータス確認（IEx）
 GenServer.call(QueryService.Infrastructure.ProjectionManager, :get_status)
 
-# リアルタイムプロジェクションのテスト
-mix run scripts/test_realtime_projection.exs
+# リアルタイム同期のテスト
+./scripts/test_realtime_sync.sh
 ```
 
 詳細な仕組みとデータフローについては [DATA_FLOW.md](DATA_FLOW.md#イベントの伝播フロー) を参照してください。
@@ -460,14 +491,93 @@ QueryService.Infrastructure.Repositories.ProductRepository.list()
 :telemetry.execute([:my_app, :metric], %{count: 1}, %{})
 ```
 
+## Frontend 開発
+
+### 新しいページ
+
+#### /database-status
+
+データベースの状態を確認できるダッシュボード。
+
+```typescript
+// frontend/app/database-status/page.tsx
+// データベース状態の表示
+```
+
+#### /pubsub
+
+PubSub メッセージをリアルタイムで監視できるモニタリングページ。
+
+```typescript
+// frontend/app/pubsub/page.tsx
+// PubSub メッセージのリアルタイム表示
+// トピック別フィルタリング
+// 統計情報のグラフ表示
+```
+
+### GraphQL サブスクリプションの使用
+
+```typescript
+// frontend/lib/apollo-client.ts
+import { createClient } from "graphql-ws";
+
+const wsClient = createClient({
+  url: "ws://localhost:4000/socket",
+});
+
+// サブスクリプションの例
+const subscription = gql`
+  subscription OnEventStream {
+    eventStream {
+      id
+      eventType
+      eventData
+      occurredAt
+    }
+  }
+`;
+```
+
+### コンポーネントライブラリ
+
+shadcn/ui を使用した UI コンポーネントが利用可能です：
+
+```bash
+# 新しいコンポーネントの追加
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add card
+npx shadcn-ui@latest add tabs
+```
+
 ## トラブルシューティング
 
 開発中によく発生する問題については、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。
 
 特に以下のセクションが開発に関連します：
+
 - [開発環境](#開発環境) - 依存関係やコンパイルエラーの解決
 - [データベース関連](#データベース関連) - 接続エラーやマイグレーションの問題
 - [サービス間通信](#サービス間通信) - Phoenix PubSub やノード間通信の問題
+
+## スクリプト一覧
+
+### セットアップ関連
+
+| スクリプト       | 説明                      |
+| ---------------- | ------------------------- |
+| `setup_infra.sh` | Docker 環境のセットアップ |
+| `setup_db.sh`    | データベースの初期化      |
+| `start_all.sh`   | すべてのサービスを起動    |
+| `stop_all.sh`    | すべてのサービスを停止    |
+
+### テスト関連
+
+| スクリプト                  | 説明                     |
+| --------------------------- | ------------------------ |
+| `test_realtime_sync.sh`     | リアルタイム同期のテスト |
+| `seed_demo_data.exs`        | デモデータの投入         |
+| `check_node_connection.exs` | ノード間の接続テスト     |
+| `fix_node_startup.sh`       | ノード起動問題の修正     |
 
 ## パフォーマンスチューニング
 
