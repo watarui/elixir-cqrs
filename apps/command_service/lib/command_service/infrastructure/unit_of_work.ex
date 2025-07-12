@@ -96,15 +96,19 @@ defmodule CommandService.Infrastructure.UnitOfWork do
   defp save_events([]), do: :ok
 
   defp save_events(events) do
+    Logger.debug("UnitOfWork.save_events called with #{length(events)} events")
+    
     # グループ化してバッチ保存
-    events
+    result = events
     |> Enum.group_by(fn event ->
       # aggregate_id または id フィールドを取得
-      case event do
+      aggregate_id = case event do
         %{aggregate_id: id} -> id
         %{id: %{value: id}} -> id
         %{id: id} -> id
       end
+      Logger.debug("Event for aggregate #{aggregate_id}: #{inspect(event.__struct__)}")
+      aggregate_id
     end)
     |> Enum.reduce_while(:ok, fn {aggregate_id, aggregate_events}, :ok ->
       # アグリゲートタイプを最初のイベントから取得
@@ -113,6 +117,8 @@ defmodule CommandService.Infrastructure.UnitOfWork do
       # TODO: 本来はアグリゲートのバージョンを使用すべきだが、現在は新規作成のみ対応
       expected_version = 0
 
+      Logger.info("Saving #{length(aggregate_events)} events for aggregate #{aggregate_id} (type: #{aggregate_type})")
+
       case EventStore.append_events(
              aggregate_id,
              aggregate_type,
@@ -120,10 +126,17 @@ defmodule CommandService.Infrastructure.UnitOfWork do
              expected_version,
              %{}
            ) do
-        {:ok, _} -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, reason}}
+        {:ok, version} -> 
+          Logger.info("Successfully saved events for aggregate #{aggregate_id}, new version: #{version}")
+          {:cont, :ok}
+        {:error, reason} -> 
+          Logger.error("Failed to save events for aggregate #{aggregate_id}: #{inspect(reason)}")
+          {:halt, {:error, reason}}
       end
     end)
+    
+    Logger.debug("UnitOfWork.save_events completed with result: #{inspect(result)}")
+    result
   end
 
   defp get_aggregate_type(event) do

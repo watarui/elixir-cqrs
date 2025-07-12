@@ -133,8 +133,10 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
            name: aggregate.name.value,
            description: aggregate.description || "",
            price: aggregate.price.amount,
+           currency: aggregate.price.currency || "JPY",
            stock_quantity: aggregate.stock_quantity || 0,
            category_id: aggregate.category_id && aggregate.category_id.value,
+           active: Map.get(aggregate, :active, true),
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
          }}
@@ -170,8 +172,10 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
            name: aggregate.name.value,
            description: aggregate.description || "",
            price: aggregate.price.amount,
+           currency: aggregate.price.currency || "JPY",
            stock_quantity: aggregate.stock_quantity || 0,
            category_id: aggregate.category_id && aggregate.category_id.value,
+           active: Map.get(aggregate, :active, true),
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
          }}
@@ -223,8 +227,10 @@ defmodule ClientService.GraphQL.Resolvers.ProductResolverPubsub do
            name: aggregate.name.value,
            description: aggregate.description || "",
            price: aggregate.price.amount,
+           currency: aggregate.price.currency || "JPY",
            stock_quantity: aggregate.stock_quantity || 0,
            category_id: aggregate.category_id && aggregate.category_id.value,
+           active: Map.get(aggregate, :active, true),
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
          }}

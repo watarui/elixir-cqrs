@@ -44,6 +44,49 @@ defmodule Shared.Domain.ValueObjects.EntityId do
   """
   @spec to_string(t()) :: String.t()
   def to_string(%__MODULE__{value: value}), do: value
+  
+  @doc """
+  任意の形式の ID をバイナリ UUID に変換する
+  
+  イベントストアやデータベースで使用するバイナリ形式に変換します。
+  """
+  @spec to_binary(any()) :: binary() | nil
+  def to_binary(nil), do: nil
+  
+  def to_binary(%__MODULE__{value: value}) do
+    to_binary(value)
+  end
+  
+  def to_binary(%{"value" => value}) when is_binary(value) do
+    to_binary(value)
+  end
+  
+  def to_binary(id) when is_binary(id) and byte_size(id) == 36 do
+    case Ecto.UUID.dump(id) do
+      {:ok, uuid} -> uuid
+      _ -> nil
+    end
+  end
+  
+  def to_binary(id) when is_binary(id) and byte_size(id) == 16 do
+    # 既にバイナリ UUID
+    id
+  end
+  
+  def to_binary(_), do: nil
+  
+  @doc """
+  バイナリ UUID から EntityId を作成する
+  """
+  @spec from_binary(binary()) :: {:ok, t()} | {:error, String.t()}
+  def from_binary(binary) when is_binary(binary) and byte_size(binary) == 16 do
+    case Ecto.UUID.load(binary) do
+      {:ok, uuid} -> {:ok, %__MODULE__{value: uuid}}
+      _ -> {:error, "Invalid binary UUID"}
+    end
+  end
+  
+  def from_binary(_), do: {:error, "Invalid binary UUID"}
 
   defimpl String.Chars do
     def to_string(%{value: value}), do: value

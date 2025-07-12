@@ -12,7 +12,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Order)
   import_types(ClientService.GraphQL.Types.Monitoring)
 
-  alias ClientService.GraphQL.{Dataloader, Resolvers}
+  alias ClientService.GraphQL.Dataloader
 
   # PubSub版のリゾルバーを使用
   alias ClientService.GraphQL.Resolvers.CategoryResolverPubsub, as: CategoryResolver
@@ -125,6 +125,62 @@ defmodule ClientService.GraphQL.Schema do
     field :projection_status, list_of(:projection_status) do
       resolve(&MonitoringResolver.get_projection_status/3)
     end
+
+    @desc "Saga の詳細情報を取得"
+    field :sagas, list_of(:saga_detail) do
+      arg(:status, :string)
+      arg(:saga_type, :string)
+      arg(:limit, :integer, default_value: 50)
+      arg(:offset, :integer, default_value: 0)
+      resolve(&MonitoringResolver.list_sagas/3)
+    end
+
+    @desc "特定の Saga を取得"
+    field :saga, :saga_detail do
+      arg(:id, non_null(:id))
+      resolve(&MonitoringResolver.get_saga/3)
+    end
+
+    @desc "PubSub メッセージ履歴を取得"
+    field :pubsub_messages, list_of(:pubsub_message) do
+      arg(:topic, :string)
+      arg(:limit, :integer, default_value: 100)
+      arg(:after_timestamp, :datetime)
+      resolve(&MonitoringResolver.list_pubsub_messages/3)
+    end
+
+    @desc "PubSub トピック統計を取得"
+    field :pubsub_stats, list_of(:pubsub_topic_stats) do
+      resolve(&MonitoringResolver.get_pubsub_stats/3)
+    end
+
+    @desc "クエリ実行履歴を取得"
+    field :query_executions, list_of(:query_execution) do
+      arg(:query_type, :string)
+      arg(:status, :string)
+      arg(:limit, :integer, default_value: 100)
+      arg(:after_timestamp, :datetime)
+      resolve(&MonitoringResolver.list_query_executions/3)
+    end
+
+    @desc "コマンド実行履歴を取得"
+    field :command_executions, list_of(:command_execution) do
+      arg(:command_type, :string)
+      arg(:status, :string)
+      arg(:limit, :integer, default_value: 100)
+      arg(:after_timestamp, :datetime)
+      resolve(&MonitoringResolver.list_command_executions/3)
+    end
+
+    @desc "システムトポロジーを取得"
+    field :system_topology, list_of(:system_topology_node) do
+      resolve(&MonitoringResolver.get_system_topology/3)
+    end
+
+    @desc "統合ダッシュボード統計を取得"
+    field :dashboard_stats, non_null(:dashboard_stats) do
+      resolve(&MonitoringResolver.get_dashboard_stats/3)
+    end
   end
 
   mutation do
@@ -180,14 +236,61 @@ defmodule ClientService.GraphQL.Schema do
     end
   end
 
-  # Subscription の定義（将来の拡張用）
-  # subscription do
-  #   field :category_updated, :category do
-  #     config fn _args, _info ->
-  #       {:ok, topic: "categories:*"}
-  #     end
-  #   end
-  # end
+  # Subscription の定義
+  subscription do
+    @desc "リアルタイムイベントストリーム"
+    field :event_stream, :event do
+      arg(:aggregate_type, :string)
+      arg(:event_type, :string)
+
+      config fn args, _info ->
+        topics = 
+          if args[:aggregate_type] do
+            ["events:#{args.aggregate_type}"]
+          else
+            ["events:*"]
+          end
+        {:ok, topic: topics}
+      end
+    end
+
+    @desc "PubSub メッセージのリアルタイムストリーム"
+    field :pubsub_stream, :pubsub_message do
+      arg(:topic, :string)
+
+      config fn args, _info ->
+        topics = 
+          if args[:topic] do
+            ["pubsub:#{args.topic}"]
+          else
+            ["pubsub:*"]
+          end
+        {:ok, topic: topics}
+      end
+    end
+
+    @desc "Saga 状態のリアルタイム更新"
+    field :saga_updates, :saga_detail do
+      arg(:saga_type, :string)
+
+      config fn args, _info ->
+        topics = 
+          if args[:saga_type] do
+            ["sagas:#{args.saga_type}"]
+          else
+            ["sagas:*"]
+          end
+        {:ok, topic: topics}
+      end
+    end
+
+    @desc "システム統計のリアルタイム更新"
+    field :dashboard_stats_stream, :dashboard_stats do
+      config fn _args, _info ->
+        {:ok, topic: "dashboard:stats"}
+      end
+    end
+  end
 
   # Dataloader の設定
   def context(ctx) do

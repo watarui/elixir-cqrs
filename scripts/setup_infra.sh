@@ -14,7 +14,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 # プロジェクトルートに移動
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || exit
 
 # Docker Compose でインフラを起動
 echo "📦 PostgreSQL データベースを起動しています..."
@@ -23,8 +23,8 @@ docker compose up -d postgres-event-store postgres-command postgres-query
 echo "📊 監視・メトリクスサービスを起動しています..."
 docker compose up -d jaeger prometheus grafana
 
-echo "🗜️  pgAdmin を起動しています..."
-docker compose up -d pgadmin
+echo "🗜️  pgweb を起動しています..."
+docker compose up -d pgweb-event-store pgweb-command pgweb-query
 
 # 起動確認
 echo ""
@@ -54,7 +54,9 @@ echo "🌐 アクセス URL:"
 echo "  - Jaeger UI: http://localhost:16686"
 echo "  - Prometheus: http://localhost:9090"
 echo "  - Grafana: http://localhost:3000 (admin/admin)"
-echo "  - pgAdmin: http://localhost:5050 (admin@example.com/admin)"
+echo "  - pgweb event store: http://localhost:5050"
+echo "  - pgweb command db: http://localhost:5051"
+echo "  - pgweb query db: http://localhost:5052"
 echo ""
 echo "次のステップ:"
 echo "  1. データベースセットアップ: ./scripts/setup_db.sh"

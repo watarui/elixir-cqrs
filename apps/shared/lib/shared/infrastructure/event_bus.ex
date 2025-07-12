@@ -26,6 +26,11 @@ defmodule Shared.Infrastructure.EventBus do
       "EventBus publishing to topic: events:#{event_type}, event: #{inspect(event, limit: :infinity)}"
     )
 
+    # ローカルノードに発行
+    Phoenix.PubSub.local_broadcast(@pubsub_name, "events:#{event_type}", {:event, event})
+    Phoenix.PubSub.local_broadcast(@pubsub_name, "events:all", {:event, event_type, event})
+    
+    # 他のノードにも発行（分散モード）
     Phoenix.PubSub.broadcast(@pubsub_name, "events:#{event_type}", {:event, event})
     Phoenix.PubSub.broadcast(@pubsub_name, "events:all", {:event, event_type, event})
     :ok

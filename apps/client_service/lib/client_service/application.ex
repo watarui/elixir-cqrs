@@ -21,6 +21,8 @@ defmodule ClientService.Application do
       ClientService.Infrastructure.RemoteCommandBus,
       # Remote Query Bus (PubSub経由でクエリを送信)
       ClientService.Infrastructure.RemoteQueryBus,
+      # PubSub Broadcaster (リアルタイムモニタリング用)
+      ClientService.PubSubBroadcaster,
       # Endpoint
       ClientServiceWeb.Endpoint
     ]

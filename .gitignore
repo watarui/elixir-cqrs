@@ -126,6 +126,3 @@ client_service-*.tar
 /frontend/public/sw.js
 /frontend/public/workbox-*.js
 
-# pgAdmin
-/pgadmin/pgpass
-pgadmin-data/

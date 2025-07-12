@@ -75,6 +75,12 @@ check_tables() {
     echo ${count:-0}
 }
 
+# Event Store の特定のテーブル存在確認関数
+check_event_store_tables() {
+    local count=$(docker compose exec -T postgres-event-store psql -U postgres -d elixir_cqrs_event_store_dev -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name IN ('events', 'snapshots', 'sagas');" 2>/dev/null | tr -d ' ')
+    echo ${count:-0}
+}
+
 if [ $DB_EXISTS -eq 0 ]; then
     echo "データベースが存在しません。セットアップを実行します..."
     "$SCRIPT_DIR/setup_db.sh"
@@ -83,11 +89,11 @@ else
     # テーブルの存在確認
     QUERY_TABLES=$(check_tables "query" "5434")
     COMMAND_TABLES=$(check_tables "command" "5433")
-    EVENT_TABLES=$(check_tables "event-store" "5432")
+    EVENT_TABLES=$(check_event_store_tables)
     
     echo "テーブル数 - Query: $QUERY_TABLES, Command: $COMMAND_TABLES, Event: $EVENT_TABLES"
     
-    if [ "$QUERY_TABLES" -eq 0 ] || [ "$COMMAND_TABLES" -eq 0 ] || [ "$EVENT_TABLES" -eq 0 ]; then
+    if [ "$QUERY_TABLES" -eq 0 ] || [ "$COMMAND_TABLES" -eq 0 ] || [ "$EVENT_TABLES" -lt 3 ]; then
         echo -e "${YELLOW}⚠️  テーブルが存在しません。マイグレーションを実行します...${NC}"
         cd "$PROJECT_ROOT"
         
@@ -103,6 +109,14 @@ else
         cd "$PROJECT_ROOT/apps/shared"
         mix ecto.migrate --repo Shared.Infrastructure.EventStore.Repo >> "$MIGRATION_LOG" 2>&1
         EVENT_STORE_RESULT=$?
+        
+        # Event Store のテーブルが作成されているか確認
+        EVENT_TABLES=$(docker compose exec -T postgres-event-store psql -U postgres -d elixir_cqrs_event_store_dev -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name IN ('events', 'snapshots', 'sagas');" 2>/dev/null | tr -d ' ')
+        
+        if [ "$EVENT_TABLES" -ne "3" ]; then
+            echo "Event Store のテーブルが作成されていません。手動でマイグレーションを実行してください。" >> "$MIGRATION_LOG"
+            echo -e "${YELLOW}⚠️  Event Store のテーブルが作成されていません。詳細はログファイルを確認してください: $MIGRATION_LOG${NC}"
+        fi
         
         cd "$PROJECT_ROOT"
         # その他のマイグレーションを実行
@@ -126,7 +140,17 @@ fi
 # デモデータの投入
 if [ $WITH_DEMO_DATA = true ] && [ $NEED_DEMO_DATA = true ]; then
     echo "デモデータを投入しています..."
-    "$SCRIPT_DIR/run_seed_data.sh"
+    cd "$PROJECT_ROOT"
+    SEED_LOG="$PROJECT_ROOT/logs/seed_data_$(date +%Y%m%d_%H%M%S).log"
+    mkdir -p "$PROJECT_ROOT/logs"
+    mix run scripts/seed_demo_data.exs > "$SEED_LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ デモデータの投入が完了しました${NC}"
+        echo "詳細はログファイルを確認してください: $SEED_LOG"
+    else
+        echo -e "${RED}❌ デモデータの投入に失敗しました${NC}"
+        echo "詳細はログファイルを確認してください: $SEED_LOG"
+    fi
 fi
 
 # 4. バックエンドサービスの起動
@@ -174,9 +198,25 @@ if [ $WITH_FRONTEND = true ]; then
         FRONTEND_PID=""
     else
         cd "$PROJECT_ROOT/frontend"
-        if [ ! -d "node_modules" ]; then
-            echo "依存関係をインストールしています..."
-            bun install
+        echo "依存関係をインストールしています..."
+        bun install --silent
+        
+        # shadcn/ui のセットアップ
+        if [ ! -f "components.json" ]; then
+            echo "shadcn/ui をセットアップしています..."
+            bunx --bun shadcn@latest init -d -y
+        fi
+        
+        # 必要な UI コンポーネントのインストール
+        if [ ! -f "components/ui/button.tsx" ] || [ ! -f "components/ui/select.tsx" ] || [ ! -f "components/ui/tabs.tsx" ] || [ ! -f "components/ui/input.tsx" ]; then
+            echo "UI コンポーネントをインストールしています..."
+            bunx --bun shadcn@latest add button select tabs input dialog tooltip popover command sheet scroll-area separator --yes
+        fi
+        
+        # 追加の依存関係をインストール（アニメーションとビジュアライゼーション用）
+        if ! grep -q "framer-motion" package.json; then
+            echo "追加の依存関係をインストールしています..."
+            bun add framer-motion d3 @react-spring/web
         fi
         
         bun run dev &
@@ -207,7 +247,9 @@ fi
 echo "  - Jaeger UI: http://localhost:16686"
 echo "  - Prometheus: http://localhost:9090"
 echo "  - Grafana: http://localhost:3000 (admin/admin)"
-echo "  - pgAdmin: http://localhost:5050 (admin@example.com/admin)"
+echo "  - pgweb (Event Store): http://localhost:5050"
+echo "  - pgweb (Command DB): http://localhost:5051"
+echo "  - pgweb (Query DB): http://localhost:5052"
 echo ""
 echo "📌 便利なコマンド:"
 echo "  - ログを確認: tail -f $PROJECT_ROOT/logs/*.log"

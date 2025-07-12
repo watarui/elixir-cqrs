@@ -19,11 +19,16 @@ defmodule ClientServiceWeb.Router do
   scope "/" do
     pipe_through(:api)
 
-    forward("/graphql", Absinthe.Plug, schema: ClientService.GraphQL.Schema)
+    forward("/graphql", Absinthe.Plug, 
+      schema: ClientService.GraphQL.Schema,
+      context: %{pubsub: ClientService.PubSub}
+    )
 
     forward("/graphiql", Absinthe.Plug.GraphiQL,
       schema: ClientService.GraphQL.Schema,
-      interface: :playground
+      interface: :playground,
+      socket: ClientServiceWeb.AbsintheSocket,
+      context: %{pubsub: ClientService.PubSub}
     )
   end
 

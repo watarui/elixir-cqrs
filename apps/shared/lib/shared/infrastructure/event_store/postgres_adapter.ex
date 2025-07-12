@@ -11,42 +11,85 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   alias Shared.Infrastructure.EventStore.SnapshotStore
   alias Shared.Infrastructure.EventStore.VersionConflictError
   alias Shared.Infrastructure.EventStore.AggregateVersionCache
+  alias Shared.Domain.ValueObjects.EntityId
   require Logger
 
   @impl true
   def append_events(aggregate_id, aggregate_type, events, expected_version, metadata) do
-    Ecto.Multi.new()
-    |> validate_version(aggregate_id, expected_version)
-    |> insert_events(aggregate_id, aggregate_type, events, expected_version, metadata)
-    |> Shared.Infrastructure.EventStore.Repo.transaction()
-    |> case do
-      {:ok, %{events: inserted_events}} ->
-        # イベントバスに発行
-        Enum.each(inserted_events, &publish_event/1)
-        last_event = List.last(inserted_events)
-        # バージョンキャッシュを更新
-        AggregateVersionCache.set_version(aggregate_id, last_event.event_version)
-        {:ok, last_event.event_version}
-
-      {:error, :validate_version, {:version_mismatch, expected, actual}, _} ->
+    Logger.debug("PostgresAdapter.append_events called for aggregate #{aggregate_id}, type: #{aggregate_type}, events count: #{length(events)}, expected_version: #{expected_version}")
+    
+    # aggregate_id を UUID 文字列形式に変換
+    uuid_aggregate_id = ensure_uuid_string(aggregate_id)
+    Logger.debug("Converted aggregate_id to UUID string: #{uuid_aggregate_id}")
+    
+    # 直接イベントを保存（Multi を使わない）
+    try do
+      # バージョンチェック
+      current_version = get_current_version(nil, uuid_aggregate_id)
+      
+      if expected_version != current_version do
+        Logger.error("Version mismatch for aggregate #{uuid_aggregate_id}: expected #{expected_version}, actual #{current_version}")
         {:error,
          %VersionConflictError{
-           aggregate_id: aggregate_id,
-           expected_version: expected,
-           actual_version: actual
+           aggregate_id: uuid_aggregate_id,
+           expected_version: expected_version,
+           actual_version: current_version
          }}
+      else
+        # イベントレコードを作成
+        event_records =
+          events
+          |> Enum.with_index(1)
+          |> Enum.map(fn {event, index} ->
+            %{
+              aggregate_id: uuid_aggregate_id,
+              aggregate_type: aggregate_type,
+              event_type: event.__struct__.event_type(),
+              event_data: encode_event_data(event),
+              event_version: expected_version + index,
+              metadata: metadata,
+              global_sequence: nil,
+              schema_version: 1,
+              inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
+              updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+            }
+          end)
 
-      {:error, _operation, reason, _changes} ->
-        Logger.error("Failed to append events: #{inspect(reason)}")
-        {:error, reason}
+        Logger.debug("Inserting #{length(event_records)} events for aggregate #{aggregate_id}")
+        Logger.debug("Event records to insert: #{inspect(event_records)}")
+
+        # insert_all を使用して直接保存
+        {count, inserted} = Shared.Infrastructure.EventStore.Repo.insert_all(Event, event_records, returning: true)
+
+        Logger.debug("Inserted #{count} events successfully")
+        Logger.debug("Inserted records: #{inspect(inserted)}")
+
+        if count == length(events) do
+          # イベントバスに発行
+          Enum.each(inserted, &publish_event/1)
+          last_event = List.last(inserted)
+          # バージョンキャッシュを更新
+          AggregateVersionCache.set_version(uuid_aggregate_id, last_event.event_version)
+          Logger.info("Successfully appended #{length(inserted)} events for aggregate #{uuid_aggregate_id}")
+          {:ok, last_event.event_version}
+        else
+          Logger.error("Failed to insert all events: expected #{length(events)}, inserted #{count}")
+          {:error, :insert_failed}
+        end
+      end
+    rescue
+      e ->
+        Logger.error("Exception during append_events: #{inspect(e)}")
+        {:error, e}
     end
   end
 
   @impl true
   def get_events(aggregate_id, from_version) do
+    uuid_aggregate_id = ensure_uuid_string(aggregate_id)
     query =
       from(e in Event,
-        where: e.aggregate_id == ^aggregate_id,
+        where: e.aggregate_id == ^uuid_aggregate_id,
         order_by: [asc: e.event_version]
       )
 
@@ -173,9 +216,10 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
     end)
   end
 
-  defp get_current_version(repo, aggregate_id) do
+  defp get_current_version(_repo, aggregate_id) do
+    uuid_aggregate_id = ensure_uuid_string(aggregate_id)
     # キャッシュからバージョンを取得
-    case AggregateVersionCache.get_version(aggregate_id) do
+    case AggregateVersionCache.get_version(uuid_aggregate_id) do
       {:ok, version} ->
         version
 
@@ -183,19 +227,19 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
         # キャッシュにない場合は DB から取得
         query =
           from(e in Event,
-            where: e.aggregate_id == ^aggregate_id,
+            where: e.aggregate_id == ^uuid_aggregate_id,
             select: max(e.event_version)
           )
 
         version = Shared.Infrastructure.EventStore.Repo.one(query) || 0
         # キャッシュに保存
-        AggregateVersionCache.set_version(aggregate_id, version)
+        AggregateVersionCache.set_version(uuid_aggregate_id, version)
         version
     end
   end
 
   defp insert_events(multi, aggregate_id, aggregate_type, events, expected_version, metadata) do
-    Ecto.Multi.run(multi, :events, fn repo, _changes ->
+    Ecto.Multi.run(multi, :events, fn _repo, _changes ->
       event_records =
         events
         |> Enum.with_index(1)
@@ -207,12 +251,20 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
             event_data: encode_event_data(event),
             event_version: expected_version + index,
             metadata: metadata,
+            # global_sequence を追加
+            global_sequence: nil,
+            # schema_version を追加
+            schema_version: 1,
             inserted_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second),
             updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
           }
         end)
 
+      Logger.debug("Inserting #{length(event_records)} events for aggregate #{aggregate_id}")
+
       {count, inserted} = Shared.Infrastructure.EventStore.Repo.insert_all(Event, event_records, returning: true)
+
+      Logger.debug("Inserted #{count} events successfully")
 
       if count == length(events) do
         {:ok, inserted}
@@ -356,6 +408,30 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
 
   @impl true
   def get_snapshot(aggregate_id) do
-    SnapshotStore.get_latest_snapshot(aggregate_id)
+    uuid_aggregate_id = ensure_uuid_string(aggregate_id)
+    SnapshotStore.get_latest_snapshot(uuid_aggregate_id)
+  end
+  
+  # Helper functions
+  
+  @doc false
+  defp ensure_uuid_string(aggregate_id) when is_binary(aggregate_id) do
+    # 既に UUID 文字列形式の場合はそのまま返す
+    if String.length(aggregate_id) == 36 and String.contains?(aggregate_id, "-") do
+      aggregate_id
+    else
+      # それ以外の場合はエラーをログに記録
+      Logger.error("Invalid aggregate_id format: #{inspect(aggregate_id)}")
+      aggregate_id
+    end
+  end
+  
+  defp ensure_uuid_string(%EntityId{value: value}), do: value
+  
+  defp ensure_uuid_string(%{"value" => value}) when is_binary(value), do: value
+  
+  defp ensure_uuid_string(aggregate_id) do
+    Logger.error("Unexpected aggregate_id type: #{inspect(aggregate_id)}")
+    to_string(aggregate_id)
   end
 end

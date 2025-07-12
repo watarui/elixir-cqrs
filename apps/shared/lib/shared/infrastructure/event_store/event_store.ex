@@ -58,17 +58,22 @@ defmodule Shared.Infrastructure.EventStore.EventStore do
   使用するアダプターを取得する
   """
   def adapter do
-    Application.get_env(
+    adapter_module = Application.get_env(
       :shared,
       :event_store_adapter,
       Shared.Infrastructure.EventStore.PostgresAdapter
     )
+    require Logger
+    Logger.debug("EventStore using adapter: #{inspect(adapter_module)}")
+    adapter_module
   end
 
   @doc """
   イベントを追加する
   """
   def append_events(aggregate_id, aggregate_type, events, expected_version, metadata \\ %{}) do
+    require Logger
+    Logger.debug("EventStore.append_events called with aggregate_id: #{aggregate_id}, type: #{aggregate_type}, events: #{length(events)}")
     adapter().append_events(aggregate_id, aggregate_type, events, expected_version, metadata)
   end
 

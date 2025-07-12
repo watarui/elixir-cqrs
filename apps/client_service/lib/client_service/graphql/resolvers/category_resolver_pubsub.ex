@@ -102,6 +102,8 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
            id: aggregate.id.value,
            name: aggregate.name.value,
            description: aggregate.description,
+           parent_id: Map.get(aggregate, :parent_id),
+           active: Map.get(aggregate, :active, true),
            product_count: 0,
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at
@@ -133,6 +135,8 @@ defmodule ClientService.GraphQL.Resolvers.CategoryResolverPubsub do
            id: aggregate.id.value,
            name: aggregate.name.value,
            description: aggregate.description,
+           parent_id: Map.get(aggregate, :parent_id),
+           active: Map.get(aggregate, :active, true),
            product_count: 0,
            created_at: aggregate.created_at,
            updated_at: aggregate.updated_at

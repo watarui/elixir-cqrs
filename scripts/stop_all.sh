@@ -56,8 +56,8 @@ if [ $STOP_DOCKER = true ]; then
     echo -e "${YELLOW}📦 Docker コンテナを停止しています...${NC}"
     echo "  - PostgreSQL データベース"
     echo "  - Jaeger, Prometheus, Grafana"
-    if docker compose ps | grep -q pgadmin; then
-        echo "  - pgAdmin"
+    if docker compose ps | grep -q pgweb; then
+        echo "  - pgweb"
     fi
     cd "$PROJECT_ROOT"
     docker compose down

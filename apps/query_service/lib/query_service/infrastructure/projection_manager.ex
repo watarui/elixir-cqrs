@@ -59,6 +59,8 @@ defmodule QueryService.Infrastructure.ProjectionManager do
 
   @impl true
   def init(_opts) do
+    Logger.info("ProjectionManager starting...")
+    
     state = %{
       projections: %{
         CategoryProjection => %{status: :running, last_error: nil, processed_count: 0},
@@ -70,7 +72,10 @@ defmodule QueryService.Infrastructure.ProjectionManager do
     }
 
     # EventBus に購読
-    {:ok, subscribe_to_events(state)}
+    new_state = subscribe_to_events(state)
+    Logger.info("ProjectionManager subscribed to #{map_size(new_state.subscriptions)} event types")
+    
+    {:ok, new_state}
   end
 
   @impl true
@@ -107,15 +112,18 @@ defmodule QueryService.Infrastructure.ProjectionManager do
 
   @impl true
   def handle_info({:event, event}, state) do
+    Logger.debug("ProjectionManager received event: #{inspect(event, limit: :infinity)}")
+    
     # イベントタイプを取得
     event_type = get_event_type(event)
     
     if event_type do
+      Logger.info("Processing event type: #{event_type}")
       # リアルタイムイベント処理
       state = process_realtime_event(event_type, event, state)
       {:noreply, state}
     else
-      Logger.debug("Ignoring event without event_type: #{inspect(event)}")
+      Logger.warning("Ignoring event without event_type: #{inspect(event)}")
       {:noreply, state}
     end
   end

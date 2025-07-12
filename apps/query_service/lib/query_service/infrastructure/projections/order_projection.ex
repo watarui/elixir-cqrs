@@ -7,6 +7,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
 
   alias QueryService.Infrastructure.Repositories.OrderRepository
   alias QueryService.Infrastructure.Cache
+  alias Shared.Domain.ValueObjects.EntityId
 
   alias Shared.Domain.Events.OrderEvents.{
     OrderCreated,
@@ -30,13 +31,13 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
   """
   def handle_event(%OrderCreated{} = event) do
     attrs = %{
-      id: event.id.value,
-      user_id: event.user_id.value,
+      id: get_id_value(event.id),
+      user_id: get_id_value(event.user_id),
       total_amount: Decimal.new(to_string(event.total_amount.amount)),
       currency: event.total_amount.currency,
       status: "pending",
       items: Enum.map(event.items, &transform_item/1),
-      saga_id: if(Map.has_key?(event, :saga_id), do: event.saga_id.value, else: nil),
+      saga_id: if(Map.has_key?(event, :saga_id), do: get_id_value(event.saga_id), else: nil),
       saga_status: "started",
       saga_current_step: "reserve_inventory",
       created_at: event.created_at,
@@ -63,7 +64,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.confirmed_at
     }
 
-    update_order(event.id.value, attrs)
+    update_order(get_id_value(event.id), attrs)
   end
 
   def handle_event(%OrderPaymentProcessed{} = event) do
@@ -74,7 +75,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.processed_at
     }
 
-    update_order(event.order_id.value, attrs)
+    update_order(get_id_value(event.order_id), attrs)
   end
 
   def handle_event(%OrderCancelled{} = event) do
@@ -85,12 +86,12 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.cancelled_at
     }
 
-    update_order(event.id.value, attrs)
+    update_order(get_id_value(event.id), attrs)
   end
 
   def handle_event(%OrderItemReserved{} = event) do
     # 在庫予約イベント
-    Logger.debug("Order item reserved: #{event.order_id.value} - #{event.product_id}")
+    Logger.debug("Order item reserved: #{get_id_value(event.order_id)} - #{event.product_id}")
     :ok
   end
 
@@ -102,7 +103,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.occurred_at
     }
 
-    update_order(event.order_id, attrs)
+    update_order(get_id_value(event.order_id), attrs)
   end
 
   def handle_event(%PaymentProcessed{} = event) do
@@ -114,7 +115,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.occurred_at
     }
 
-    update_order(event.order_id, attrs)
+    update_order(get_id_value(event.order_id), attrs)
   end
 
   def handle_event(%ShippingArranged{} = event) do
@@ -126,7 +127,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.occurred_at
     }
 
-    update_order(event.order_id, attrs)
+    update_order(get_id_value(event.order_id), attrs)
   end
 
   def handle_event(%SagaOrderConfirmed{} = event) do
@@ -138,7 +139,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
       updated_at: event.occurred_at
     }
 
-    update_order(event.order_id, attrs)
+    update_order(get_id_value(event.order_id), attrs)
   end
 
   def handle_event(_event) do
@@ -163,6 +164,12 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
   end
 
   # Private functions
+
+  # ID の値を取得するヘルパー関数
+  defp get_id_value(nil), do: nil
+  defp get_id_value(%{value: value}), do: value
+  defp get_id_value(value) when is_binary(value), do: value
+  defp get_id_value(value), do: to_string(value)
 
   defp transform_item(item) do
     %{

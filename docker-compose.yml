@@ -124,26 +124,44 @@ services:
     networks:
       - elixir-cqrs-network
 
-  # pgAdmin - PostgreSQL Web管理ツール
-  pgadmin:
-    image: dpage/pgadmin4:latest
+  # pgweb - Event Store DB用
+  pgweb-event-store:
+    image: sosedoff/pgweb:latest
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGWEB_DATABASE_URL: postgresql://postgres:postgres@postgres-event-store:5432/elixir_cqrs_event_store_dev?sslmode=disable
     ports:
-      - "5050:80"
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-      - ./pgadmin/servers.json:/pgadmin4/servers.json
-      - ./pgadmin/pgpass:/tmp/pgpass
+      - "5050:8081"
     depends_on:
       - postgres-event-store
+    networks:
+      - elixir-cqrs-network
+    command: pgweb --bind=0.0.0.0 --listen=8081
+
+  # pgweb - Command DB用
+  pgweb-command:
+    image: sosedoff/pgweb:latest
+    environment:
+      PGWEB_DATABASE_URL: postgresql://postgres:postgres@postgres-command:5432/elixir_cqrs_command_dev?sslmode=disable
+    ports:
+      - "5051:8081"
+    depends_on:
       - postgres-command
+    networks:
+      - elixir-cqrs-network
+    command: pgweb --bind=0.0.0.0 --listen=8081
+
+  # pgweb - Query DB用
+  pgweb-query:
+    image: sosedoff/pgweb:latest
+    environment:
+      PGWEB_DATABASE_URL: postgresql://postgres:postgres@postgres-query:5432/elixir_cqrs_query_dev?sslmode=disable
+    ports:
+      - "5052:8081"
+    depends_on:
       - postgres-query
     networks:
       - elixir-cqrs-network
+    command: pgweb --bind=0.0.0.0 --listen=8081
 
 volumes:
   postgres-event-store-data:
@@ -151,7 +169,6 @@ volumes:
   postgres-query-data:
   prometheus-data:
   grafana-data:
-  pgadmin-data:
 
 networks:
   elixir-cqrs-network:
