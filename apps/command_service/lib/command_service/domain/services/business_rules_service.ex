@@ -83,9 +83,8 @@ defmodule CommandService.Domain.Services.BusinessRulesService do
           :ok | {:error, atom(), map()}
   def validate_inventory_reservation(product_id, quantity, product_info) do
     with :ok <- validate_reservation_quantity_limit(quantity, product_info),
-         :ok <- validate_product_availability(product_info),
-         :ok <- validate_reservation_per_customer(product_id, quantity) do
-      :ok
+         :ok <- validate_product_availability(product_info) do
+      validate_reservation_per_customer(product_id, quantity)
     end
   end
 
@@ -137,9 +136,8 @@ defmodule CommandService.Domain.Services.BusinessRulesService do
           :ok | {:error, atom(), map()}
   def check_customer_purchase_limits(customer_id, order_params) do
     with :ok <- check_daily_order_limit(customer_id),
-         :ok <- check_monthly_spending_limit(customer_id, order_params),
-         :ok <- check_blacklist_status(customer_id) do
-      :ok
+         :ok <- check_monthly_spending_limit(customer_id, order_params) do
+      check_blacklist_status(customer_id)
     end
   end
 

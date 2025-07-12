@@ -33,9 +33,8 @@ defmodule CommandService.Domain.Services.PricingService do
   @spec calculate_item_subtotal(map(), String.t()) :: {:ok, Money.t()} | {:error, String.t()}
   def calculate_item_subtotal(item, currency \\ "JPY") do
     with {:ok, unit_price} <- get_unit_price(item, currency),
-         {:ok, quantity} <- get_quantity(item),
-         {:ok, subtotal} <- Money.multiply(unit_price, quantity) do
-      {:ok, subtotal}
+         {:ok, quantity} <- get_quantity(item) do
+      Money.multiply(unit_price, quantity)
     end
   end
 
@@ -88,9 +87,8 @@ defmodule CommandService.Domain.Services.PricingService do
     weight_charge = calculate_weight_charge(total_weight, zone, currency)
 
     with {:ok, base_money} <- Money.new(base_rate, currency),
-         {:ok, weight_money} <- Money.new(weight_charge, currency),
-         {:ok, total} <- Money.add(base_money, weight_money) do
-      {:ok, total}
+         {:ok, weight_money} <- Money.new(weight_charge, currency) do
+      Money.add(base_money, weight_money)
     end
   end
 
@@ -141,9 +139,8 @@ defmodule CommandService.Domain.Services.PricingService do
   defp apply_percentage_discount(_, _), do: {:error, "Invalid percentage discount"}
 
   defp apply_fixed_discount(price, discount_amount, discount_currency) do
-    with {:ok, discount_money} <- Money.new(discount_amount, discount_currency),
-         {:ok, discounted} <- Money.subtract(price, discount_money) do
-      {:ok, discounted}
+    with {:ok, discount_money} <- Money.new(discount_amount, discount_currency) do
+      Money.subtract(price, discount_money)
     end
   end
 

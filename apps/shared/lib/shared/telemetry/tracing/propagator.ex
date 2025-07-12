@@ -228,8 +228,7 @@ defmodule Shared.Telemetry.Tracing.Propagator do
       baggage ->
         baggage_string =
           baggage
-          |> Enum.map(fn {k, v} -> "#{k}=#{URI.encode(v)}" end)
-          |> Enum.join(",")
+          |> Enum.map_join(",", fn {k, v} -> "#{k}=#{URI.encode(v)}" end)
 
         Keyword.put(headers, @baggage_header, baggage_string)
     end

@@ -49,10 +49,8 @@ defmodule Shared.Health.HealthChecker do
     overall_status = calculate_overall_status(checks)
     duration = System.monotonic_time(:millisecond) - start_time
 
-    Logger.info("Health check completed",
-      status: overall_status,
-      duration_ms: duration,
-      checks: length(checks)
+    Logger.info(
+      "Health check completed: status=#{overall_status}, duration=#{duration}ms, checks=#{length(checks)}"
     )
 
     %{
@@ -157,7 +155,7 @@ defmodule Shared.Health.HealthChecker do
         end
       rescue
         e ->
-          Logger.error("Health check failed", check: name, error: inspect(e))
+          Logger.error("Health check failed for #{name}: #{inspect(e)}")
           {:unhealthy, "Check failed with exception", %{error: inspect(e)}}
       end
 

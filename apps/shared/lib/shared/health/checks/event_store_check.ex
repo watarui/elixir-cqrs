@@ -76,7 +76,7 @@ defmodule Shared.Health.Checks.EventStoreCheck do
     end
   rescue
     e ->
-      Logger.error("Event store write check failed", error: inspect(e))
+      Logger.error("Event store write check failed: #{inspect(e)}")
       :error
   end
 
@@ -103,7 +103,7 @@ defmodule Shared.Health.Checks.EventStoreCheck do
     end
   rescue
     e ->
-      Logger.error("Event store read check failed", error: inspect(e))
+      Logger.error("Event store read check failed: #{inspect(e)}")
       :error
   end
 

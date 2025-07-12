@@ -36,7 +36,7 @@ defmodule Shared.Health.Checks.DatabaseCheck do
       # アプリケーションが起動していない場合はスキップ
       case Process.whereis(repo) do
         nil ->
-          Logger.debug("Repository not started", repo: repo)
+          Logger.debug("Repository not started: #{inspect(repo)}")
           :not_started
 
         _pid ->
@@ -51,17 +51,17 @@ defmodule Shared.Health.Checks.DatabaseCheck do
               :ok
 
             nil ->
-              Logger.error("Database query timeout", repo: name, timeout: @timeout)
+              Logger.error("Database query timeout for #{name}, timeout: #{@timeout}ms")
               :timeout
 
             {:exit, reason} ->
-              Logger.error("Database query failed", repo: name, reason: inspect(reason))
+              Logger.error("Database query failed for #{name}, reason: #{inspect(reason)}")
               :error
           end
       end
     rescue
       e ->
-        Logger.error("Database check failed", repo: name, error: inspect(e))
+        Logger.error("Database check failed for #{name}, error: #{inspect(e)}")
         :error
     end
   end

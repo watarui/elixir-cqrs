@@ -387,8 +387,7 @@ defmodule Shared.Telemetry.Metrics.PrometheusExporter do
 
   defp build_prometheus_output(metrics) do
     @metrics
-    |> Enum.map(&format_metric(&1, metrics))
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &format_metric(&1, metrics))
   end
 
   defp format_metric({type, name, help, labels}, metrics) when type in [:counter, :gauge] do
@@ -410,11 +409,10 @@ defmodule Shared.Telemetry.Metrics.PrometheusExporter do
   defp format_metric_values(name, label_keys, metrics, _type) do
     metrics
     |> Enum.filter(fn {{metric_name, _}, _} -> metric_name == name end)
-    |> Enum.map(fn {{_, labels}, value} ->
+    |> Enum.map_join("\n", fn {{_, labels}, value} ->
       label_str = format_labels(label_keys, labels)
       "#{name}#{label_str} #{value}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_histogram_values(name, label_keys, metrics, bucket_bounds) do
@@ -443,11 +441,10 @@ defmodule Shared.Telemetry.Metrics.PrometheusExporter do
   defp format_labels(label_keys, label_values) do
     labels =
       label_keys
-      |> Enum.map(fn key ->
+      |> Enum.map_join(",", fn key ->
         value = Map.get(label_values, key, "")
         ~s(#{key}="#{escape_label_value(value)}")
       end)
-      |> Enum.join(",")
 
     if labels == "", do: "", else: "{#{labels}}"
   end
@@ -463,7 +460,7 @@ defmodule Shared.Telemetry.Metrics.PrometheusExporter do
   defp normalize_path(path) do
     path
     |> String.split("/")
-    |> Enum.map(fn segment ->
+    |> Enum.map_join("/", fn segment ->
       if String.match?(
            segment,
            ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -473,7 +470,6 @@ defmodule Shared.Telemetry.Metrics.PrometheusExporter do
         segment
       end
     end)
-    |> Enum.join("/")
   end
 
   defp extract_operation(query) do
