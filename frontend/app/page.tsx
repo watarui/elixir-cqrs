@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { DASHBOARD_OVERVIEW, EVENT_STREAM_SUBSCRIPTION, DASHBOARD_STATS_SUBSCRIPTION } from "@/lib/graphql/queries/dashboard"
 import { FlowVisualization } from "@/components/flow-visualization"
 import { EventStream } from "@/components/event-stream"
-import { MetricsDashboard } from "@/components/metrics-dashboard"
+import { EnhancedMetricsDashboard } from "@/components/enhanced-metrics-dashboard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -178,7 +178,7 @@ export default function Home() {
       </div>
 
       {/* メトリクスダッシュボード */}
-      <MetricsDashboard metrics={metrics} />
+      <EnhancedMetricsDashboard />
 
       {/* 詳細タブ */}
       <Card>

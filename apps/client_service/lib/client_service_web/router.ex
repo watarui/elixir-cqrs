@@ -15,6 +15,10 @@ defmodule ClientServiceWeb.Router do
     plug(ClientServiceWeb.Plugs.DataloaderPlug)
   end
 
+  pipeline :metrics do
+    plug(:accepts, ["text", "plain"])
+  end
+
   # GraphQL エンドポイント
   scope "/" do
     pipe_through(:api)
@@ -30,6 +34,12 @@ defmodule ClientServiceWeb.Router do
       socket: ClientServiceWeb.AbsintheSocket,
       context: %{pubsub: ClientService.PubSub}
     )
+  end
+
+  # Prometheus メトリクスエンドポイント
+  scope "/metrics" do
+    pipe_through(:metrics)
+    forward("/", Shared.Telemetry.Metrics.PrometheusPlug)
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

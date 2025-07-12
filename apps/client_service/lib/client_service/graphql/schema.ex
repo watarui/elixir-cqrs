@@ -11,6 +11,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Product)
   import_types(ClientService.GraphQL.Types.Order)
   import_types(ClientService.GraphQL.Types.Monitoring)
+  import_types(ClientService.GraphQL.Types.Metrics)
 
   alias ClientService.GraphQL.Dataloader
 
@@ -19,6 +20,7 @@ defmodule ClientService.GraphQL.Schema do
   alias ClientService.GraphQL.Resolvers.ProductResolverPubsub, as: ProductResolver
   alias ClientService.GraphQL.Resolvers.OrderResolverPubsub, as: OrderResolver
   alias ClientService.GraphQL.Resolvers.MonitoringResolver
+  alias ClientService.GraphQL.Resolvers.MetricsResolver
 
   query do
     @desc "カテゴリを取得"
@@ -181,6 +183,24 @@ defmodule ClientService.GraphQL.Schema do
     field :dashboard_stats, non_null(:dashboard_stats) do
       resolve(&MonitoringResolver.get_dashboard_stats/3)
     end
+
+    @desc "メトリクス概要を取得"
+    field :metrics_overview, :metrics_overview do
+      resolve(&MetricsResolver.get_metrics_overview/3)
+    end
+
+    @desc "Prometheus メトリクスを取得"
+    field :prometheus_metrics, list_of(:prometheus_metric) do
+      arg(:filter, :metrics_filter)
+      resolve(&MetricsResolver.get_prometheus_metrics/3)
+    end
+
+    @desc "メトリクスの時系列データを取得"
+    field :metric_series, list_of(:metric_series) do
+      arg(:metric_names, non_null(list_of(non_null(:string))))
+      arg(:duration, :integer, default_value: 3600)
+      resolve(&MetricsResolver.get_metric_series/3)
+    end
   end
 
   mutation do
@@ -293,6 +313,19 @@ defmodule ClientService.GraphQL.Schema do
         {:ok, topic: "dashboard:stats"}
       end)
     end
+
+    @desc "メトリクスのリアルタイム更新"
+    field :metrics_stream, :metrics_overview do
+      config(fn _args, _info ->
+        {:ok, topic: "metrics:overview"}
+      end)
+    end
+  end
+
+  # Input types for metrics
+  input_object :metrics_filter do
+    field(:name_pattern, :string)
+    field(:labels, :json)
   end
 
   # Dataloader の設定

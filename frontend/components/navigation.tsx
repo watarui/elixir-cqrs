@@ -12,6 +12,7 @@ const navItems = [
   { name: "Queries", href: "/queries" },
   { name: "Sagas", href: "/sagas" },
   { name: "PubSub", href: "/pubsub" },
+  { name: "Metrics", href: "/metrics" },
   { name: "Topology", href: "/topology" },
 ]
 

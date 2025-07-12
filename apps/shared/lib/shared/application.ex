@@ -38,7 +38,9 @@ defmodule Shared.Application do
       # Event Sourcing 改善
       Shared.Infrastructure.EventStore.EventRegistry,
       {Shared.Infrastructure.EventStore.EventArchiver,
-       [archive_interval: :timer.hours(24), retention_days: 90]}
+       [archive_interval: :timer.hours(24), retention_days: 90]},
+      # メトリクスエクスポーター
+      Shared.Telemetry.Metrics.PrometheusExporter
     ]
 
     opts = [strategy: :one_for_one, name: Shared.Supervisor]
