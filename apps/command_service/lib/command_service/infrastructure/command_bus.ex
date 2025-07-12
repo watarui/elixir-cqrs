@@ -16,6 +16,7 @@ defmodule CommandService.Infrastructure.CommandBus do
 
   alias Shared.Telemetry.Span
   alias Shared.Infrastructure.Retry.{RetryStrategy, RetryPolicy}
+  alias Shared.Telemetry.Tracing.MessagePropagator
 
   require Logger
 
@@ -54,9 +55,9 @@ defmodule CommandService.Infrastructure.CommandBus do
   @impl true
   def handle_call({:dispatch, command}, _from, state) do
     result =
-      Span.with_span "command_bus.dispatch", %{command_type: command.__struct__} do
-        execute_command_with_retry(command)
-      end
+      MessagePropagator.wrap_command_dispatch(command, fn cmd ->
+        execute_command_with_retry(cmd)
+      end)
 
     {:reply, result, state}
   end
@@ -64,15 +65,17 @@ defmodule CommandService.Infrastructure.CommandBus do
   @impl true
   def handle_cast({:dispatch_async, command}, state) do
     Task.start(fn ->
-      Span.with_span "command_bus.dispatch_async", %{command_type: command.__struct__} do
-        case execute_command_with_retry(command) do
-          {:ok, _} ->
+      MessagePropagator.wrap_command_dispatch(command, fn cmd ->
+        case execute_command_with_retry(cmd) do
+          {:ok, _} = result ->
             Logger.info("Command executed successfully: #{inspect(command.__struct__)}")
+            result
 
-          {:error, reason} ->
+          {:error, reason} = error ->
             Logger.error("Command failed: #{inspect(command.__struct__)}, reason: #{reason}")
+            error
         end
-      end
+      end)
     end)
 
     {:noreply, state}

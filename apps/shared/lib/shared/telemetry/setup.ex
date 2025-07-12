@@ -6,46 +6,32 @@ defmodule Shared.Telemetry.Setup do
   """
 
   require Logger
+  alias Shared.Telemetry.Tracing.Config
 
   @doc """
   OpenTelemetry を初期化する
   """
   def init do
-    # OpenTelemetry の設定
-    config = %{
-      traces: %{
-        processors: [
-          {
-            :otel_batch_processor,
-            %{
-              exporter:
-                {:opentelemetry_exporter,
-                 %{
-                   endpoints: [
-                     {:http,
-                      Application.get_env(
-                        :opentelemetry,
-                        :otlp_endpoint,
-                        "http://localhost:4318"
-                      ), []}
-                   ]
-                 }}
-            }
-          }
-        ],
-        sampler:
-          {:parent_based,
-           %{
-             root:
-               {:trace_id_ratio_based, Application.get_env(:opentelemetry, :sampling_ratio, 1.0)}
-           }}
-      }
-    }
+    # 拡張設定を取得
+    config = Config.configure_tracer_provider()
+
+    # OpenTelemetry の設定を適用
+    apply_opentelemetry_config(config)
 
     # アプリケーション固有のテレメトリイベントを設定
     attach_telemetry_handlers()
 
-    Logger.info("OpenTelemetry initialized with config: #{inspect(config)}")
+    Logger.info("OpenTelemetry initialized with enhanced configuration")
+  end
+
+  defp apply_opentelemetry_config(config) do
+    # リソース属性を設定
+    :opentelemetry.set_resource(config.resource)
+
+    # プロパゲーターを設定
+    :opentelemetry.set_text_map_propagator(
+      :opentelemetry_propagator_composite.create(config.propagators)
+    )
   end
 
   @doc """
@@ -197,7 +183,7 @@ defmodule Shared.Telemetry.Setup do
   end
 
   # カスタムイベントハンドラー
-  defp handle_custom_event(event, _measurements, metadata, _config) do
+  defp handle_custom_event(event, measurements, metadata, _config) do
     span_name =
       case event do
         [:cqrs, :command, _] -> "Command #{metadata[:command_type] || "Unknown"}"
@@ -209,13 +195,16 @@ defmodule Shared.Telemetry.Setup do
         _ -> "Unknown Event"
       end
 
+    # 追加の属性を構築
+    attributes = build_custom_attributes(event, measurements, metadata)
+
     case List.last(event) do
       :start ->
         :otel_telemetry.start_telemetry_span(
           :opentelemetry.get_tracer(__MODULE__),
           span_name,
           metadata,
-          %{kind: :internal}
+          %{kind: :internal, attributes: attributes}
         )
 
       :stop ->
@@ -224,18 +213,72 @@ defmodule Shared.Telemetry.Setup do
           metadata
         )
 
+        # 測定値を属性として追加
+        if measurements[:duration] do
+          :otel_telemetry.add_span_attributes(%{
+            "duration_ms" =>
+              System.convert_time_unit(measurements.duration, :native, :millisecond)
+          })
+        end
+
         :otel_telemetry.end_telemetry_span(metadata)
 
       :published ->
         :otel_telemetry.with_span(
           :opentelemetry.get_tracer(__MODULE__),
           span_name,
-          metadata,
+          Map.merge(metadata, %{attributes: attributes}),
           fn -> :ok end
         )
 
       _ ->
         :ok
     end
+  end
+
+  defp build_custom_attributes(event, measurements, metadata) do
+    base_attrs = %{
+      "event.name" => event |> Enum.join("."),
+      "event.timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    # イベント固有の属性を追加
+    event_attrs =
+      case event do
+        [:cqrs, :command, _] ->
+          %{
+            "command.aggregate_id" => metadata[:aggregate_id],
+            "command.correlation_id" => metadata[:correlation_id]
+          }
+
+        [:cqrs, :saga, _] ->
+          %{
+            "saga.id" => metadata[:saga_id],
+            "saga.correlation_id" => metadata[:correlation_id],
+            "saga.current_step" => metadata[:current_step]
+          }
+
+        [:cqrs, :event, :published] ->
+          %{
+            "event.aggregate_id" => metadata[:aggregate_id],
+            "event.aggregate_type" => metadata[:aggregate_type],
+            "event.version" => metadata[:version]
+          }
+
+        _ ->
+          %{}
+      end
+
+    # 測定値を属性として追加
+    measurement_attrs =
+      measurements
+      |> Enum.map(fn {k, v} -> {"measurement.#{k}", v} end)
+      |> Enum.into(%{})
+
+    base_attrs
+    |> Map.merge(event_attrs)
+    |> Map.merge(measurement_attrs)
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
+    |> Enum.into(%{})
   end
 end

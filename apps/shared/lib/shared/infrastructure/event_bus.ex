@@ -5,6 +5,8 @@ defmodule Shared.Infrastructure.EventBus do
   PubSub を使用してイベントの発行と購読を管理します
   """
 
+  alias Shared.Telemetry.Tracing.MessagePropagator
+
   # PubSub の名前を定義
   @pubsub_name :event_bus_pubsub
 
@@ -76,8 +78,17 @@ defmodule Shared.Infrastructure.EventBus do
   """
   @spec publish_event(struct()) :: :ok
   def publish_event(event) do
-    event_type = event.__struct__.event_type()
-    publish(event_type, event)
+    # トレーシングコンテキストを注入
+    case MessagePropagator.wrap_event_publish(event, topic: "events") do
+      {:ok, updated_event} ->
+        event_type = updated_event.__struct__.event_type()
+        publish(event_type, updated_event)
+
+      _ ->
+        # フォールバック
+        event_type = event.__struct__.event_type()
+        publish(event_type, event)
+    end
   end
 
   @doc """

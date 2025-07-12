@@ -20,6 +20,7 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
   alias Shared.Infrastructure.Idempotency.IdempotentSaga
   alias Shared.Infrastructure.Retry.RetryStrategy
   alias Shared.Infrastructure.Saga.SagaRepository
+  alias Shared.Telemetry.Tracing.MessagePropagator
 
   require Logger
 
