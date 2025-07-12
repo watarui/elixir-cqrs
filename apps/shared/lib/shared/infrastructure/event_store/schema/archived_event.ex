@@ -2,27 +2,27 @@ defmodule Shared.Infrastructure.EventStore.Schema.ArchivedEvent do
   @moduledoc """
   アーカイブされたイベントのスキーマ
   """
-  
+
   use Ecto.Schema
-  
+
   import Ecto.Changeset
-  
+
   @primary_key {:id, :binary_id, autogenerate: false}
   @timestamps_opts [type: :utc_datetime_usec]
-  
+
   schema "archived_events" do
-    field :aggregate_id, :binary_id
-    field :aggregate_type, :string
-    field :event_type, :string
-    field :event_version, :integer
-    field :event_data, :map
-    field :metadata, :map
-    field :event_timestamp, :utc_datetime_usec
-    field :archived_at, :utc_datetime_usec
-    
+    field(:aggregate_id, :binary_id)
+    field(:aggregate_type, :string)
+    field(:event_type, :string)
+    field(:event_version, :integer)
+    field(:event_data, :map)
+    field(:metadata, :map)
+    field(:event_timestamp, :utc_datetime_usec)
+    field(:archived_at, :utc_datetime_usec)
+
     timestamps()
   end
-  
+
   @doc false
   def changeset(archived_event, attrs) do
     archived_event

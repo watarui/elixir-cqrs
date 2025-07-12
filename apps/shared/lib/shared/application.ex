@@ -37,7 +37,7 @@ defmodule Shared.Application do
       Shared.Telemetry.SagaMetrics,
       # Event Sourcing 改善
       Shared.Infrastructure.EventStore.EventRegistry,
-      {Shared.Infrastructure.EventStore.EventArchiver, 
+      {Shared.Infrastructure.EventStore.EventArchiver,
        [archive_interval: :timer.hours(24), retention_days: 90]}
     ]
 
