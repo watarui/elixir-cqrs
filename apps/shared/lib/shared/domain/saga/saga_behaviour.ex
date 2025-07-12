@@ -7,7 +7,8 @@ defmodule Shared.Domain.Saga.SagaBehaviour do
   @type saga_data :: map()
   @type event :: any()
   @type step_result :: {:ok, saga_data} | {:error, any()}
-  @type event_result :: {:continue, saga_data} | {:complete, saga_data} | {:compensate, String.t()}
+  @type event_result ::
+          {:continue, saga_data} | {:complete, saga_data} | {:compensate, String.t()}
 
   @doc """
   SAGA のステップを定義

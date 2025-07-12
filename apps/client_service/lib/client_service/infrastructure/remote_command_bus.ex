@@ -9,6 +9,7 @@ defmodule ClientService.Infrastructure.RemoteCommandBus do
   use GenServer
 
   alias Shared.Infrastructure.EventBus
+  alias Shared.Infrastructure.Resilience.CircuitBreaker
 
   require Logger
 
@@ -64,16 +65,30 @@ defmodule ClientService.Infrastructure.RemoteCommandBus do
 
     Logger.debug("Publishing to topic #{@command_topic}, reply_to: #{state.response_topic}")
 
-    # コマンドを発行
-    EventBus.publish(@command_topic, message)
+    # サーキットブレーカーを通じてコマンドを発行
+    case CircuitBreaker.call(:command_bus, fn ->
+           EventBus.publish(@command_topic, message)
+           {:ok, :published}
+         end) do
+      {:ok, :published} ->
+        # ペンディングリクエストに追加
+        pending_requests = Map.put(state.pending_requests, request_id, from)
 
-    # ペンディングリクエストに追加
-    pending_requests = Map.put(state.pending_requests, request_id, from)
+        # タイムアウトタイマーを設定
+        Process.send_after(self(), {:timeout, request_id}, @response_timeout)
 
-    # タイムアウトタイマーを設定
-    Process.send_after(self(), {:timeout, request_id}, @response_timeout)
+        {:noreply, %{state | pending_requests: pending_requests}}
 
-    {:noreply, %{state | pending_requests: pending_requests}}
+      {:error, :circuit_open} ->
+        Logger.error("Circuit breaker is open for command bus")
+        GenServer.reply(from, {:error, :service_unavailable})
+        {:noreply, state}
+
+      {:error, reason} ->
+        Logger.error("Failed to publish command: #{inspect(reason)}")
+        GenServer.reply(from, {:error, reason})
+        {:noreply, state}
+    end
   end
 
   @impl true

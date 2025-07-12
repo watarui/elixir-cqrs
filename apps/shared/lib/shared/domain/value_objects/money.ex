@@ -36,7 +36,7 @@ defmodule Shared.Domain.ValueObjects.Money do
       {:error, "Amount must be non-negative"}
     end
   end
-  
+
   def new(amount) when is_number(amount) and amount >= 0 do
     # Decimal.new は整数または文字列のみ受け付けるため、数値を文字列に変換
     decimal_amount =

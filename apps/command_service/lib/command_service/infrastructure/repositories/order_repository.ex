@@ -40,8 +40,14 @@ defmodule CommandService.Infrastructure.Repositories.OrderRepository do
     # 新しいアグリゲートの場合、バージョンは0から始まる
     # uncommitted_eventsが適用される前のバージョンを使用
     expected_version = aggregate.version - length(aggregate.uncommitted_events)
-    
-    case EventStore.append_events(aggregate.id.value, @aggregate_type, aggregate.uncommitted_events, expected_version, %{}) do
+
+    case EventStore.append_events(
+           aggregate.id.value,
+           @aggregate_type,
+           aggregate.uncommitted_events,
+           expected_version,
+           %{}
+         ) do
       {:ok, _} ->
         # uncommitted_events をクリア
         updated_aggregate = %{

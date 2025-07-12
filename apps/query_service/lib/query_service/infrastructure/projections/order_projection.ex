@@ -22,6 +22,7 @@ defmodule QueryService.Infrastructure.Projections.OrderProjection do
     PaymentProcessed,
     ShippingArranged
   }
+
   alias Shared.Domain.Events.SagaEvents.OrderConfirmed, as: SagaOrderConfirmed
 
   require Logger

@@ -94,9 +94,10 @@ defmodule CommandService.Infrastructure.CommandListener do
 
     # コマンドを非同期実行
     case validated_command do
-      {:ok, cmd} -> 
+      {:ok, cmd} ->
         CommandBus.dispatch_async(cmd)
-      error -> 
+
+      error ->
         Logger.error("Failed to validate SAGA command: #{inspect(error)}")
     end
   end
@@ -163,102 +164,135 @@ defmodule CommandService.Infrastructure.CommandListener do
 
       "order.create" ->
         Logger.debug("order.create command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.OrderCommands.CreateOrder.new(%{
-          user_id: command_map[:user_id],
-          items: command_map[:items]
-        })
+
+        cmd =
+          CommandService.Application.Commands.OrderCommands.CreateOrder.new(%{
+            user_id: command_map[:user_id],
+            items: command_map[:items]
+          })
+
         CommandService.Application.Commands.OrderCommands.CreateOrder.validate(cmd)
 
       "order.confirm" ->
-        cmd = CommandService.Application.Commands.OrderCommands.ConfirmOrder.new(%{
-          order_id: command_map[:order_id]
-        })
+        cmd =
+          CommandService.Application.Commands.OrderCommands.ConfirmOrder.new(%{
+            order_id: command_map[:order_id]
+          })
+
         CommandService.Application.Commands.OrderCommands.ConfirmOrder.validate(cmd)
 
       "order.cancel" ->
-        cmd = CommandService.Application.Commands.OrderCommands.CancelOrder.new(%{
-          order_id: command_map[:order_id],
-          reason: command_map[:reason]
-        })
+        cmd =
+          CommandService.Application.Commands.OrderCommands.CancelOrder.new(%{
+            order_id: command_map[:order_id],
+            reason: command_map[:reason]
+          })
+
         CommandService.Application.Commands.OrderCommands.CancelOrder.validate(cmd)
 
       # Saga commands
       "reserve_inventory" ->
         Logger.debug("reserve_inventory command_map: #{inspect(command_map)}")
         # items がない場合は、product_id と quantity から生成
-        items = command_map[:items] || [
-          %{
-            product_id: command_map[:product_id],
-            quantity: command_map[:quantity]
-          }
-        ]
-        cmd = CommandService.Application.Commands.SagaCommands.ReserveInventory.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          items: items
-        })
+        items =
+          command_map[:items] ||
+            [
+              %{
+                product_id: command_map[:product_id],
+                quantity: command_map[:quantity]
+              }
+            ]
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.ReserveInventory.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            items: items
+          })
+
         CommandService.Application.Commands.SagaCommands.ReserveInventory.validate(cmd)
 
       "process_payment" ->
         Logger.debug("process_payment command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.ProcessPayment.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          amount: command_map[:amount],
-          user_id: command_map[:user_id]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.ProcessPayment.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            amount: command_map[:amount],
+            user_id: command_map[:user_id]
+          })
+
         CommandService.Application.Commands.SagaCommands.ProcessPayment.validate(cmd)
 
       "arrange_shipping" ->
         Logger.debug("arrange_shipping command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.ArrangeShipping.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          user_id: command_map[:user_id]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.ArrangeShipping.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            user_id: command_map[:user_id]
+          })
+
         CommandService.Application.Commands.SagaCommands.ArrangeShipping.validate(cmd)
 
       "confirm_order" ->
         Logger.debug("confirm_order command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.ConfirmOrder.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.ConfirmOrder.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id]
+          })
+
         CommandService.Application.Commands.SagaCommands.ConfirmOrder.validate(cmd)
 
       "release_inventory" ->
         Logger.debug("release_inventory command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.ReleaseInventory.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          items: command_map[:items]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.ReleaseInventory.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            items: command_map[:items]
+          })
+
         CommandService.Application.Commands.SagaCommands.ReleaseInventory.validate(cmd)
 
       "refund_payment" ->
         Logger.debug("refund_payment command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.RefundPayment.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          amount: command_map[:amount]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.RefundPayment.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            amount: command_map[:amount]
+          })
+
         CommandService.Application.Commands.SagaCommands.RefundPayment.validate(cmd)
 
       "cancel_shipping" ->
         Logger.debug("cancel_shipping command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.CancelShipping.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.CancelShipping.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id]
+          })
+
         CommandService.Application.Commands.SagaCommands.CancelShipping.validate(cmd)
 
       "cancel_order" ->
         Logger.debug("cancel_order command_map: #{inspect(command_map)}")
-        cmd = CommandService.Application.Commands.SagaCommands.CancelOrder.new(%{
-          saga_id: command_map[:saga_id],
-          order_id: command_map[:order_id],
-          reason: command_map[:reason]
-        })
+
+        cmd =
+          CommandService.Application.Commands.SagaCommands.CancelOrder.new(%{
+            saga_id: command_map[:saga_id],
+            order_id: command_map[:order_id],
+            reason: command_map[:reason]
+          })
+
         CommandService.Application.Commands.SagaCommands.CancelOrder.validate(cmd)
 
       type ->

@@ -29,7 +29,7 @@ defmodule Shared.Infrastructure.EventBus do
     # ローカルノードに発行
     Phoenix.PubSub.local_broadcast(@pubsub_name, "events:#{event_type}", {:event, event})
     Phoenix.PubSub.local_broadcast(@pubsub_name, "events:all", {:event, event_type, event})
-    
+
     # 他のノードにも発行（分散モード）
     Phoenix.PubSub.broadcast(@pubsub_name, "events:#{event_type}", {:event, event})
     Phoenix.PubSub.broadcast(@pubsub_name, "events:all", {:event, event_type, event})

@@ -13,13 +13,18 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   @doc """
   SAGA の状態を保存する
   """
+  def save(saga_state) when is_struct(saga_state, Shared.Infrastructure.Saga.SagaState) do
+    save_saga(saga_state.id, Map.from_struct(saga_state))
+  end
+
   def save_saga(saga_id, saga_state) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:microsecond)
 
     # created_at フィールドの値を決定（started_at フィールドも考慮）
-    created_at = convert_to_naive_datetime(saga_state[:created_at]) ||
-                 convert_to_naive_datetime(saga_state[:started_at]) ||
-                 now
+    created_at =
+      convert_to_naive_datetime(saga_state[:created_at]) ||
+        convert_to_naive_datetime(saga_state[:started_at]) ||
+        now
 
     # UUID を適切な形式に変換
     uuid_binary = convert_uuid_to_binary(saga_id)
@@ -41,7 +46,7 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
     case Repo.insert_all("sagas", [saga_record]) do
       {1, _} ->
         Logger.info("Saga #{saga_id} persisted successfully")
-        :ok
+        {:ok, saga_id}
 
       error ->
         Logger.error("Failed to persist saga #{saga_id}: #{inspect(error)}")
@@ -100,7 +105,7 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
     sagas = Repo.all(query)
     {:ok, Enum.map(sagas, &decode_saga/1)}
   rescue
-    e -> 
+    e ->
       {:error, e}
   end
 
@@ -120,21 +125,26 @@ defmodule Shared.Infrastructure.Saga.SagaRepository do
   # プライベート関数
 
   defp convert_to_naive_datetime(nil), do: nil
+
   defp convert_to_naive_datetime(%DateTime{} = datetime) do
     DateTime.to_naive(datetime)
     |> NaiveDateTime.truncate(:microsecond)
   end
+
   defp convert_to_naive_datetime(%NaiveDateTime{} = naive_datetime) do
     NaiveDateTime.truncate(naive_datetime, :microsecond)
   end
+
   defp convert_to_naive_datetime(_), do: nil
 
   defp convert_uuid_to_binary(saga_id) when is_binary(saga_id) do
     case Ecto.UUID.dump(saga_id) do
       {:ok, binary} -> binary
-      _ -> saga_id  # 既にバイナリ形式の場合はそのまま返す
+      # 既にバイナリ形式の場合はそのまま返す
+      _ -> saga_id
     end
   end
+
   defp convert_uuid_to_binary(saga_id), do: saga_id
 
   defp decode_saga(saga_record) do

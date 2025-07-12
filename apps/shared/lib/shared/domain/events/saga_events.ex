@@ -3,7 +3,6 @@ defmodule Shared.Domain.Events.SagaEvents do
   SAGA処理用の追加イベント定義
   """
 
-
   defmodule InventoryReserved do
     @moduledoc """
     在庫予約成功イベント

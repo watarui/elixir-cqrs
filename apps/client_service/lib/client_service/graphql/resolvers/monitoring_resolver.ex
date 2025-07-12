@@ -144,7 +144,7 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
     saga_stats = get_saga_stats()
 
     current_time = DateTime.utc_now() |> DateTime.to_string()
-    
+
     {:ok,
      %{
        event_store: %{
@@ -170,7 +170,12 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
   """
   def get_projection_status(_parent, _args, _resolution) do
     # Query Service のプロジェクションマネージャーから状態を取得
-    case :rpc.call(:"query@127.0.0.1", QueryService.Infrastructure.ProjectionManager, :get_status, []) do
+    case :rpc.call(
+           :"query@127.0.0.1",
+           QueryService.Infrastructure.ProjectionManager,
+           :get_status,
+           []
+         ) do
       {:badrpc, _reason} ->
         {:error, "Query Service に接続できません"}
 
@@ -197,12 +202,13 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
   defp get_query_count(module) do
     try do
       # 直接 Query DB に接続して集計
-      table_name = case module do
-        Category -> "categories"
-        Product -> "products"
-        Order -> "orders"
-        _ -> nil
-      end
+      table_name =
+        case module do
+          Category -> "categories"
+          Product -> "products"
+          Order -> "orders"
+          _ -> nil
+        end
 
       if table_name do
         # Query DB に直接接続
@@ -221,16 +227,19 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
                 {:ok, %{rows: [[count]]}} ->
                   GenServer.stop(conn)
                   count || 0
+
                 _ ->
                   GenServer.stop(conn)
                   0
               end
             catch
-              _ -> 
+              _ ->
                 GenServer.stop(conn)
                 0
             end
-          _ -> 0
+
+          _ ->
+            0
         end
       else
         0
@@ -244,6 +253,7 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
     try do
       # Command Service の Repo を使用
       query = "SELECT COUNT(*) FROM #{table_name}"
+
       case :rpc.call(:"command@127.0.0.1", CommandService.Repo, :query, [query]) do
         {:badrpc, _} -> 0
         {:ok, %{rows: [[count]]}} -> count || 0
@@ -291,42 +301,50 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
   """
   def list_sagas(_parent, args, _resolution) do
     base_query = "SELECT * FROM sagas"
-    
+
     conditions = []
     params = []
     param_index = 1
-    
+
     # status フィルタ
-    {conditions, params, param_index} = if args[:status] do
-      {["status = $#{param_index}" | conditions], params ++ [args[:status]], param_index + 1}
-    else
-      {conditions, params, param_index}
-    end
-    
+    {conditions, params, param_index} =
+      if args[:status] do
+        {["status = $#{param_index}" | conditions], params ++ [args[:status]], param_index + 1}
+      else
+        {conditions, params, param_index}
+      end
+
     # saga_type フィルタ
-    {conditions, params, param_index} = if args[:saga_type] do
-      {["saga_type = $#{param_index}" | conditions], params ++ [args[:saga_type]], param_index + 1}
-    else
-      {conditions, params, param_index}
-    end
-    
-    where_clause = if conditions != [], do: " WHERE " <> Enum.join(Enum.reverse(conditions), " AND "), else: ""
-    
+    {conditions, params, param_index} =
+      if args[:saga_type] do
+        {["saga_type = $#{param_index}" | conditions], params ++ [args[:saga_type]],
+         param_index + 1}
+      else
+        {conditions, params, param_index}
+      end
+
+    where_clause =
+      if conditions != [], do: " WHERE " <> Enum.join(Enum.reverse(conditions), " AND "), else: ""
+
     # LIMIT と OFFSET を追加
-    limit_offset_query = " ORDER BY updated_at DESC LIMIT $#{param_index} OFFSET $#{param_index + 1}"
+    limit_offset_query =
+      " ORDER BY updated_at DESC LIMIT $#{param_index} OFFSET $#{param_index + 1}"
+
     query = base_query <> where_clause <> limit_offset_query
-    
+
     params = params ++ [args[:limit] || 50, args[:offset] || 0]
-    
+
     case Shared.Infrastructure.EventStore.Repo.query(query, params) do
       {:ok, %{rows: rows, columns: columns}} ->
-        sagas = Enum.map(rows, fn row ->
-          Enum.zip(columns, row)
-          |> Enum.into(%{})
-          |> format_saga_from_row()
-        end)
+        sagas =
+          Enum.map(rows, fn row ->
+            Enum.zip(columns, row)
+            |> Enum.into(%{})
+            |> format_saga_from_row()
+          end)
+
         {:ok, sagas}
-      
+
       {:error, error} ->
         {:error, "Failed to fetch sagas: #{inspect(error)}"}
     end
@@ -337,27 +355,33 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
   """
   def get_saga(_parent, %{id: id}, _resolution) do
     query = "SELECT * FROM sagas WHERE id = $1 LIMIT 1"
-    
+
     # UUID を適切な形式に変換
-    id_binary = case id do
-      <<_::288>> = binary -> binary  # すでにバイナリ形式
-      string_id -> 
-        case Ecto.UUID.dump(string_id) do
-          {:ok, binary} -> binary
-          _ -> id
-        end
-    end
-    
+    id_binary =
+      case id do
+        # すでにバイナリ形式
+        <<_::288>> = binary ->
+          binary
+
+        string_id ->
+          case Ecto.UUID.dump(string_id) do
+            {:ok, binary} -> binary
+            _ -> id
+          end
+      end
+
     case Shared.Infrastructure.EventStore.Repo.query(query, [id_binary]) do
       {:ok, %{rows: [row], columns: columns}} ->
-        saga = Enum.zip(columns, row)
-               |> Enum.into(%{})
-               |> format_saga_from_row()
+        saga =
+          Enum.zip(columns, row)
+          |> Enum.into(%{})
+          |> format_saga_from_row()
+
         {:ok, saga}
-      
+
       {:ok, %{rows: []}} ->
         {:error, "Saga not found"}
-      
+
       {:error, error} ->
         {:error, "Failed to fetch saga: #{inspect(error)}"}
     end
@@ -374,7 +398,8 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
       messages
       |> Enum.filter(fn msg ->
         (is_nil(args[:topic]) || msg.topic == args[:topic]) &&
-        (is_nil(args[:after_timestamp]) || DateTime.compare(msg.timestamp, args[:after_timestamp]) == :gt)
+          (is_nil(args[:after_timestamp]) ||
+             DateTime.compare(msg.timestamp, args[:after_timestamp]) == :gt)
       end)
       |> Enum.take(args[:limit] || 100)
 
@@ -419,8 +444,18 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
         cpu_usage_percent: 0.0,
         message_queue_size: Process.info(self(), :message_queue_len) |> elem(1),
         connections: [
-          %{target_service: "Command Service", connection_type: "RPC", status: check_rpc_connection(:"command@127.0.0.1"), latency_ms: 0},
-          %{target_service: "Query Service", connection_type: "RPC", status: check_rpc_connection(:"query@127.0.0.1"), latency_ms: 0}
+          %{
+            target_service: "Command Service",
+            connection_type: "RPC",
+            status: check_rpc_connection(:"command@127.0.0.1"),
+            latency_ms: 0
+          },
+          %{
+            target_service: "Query Service",
+            connection_type: "RPC",
+            status: check_rpc_connection(:"query@127.0.0.1"),
+            latency_ms: 0
+          }
         ]
       }
     ]
@@ -428,10 +463,14 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
     # 他のサービスの状態も取得
     for node <- [:"command@127.0.0.1", :"query@127.0.0.1"] do
       case :rpc.call(node, :erlang, :node, []) do
-        {:badrpc, _} -> nil
+        {:badrpc, _} ->
+          nil
+
         _ ->
           %{
-            service_name: (node |> to_string() |> String.split("@") |> List.first() |> String.capitalize()) <> " Service",
+            service_name:
+              (node |> to_string() |> String.split("@") |> List.first() |> String.capitalize()) <>
+                " Service",
             node_name: node,
             status: "active",
             uptime_seconds: 0,
@@ -453,10 +492,11 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
   def get_dashboard_stats(_parent, _args, _resolution) do
     total_events = Shared.Infrastructure.EventStore.Repo.aggregate(Event, :count) || 0
     saga_stats = get_saga_stats()
-    
+
     # イベントレートの計算（1分間のイベント数）
     one_minute_ago = DateTime.utc_now() |> DateTime.add(-60, :second)
-    recent_events_count = 
+
+    recent_events_count =
       Event
       |> where([e], e.inserted_at > ^one_minute_ago)
       |> Shared.Infrastructure.EventStore.Repo.aggregate(:count)
@@ -467,35 +507,44 @@ defmodule ClientService.GraphQL.Resolvers.MonitoringResolver do
        total_events: total_events,
        events_per_minute: recent_events_count * 1.0,
        active_sagas: saga_stats.active,
-       total_commands: 0, # TODO: コマンド数の追跡
-       total_queries: 0,  # TODO: クエリ数の追跡
+       # TODO: コマンド数の追跡
+       total_commands: 0,
+       # TODO: クエリ数の追跡
+       total_queries: 0,
        system_health: determine_system_health(),
-       error_rate: 0.0,  # TODO: エラーレートの計算
-       average_latency_ms: 0  # TODO: レイテンシの計測
+       # TODO: エラーレートの計算
+       error_rate: 0.0,
+       # TODO: レイテンシの計測
+       average_latency_ms: 0
      }}
   end
 
   # Private helper functions
 
   defp format_saga_from_row(row) do
-    state = case row["state"] do
-      nil -> %{}
-      json_string -> 
-        case Jason.decode(json_string) do
-          {:ok, decoded} -> decoded
-          _ -> %{}
-        end
-    end
-    
+    state =
+      case row["state"] do
+        nil ->
+          %{}
+
+        json_string ->
+          case Jason.decode(json_string) do
+            {:ok, decoded} -> decoded
+            _ -> %{}
+          end
+      end
+
     %{
-      id: case row["id"] do
-        <<_::128>> = binary -> Ecto.UUID.load(binary) |> elem(1)
-        id -> id
-      end,
+      id:
+        case row["id"] do
+          <<_::128>> = binary -> Ecto.UUID.load(binary) |> elem(1)
+          id -> id
+        end,
       saga_type: row["saga_type"],
       status: row["status"],
       state: state,
-      commands_dispatched: [],  # TODO: コマンド履歴の追加
+      # TODO: コマンド履歴の追加
+      commands_dispatched: [],
       events_handled: Map.get(state, "handled_events", []),
       created_at: row["created_at"],
       updated_at: row["updated_at"],

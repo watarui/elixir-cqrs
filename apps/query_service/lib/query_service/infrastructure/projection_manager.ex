@@ -12,6 +12,8 @@ defmodule QueryService.Infrastructure.ProjectionManager do
 
   alias Shared.Infrastructure.EventStore.EventStore
   alias Shared.Infrastructure.EventBus
+  alias Shared.Infrastructure.Retry.{RetryStrategy, RetryPolicy}
+  alias Shared.Infrastructure.DeadLetterQueue
 
   alias QueryService.Infrastructure.Projections.{
     CategoryProjection,
@@ -20,10 +22,6 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   }
 
   require Logger
-
-  # リトライ設定
-  @max_retries 3
-  @retry_delay 1_000
 
   # バッチ処理設定
   @batch_size 100
@@ -60,7 +58,7 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   @impl true
   def init(_opts) do
     Logger.info("ProjectionManager starting...")
-    
+
     state = %{
       projections: %{
         CategoryProjection => %{status: :running, last_error: nil, processed_count: 0},
@@ -73,8 +71,11 @@ defmodule QueryService.Infrastructure.ProjectionManager do
 
     # EventBus に購読
     new_state = subscribe_to_events(state)
-    Logger.info("ProjectionManager subscribed to #{map_size(new_state.subscriptions)} event types")
-    
+
+    Logger.info(
+      "ProjectionManager subscribed to #{map_size(new_state.subscriptions)} event types"
+    )
+
     {:ok, new_state}
   end
 
@@ -113,10 +114,10 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   @impl true
   def handle_info({:event, event}, state) do
     Logger.debug("ProjectionManager received event: #{inspect(event, limit: :infinity)}")
-    
+
     # イベントタイプを取得
     event_type = get_event_type(event)
-    
+
     if event_type do
       Logger.info("Processing event type: #{event_type}")
       # リアルタイムイベント処理
@@ -127,17 +128,17 @@ defmodule QueryService.Infrastructure.ProjectionManager do
       {:noreply, state}
     end
   end
-  
+
   defp get_event_type(event) do
     cond do
       # イベント構造体に event_type メソッドがある場合
       is_struct(event) and function_exported?(event.__struct__, :event_type, 0) ->
         String.to_atom(event.__struct__.event_type())
-      
+
       # event_type フィールドを直接持っている場合
       is_map(event) and Map.has_key?(event, :event_type) ->
         String.to_atom(event.event_type)
-      
+
       # __struct__ から推測（OrderCreated -> order.created）
       is_struct(event) ->
         event.__struct__
@@ -146,7 +147,7 @@ defmodule QueryService.Infrastructure.ProjectionManager do
         |> Macro.underscore()
         |> String.replace("_", ".")
         |> String.to_atom()
-      
+
       true ->
         nil
     end
@@ -223,7 +224,12 @@ defmodule QueryService.Infrastructure.ProjectionManager do
         [CategoryProjection]
 
       event
-      when event in [:"product.created", :"product.updated", :"product.price_changed", :"product.deleted"] ->
+      when event in [
+             :"product.created",
+             :"product.updated",
+             :"product.price_changed",
+             :"product.deleted"
+           ] ->
         [ProductProjection]
 
       event
@@ -248,18 +254,59 @@ defmodule QueryService.Infrastructure.ProjectionManager do
     end
   end
 
-  defp process_event_with_retry(projection_module, event, retry_count \\ 0) do
-    try do
-      projection_module.handle_event(event)
-      :ok
-    rescue
-      e ->
-        if retry_count < @max_retries do
-          Process.sleep(@retry_delay)
-          process_event_with_retry(projection_module, event, retry_count + 1)
-        else
-          {:error, e}
+  defp process_event_with_retry(projection_module, event) do
+    RetryStrategy.execute_with_condition(
+      fn ->
+        try do
+          projection_module.handle_event(event)
+          {:ok, :processed}
+        rescue
+          _e in [DBConnection.ConnectionError, Postgrex.Error] ->
+            {:error, :database_timeout}
+
+          _e in [Ecto.StaleEntryError] ->
+            {:error, :concurrent_modification}
+
+          e ->
+            # その他のエラーはリトライ不可能として扱う
+            {:error, {:projection_error, e}}
         end
+      end,
+      fn error ->
+        RetryPolicy.retryable?(error)
+      end,
+      %{
+        max_attempts: 3,
+        base_delay: 100,
+        max_delay: 2_000,
+        backoff_type: :exponential
+      }
+    )
+    |> case do
+      {:ok, :processed} ->
+        :ok
+
+      {:error, :max_attempts_exceeded, errors} ->
+        # 最大リトライ回数を超えた場合はDLQに送信
+        last_error = errors |> List.last() |> elem(1)
+
+        DeadLetterQueue.enqueue(
+          "projection_manager",
+          %{
+            projection_module: projection_module,
+            event: event
+          },
+          last_error,
+          %{
+            retry_count: length(errors),
+            event_type: event.__struct__
+          }
+        )
+
+        {:error, last_error}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

@@ -51,18 +51,22 @@ defmodule CommandService.Application.Commands.OrderCommands do
       # デバッグ用ログ
       require Logger
       Logger.debug("Validating item: #{inspect(item)}")
-      
+
       with :ok <-
              validate_required(item[:product_id] || item["product_id"], "product_id in item"),
            :ok <-
              validate_positive_integer(item[:quantity] || item["quantity"], "quantity in item") do
         # unit_price を取得して検証
         unit_price = item[:unit_price] || item["unit_price"]
-        Logger.debug("unit_price value: #{inspect(unit_price)}, type: #{inspect(type_of(unit_price))}")
+
+        Logger.debug(
+          "unit_price value: #{inspect(unit_price)}, type: #{inspect(type_of(unit_price))}"
+        )
+
         validate_positive_number(unit_price, "unit_price in item")
       end
     end
-    
+
     defp type_of(value) do
       cond do
         is_integer(value) -> :integer
@@ -72,7 +76,6 @@ defmodule CommandService.Application.Commands.OrderCommands do
         true -> :unknown
       end
     end
-
   end
 
   defmodule ConfirmOrder do

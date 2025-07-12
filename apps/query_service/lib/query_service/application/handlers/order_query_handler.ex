@@ -37,11 +37,12 @@ defmodule QueryService.Application.Handlers.OrderQueryHandler do
   def handle(%{query_type: "order.list"} = query) do
     Logger.info("Listing orders")
 
-    filters = %{}
-    |> maybe_add_filter(:user_id, Map.get(query, :user_id))
-    |> maybe_add_filter(:status, Map.get(query, :status))
-    |> maybe_add_filter(:limit, Map.get(query, :limit, 20))
-    |> maybe_add_filter(:offset, Map.get(query, :offset, 0))
+    filters =
+      %{}
+      |> maybe_add_filter(:user_id, Map.get(query, :user_id))
+      |> maybe_add_filter(:status, Map.get(query, :status))
+      |> maybe_add_filter(:limit, Map.get(query, :limit, 20))
+      |> maybe_add_filter(:offset, Map.get(query, :offset, 0))
 
     OrderRepository.get_all(filters)
   end

@@ -243,52 +243,55 @@ defmodule ClientService.GraphQL.Schema do
       arg(:aggregate_type, :string)
       arg(:event_type, :string)
 
-      config fn args, _info ->
-        topics = 
+      config(fn args, _info ->
+        topics =
           if args[:aggregate_type] do
             ["events:#{args.aggregate_type}"]
           else
             ["events:*"]
           end
+
         {:ok, topic: topics}
-      end
+      end)
     end
 
     @desc "PubSub メッセージのリアルタイムストリーム"
     field :pubsub_stream, :pubsub_message do
       arg(:topic, :string)
 
-      config fn args, _info ->
-        topics = 
+      config(fn args, _info ->
+        topics =
           if args[:topic] do
             ["pubsub:#{args.topic}"]
           else
             ["pubsub:*"]
           end
+
         {:ok, topic: topics}
-      end
+      end)
     end
 
     @desc "Saga 状態のリアルタイム更新"
     field :saga_updates, :saga_detail do
       arg(:saga_type, :string)
 
-      config fn args, _info ->
-        topics = 
+      config(fn args, _info ->
+        topics =
           if args[:saga_type] do
             ["sagas:#{args.saga_type}"]
           else
             ["sagas:*"]
           end
+
         {:ok, topic: topics}
-      end
+      end)
     end
 
     @desc "システム統計のリアルタイム更新"
     field :dashboard_stats_stream, :dashboard_stats do
-      config fn _args, _info ->
+      config(fn _args, _info ->
         {:ok, topic: "dashboard:stats"}
-      end
+      end)
     end
   end
 

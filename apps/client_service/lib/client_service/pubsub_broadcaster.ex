@@ -6,7 +6,8 @@ defmodule ClientService.PubSubBroadcaster do
   alias Absinthe.Subscription
 
   @max_messages 1000
-  @topic_stats_interval 60_000  # 1分
+  # 1分
+  @topic_stats_interval 60_000
 
   defstruct messages: [], topic_stats: %{}
 
@@ -86,7 +87,7 @@ defmodule ClientService.PubSubBroadcaster do
 
   @impl true
   def handle_call(:get_topic_stats, _from, state) do
-    stats = 
+    stats =
       state.topic_stats
       |> Enum.map(fn {topic, data} ->
         %{
@@ -176,19 +177,21 @@ defmodule ClientService.PubSubBroadcaster do
   # Private functions
 
   defp update_topic_stats(stats, message) do
-    topic_data = Map.get(stats, message.topic, %{
-      count: 0,
-      last_message_at: nil,
-      messages_per_interval: []
-    })
+    topic_data =
+      Map.get(stats, message.topic, %{
+        count: 0,
+        last_message_at: nil,
+        messages_per_interval: []
+      })
 
     now = DateTime.utc_now()
-    
+
     # 時間窓内のメッセージカウントを更新
-    messages_per_interval = 
+    messages_per_interval =
       [{now, 1} | topic_data.messages_per_interval]
       |> Enum.filter(fn {time, _} ->
-        DateTime.diff(now, time) <= 300  # 5分間のウィンドウ
+        # 5分間のウィンドウ
+        DateTime.diff(now, time) <= 300
       end)
 
     Map.put(stats, message.topic, %{
@@ -200,11 +203,14 @@ defmodule ClientService.PubSubBroadcaster do
 
   defp calculate_rate(topic_data) do
     case topic_data.messages_per_interval do
-      [] -> 0.0
+      [] ->
+        0.0
+
       messages ->
         # 1分あたりのメッセージ数を計算
         count = Enum.reduce(messages, 0, fn {_, count}, acc -> acc + count end)
-        count / 5.0  # 5分間の平均
+        # 5分間の平均
+        count / 5.0
     end
   end
 

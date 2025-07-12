@@ -20,7 +20,7 @@ defmodule QueryService.Domain.ReadModels.Order do
     field(:payment_id, :string)
     field(:shipping_id, :string)
     field(:cancellation_reason, :string)
-    
+
     # SAGA 関連フィールド
     field(:saga_id, :string)
     field(:saga_status, :string)

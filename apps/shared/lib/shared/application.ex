@@ -17,8 +17,14 @@ defmodule Shared.Application do
       Shared.Infrastructure.EventBus,
       # アグリゲートバージョンキャッシュ
       Shared.Infrastructure.EventStore.AggregateVersionCache,
-      # サガコーディネーター
-      Shared.Infrastructure.Saga.SagaCoordinator,
+      # サーキットブレーカー
+      Shared.Infrastructure.Resilience.CircuitBreakerSupervisor,
+      # デッドレターキュー
+      Shared.Infrastructure.DeadLetterQueue,
+      # Sagaコンポーネント
+      Shared.Infrastructure.Saga.SagaTimeoutManager,
+      Shared.Infrastructure.Saga.SagaExecutor,
+      Shared.Infrastructure.Saga.SagaMonitor,
       # サガメトリクス
       Shared.Telemetry.SagaMetrics
     ]

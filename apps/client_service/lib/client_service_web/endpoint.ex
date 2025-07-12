@@ -12,7 +12,7 @@ defmodule ClientServiceWeb.Endpoint do
   ]
 
   socket("/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]])
-  
+
   # Absinthe GraphQL WebSocket endpoint
   socket("/socket", ClientServiceWeb.AbsintheSocket,
     websocket: true,
@@ -45,11 +45,24 @@ defmodule ClientServiceWeb.Endpoint do
 
   plug(Plug.RequestId)
   plug(Plug.Telemetry, event_prefix: [:phoenix, :endpoint])
-  
+
   # CORS configuration for GraphQL
   plug(CORSPlug,
     origin: ["http://localhost:4001"],
-    headers: ["Authorization", "Content-Type", "Accept", "Origin", "User-Agent", "DNT", "Cache-Control", "X-Mx-ReqToken", "Keep-Alive", "X-Requested-With", "If-Modified-Since", "X-CSRF-Token"]
+    headers: [
+      "Authorization",
+      "Content-Type",
+      "Accept",
+      "Origin",
+      "User-Agent",
+      "DNT",
+      "Cache-Control",
+      "X-Mx-ReqToken",
+      "Keep-Alive",
+      "X-Requested-With",
+      "If-Modified-Since",
+      "X-CSRF-Token"
+    ]
   )
 
   plug(Plug.Parsers,

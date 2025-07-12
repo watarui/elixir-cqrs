@@ -97,44 +97,56 @@ defmodule CommandService.Infrastructure.UnitOfWork do
 
   defp save_events(events) do
     Logger.debug("UnitOfWork.save_events called with #{length(events)} events")
-    
+
     # グループ化してバッチ保存
-    result = events
-    |> Enum.group_by(fn event ->
-      # aggregate_id または id フィールドを取得
-      aggregate_id = case event do
-        %{aggregate_id: id} -> id
-        %{id: %{value: id}} -> id
-        %{id: id} -> id
-      end
-      Logger.debug("Event for aggregate #{aggregate_id}: #{inspect(event.__struct__)}")
-      aggregate_id
-    end)
-    |> Enum.reduce_while(:ok, fn {aggregate_id, aggregate_events}, :ok ->
-      # アグリゲートタイプを最初のイベントから取得
-      aggregate_type = get_aggregate_type(hd(aggregate_events))
-      # 新規作成の場合は expected_version を 0 に設定
-      # TODO: 本来はアグリゲートのバージョンを使用すべきだが、現在は新規作成のみ対応
-      expected_version = 0
+    result =
+      events
+      |> Enum.group_by(fn event ->
+        # aggregate_id または id フィールドを取得
+        aggregate_id =
+          case event do
+            %{aggregate_id: id} -> id
+            %{id: %{value: id}} -> id
+            %{id: id} -> id
+          end
 
-      Logger.info("Saving #{length(aggregate_events)} events for aggregate #{aggregate_id} (type: #{aggregate_type})")
+        Logger.debug("Event for aggregate #{aggregate_id}: #{inspect(event.__struct__)}")
+        aggregate_id
+      end)
+      |> Enum.reduce_while(:ok, fn {aggregate_id, aggregate_events}, :ok ->
+        # アグリゲートタイプを最初のイベントから取得
+        aggregate_type = get_aggregate_type(hd(aggregate_events))
+        # 新規作成の場合は expected_version を 0 に設定
+        # TODO: 本来はアグリゲートのバージョンを使用すべきだが、現在は新規作成のみ対応
+        expected_version = 0
 
-      case EventStore.append_events(
-             aggregate_id,
-             aggregate_type,
-             aggregate_events,
-             expected_version,
-             %{}
-           ) do
-        {:ok, version} -> 
-          Logger.info("Successfully saved events for aggregate #{aggregate_id}, new version: #{version}")
-          {:cont, :ok}
-        {:error, reason} -> 
-          Logger.error("Failed to save events for aggregate #{aggregate_id}: #{inspect(reason)}")
-          {:halt, {:error, reason}}
-      end
-    end)
-    
+        Logger.info(
+          "Saving #{length(aggregate_events)} events for aggregate #{aggregate_id} (type: #{aggregate_type})"
+        )
+
+        case EventStore.append_events(
+               aggregate_id,
+               aggregate_type,
+               aggregate_events,
+               expected_version,
+               %{}
+             ) do
+          {:ok, version} ->
+            Logger.info(
+              "Successfully saved events for aggregate #{aggregate_id}, new version: #{version}"
+            )
+
+            {:cont, :ok}
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to save events for aggregate #{aggregate_id}: #{inspect(reason)}"
+            )
+
+            {:halt, {:error, reason}}
+        end
+      end)
+
     Logger.debug("UnitOfWork.save_events completed with result: #{inspect(result)}")
     result
   end

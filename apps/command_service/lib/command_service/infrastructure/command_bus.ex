@@ -15,6 +15,7 @@ defmodule CommandService.Infrastructure.CommandBus do
   }
 
   alias Shared.Telemetry.Span
+  alias Shared.Infrastructure.Retry.{RetryStrategy, RetryPolicy}
 
   require Logger
 
@@ -54,7 +55,7 @@ defmodule CommandService.Infrastructure.CommandBus do
   def handle_call({:dispatch, command}, _from, state) do
     result =
       Span.with_span "command_bus.dispatch", %{command_type: command.__struct__} do
-        route_command(command)
+        execute_command_with_retry(command)
       end
 
     {:reply, result, state}
@@ -64,7 +65,7 @@ defmodule CommandService.Infrastructure.CommandBus do
   def handle_cast({:dispatch_async, command}, state) do
     Task.start(fn ->
       Span.with_span "command_bus.dispatch_async", %{command_type: command.__struct__} do
-        case route_command(command) do
+        case execute_command_with_retry(command) do
           {:ok, _} ->
             Logger.info("Command executed successfully: #{inspect(command.__struct__)}")
 
@@ -168,5 +169,53 @@ defmodule CommandService.Infrastructure.CommandBus do
 
   defp route_command(command) do
     {:error, "Unknown command: #{inspect(command)}"}
+  end
+
+  # リトライ機能を持つコマンド実行
+  defp execute_command_with_retry(command) do
+    RetryStrategy.execute_with_condition(
+      fn ->
+        try do
+          route_command(command)
+        rescue
+          # データベース関連のエラー
+          _e in [DBConnection.ConnectionError, Postgrex.Error] ->
+            {:error, :database_timeout}
+
+          # 楽観的ロック競合
+          _e in [Ecto.StaleEntryError] ->
+            {:error, :concurrent_modification}
+
+          # イベントストアのバージョン競合
+          _e in Shared.Infrastructure.EventStore.VersionConflictError ->
+            {:error, :concurrent_modification}
+
+          e ->
+            # その他のエラーはリトライ不可能として扱う
+            {:error, Exception.message(e)}
+        end
+      end,
+      fn error ->
+        RetryPolicy.retryable?(error)
+      end,
+      %{
+        max_attempts: 3,
+        base_delay: 50,
+        max_delay: 1_000,
+        backoff_type: :exponential,
+        jitter: true
+      }
+    )
+    |> case do
+      {:ok, result} ->
+        result
+
+      {:error, :max_attempts_exceeded, errors} ->
+        last_error = errors |> List.last() |> elem(1)
+        {:error, last_error}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 end

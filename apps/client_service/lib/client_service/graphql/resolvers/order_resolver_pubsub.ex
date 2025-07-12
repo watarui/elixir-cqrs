@@ -129,7 +129,8 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       product_id: item.product_id,
       product_name: item.product_name,
       quantity: item.quantity,
-      unit_price: item.unit_price  # Decimal変換を削除
+      # Decimal変換を削除
+      unit_price: item.unit_price
     }
   end
 

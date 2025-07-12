@@ -7,7 +7,7 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   alias CommandService.Domain.Aggregates.OrderAggregate
   alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
   alias Shared.Infrastructure.EventBus
-  alias Shared.Infrastructure.Saga.SagaCoordinator
+  alias Shared.Infrastructure.Saga.SagaExecutor
 
   require Logger
 
@@ -27,30 +27,12 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
             EventBus.publish_event(event)
           end)
 
-          # サガを開始
-          saga_id = UUID.uuid4()
+          # Sagaを開始（OrderCreatedイベントがトリガーとなる）
+          # V2ではイベント駆動でSagaが開始されるため、明示的な開始は不要
+          # OrderCreatedイベントは既に発行されている
 
-          saga_data = %{
-            order_id: order.id.value,
-            user_id: command.user_id,
-            items: command.items,
-            total_amount: calculate_total_amount(command.items)
-          }
-
-          case SagaCoordinator.start_saga(
-                 saga_id,
-                 CommandService.Domain.Sagas.OrderSaga,
-                 saga_data
-               ) do
-            {:ok, _} ->
-              Logger.info("Order saga started for order #{order.id.value}")
-              {:ok, %{order_id: order.id.value, saga_id: saga_id}}
-
-            {:error, reason} ->
-              Logger.error("Failed to start order saga: #{inspect(reason)}")
-              # サガの開始失敗は注文作成には影響しない
-              {:ok, %{order_id: order.id.value}}
-          end
+          Logger.info("Order created, saga will be triggered by OrderCreated event")
+          {:ok, %{order_id: order.id.value}}
 
         {:error, reason} ->
           {:error, reason}
