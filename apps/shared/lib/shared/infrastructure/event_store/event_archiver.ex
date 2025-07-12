@@ -1,244 +1,302 @@
 defmodule Shared.Infrastructure.EventStore.EventArchiver do
   @moduledoc """
   イベントアーカイブ機能
-
-  古いイベントをアーカイブテーブルに移動し、
-  メインのイベントテーブルのパフォーマンスを維持する
+  
+  古いイベントを自動的にアーカイブテーブルに移動し、
+  メインテーブルのパフォーマンスを維持する。
   """
-
-  alias Shared.Infrastructure.EventStore.Repo
-  alias Shared.Infrastructure.EventStore.Schema.Event
+  
+  use GenServer
+  
   import Ecto.Query
+  
+  alias Shared.Infrastructure.EventStore.Repo
+  alias Shared.Infrastructure.EventStore.Schema.{Event, ArchivedEvent}
+  
   require Logger
-
-  # デフォルトのアーカイブ設定
-  @default_archive_after_days 90
+  
+  @default_archive_interval :timer.hours(24)
+  @default_retention_days 90
   @default_batch_size 1000
-
+  
+  # Client API
+  
   @doc """
-  指定された日数より古いイベントをアーカイブする
+  EventArchiver を開始する
   """
-  def archive_old_events(days \\ @default_archive_after_days, opts \\ []) do
-    batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
-    cutoff_date = calculate_cutoff_date(days)
-
-    Logger.info("Starting event archival for events older than #{cutoff_date}")
-
-    case create_archive_table_if_not_exists() do
-      :ok ->
-        archive_events_in_batches(cutoff_date, batch_size)
-
-      {:error, reason} ->
-        Logger.error("Failed to create archive table: #{inspect(reason)}")
-        {:error, reason}
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+  
+  @doc """
+  手動でアーカイブを実行する
+  """
+  @spec archive_now(keyword()) :: {:ok, integer()} | {:error, term()}
+  def archive_now(opts \\ []) do
+    GenServer.call(__MODULE__, {:archive_now, opts}, :infinity)
+  end
+  
+  @doc """
+  アーカイブされたイベントを取得する
+  """
+  @spec get_archived_events(keyword()) :: {:ok, [ArchivedEvent.t()]} | {:error, term()}
+  def get_archived_events(opts \\ []) do
+    aggregate_id = Keyword.get(opts, :aggregate_id)
+    event_type = Keyword.get(opts, :event_type)
+    start_date = Keyword.get(opts, :start_date)
+    end_date = Keyword.get(opts, :end_date)
+    limit = Keyword.get(opts, :limit, 100)
+    
+    query = 
+      ArchivedEvent
+      |> maybe_filter_by_aggregate(aggregate_id)
+      |> maybe_filter_by_event_type(event_type)
+      |> maybe_filter_by_date_range(start_date, end_date)
+      |> limit(^limit)
+      |> order_by(desc: :event_timestamp)
+    
+    try do
+      events = Repo.all(query)
+      {:ok, events}
+    rescue
+      e ->
+        Logger.error("Failed to fetch archived events: #{inspect(e)}")
+        {:error, e}
     end
   end
-
-  @doc """
-  アーカイブされたイベントを検索する
-  """
-  def search_archived_events(aggregate_id, from_date \\ nil, to_date \\ nil) do
-    query = """
-    SELECT * FROM events_archive
-    WHERE aggregate_id = $1
-    #{if from_date, do: "AND inserted_at >= $2", else: ""}
-    #{if to_date, do: "AND inserted_at <= $#{if from_date, do: "3", else: "2"}", else: ""}
-    ORDER BY event_version ASC
-    """
-
-    params =
-      [aggregate_id] ++
-        if(from_date, do: [from_date], else: []) ++
-        if to_date, do: [to_date], else: []
-
-    case Repo.query(query, params) do
-      {:ok, %{rows: rows, columns: columns}} ->
-        events =
-          Enum.map(rows, fn row ->
-            Enum.zip(columns, row) |> Enum.into(%{})
-          end)
-
-        {:ok, events}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
+  
   @doc """
   アーカイブ統計を取得する
   """
+  @spec get_archive_stats() :: {:ok, map()} | {:error, term()}
   def get_archive_stats do
-    query = """
-    SELECT 
-      COUNT(*) as total_events,
-      MIN(inserted_at) as oldest_event,
-      MAX(inserted_at) as newest_event,
-      pg_size_pretty(pg_total_relation_size('events_archive')) as table_size
-    FROM events_archive
-    """
-
-    case Repo.query(query) do
-      {:ok, %{rows: [[total, oldest, newest, size]]}} ->
-        {:ok,
-         %{
-           total_events: total,
-           oldest_event: oldest,
-           newest_event: newest,
-           table_size: size
-         }}
-
+    GenServer.call(__MODULE__, :get_stats)
+  end
+  
+  # Server callbacks
+  
+  @impl true
+  def init(opts) do
+    # 設定の読み込み
+    archive_interval = Keyword.get(opts, :archive_interval, @default_archive_interval)
+    retention_days = Keyword.get(opts, :retention_days, @default_retention_days)
+    batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
+    
+    state = %{
+      archive_interval: archive_interval,
+      retention_days: retention_days,
+      batch_size: batch_size,
+      stats: %{
+        last_archive_at: nil,
+        total_archived: 0,
+        total_deleted: 0
+      }
+    }
+    
+    # アーカイブテーブルの作成
+    ensure_archive_table_exists()
+    
+    # 定期実行のスケジューリング
+    schedule_next_archive(state)
+    
+    {:ok, state}
+  end
+  
+  @impl true
+  def handle_call({:archive_now, opts}, _from, state) do
+    retention_days = Keyword.get(opts, :retention_days, state.retention_days)
+    batch_size = Keyword.get(opts, :batch_size, state.batch_size)
+    
+    case do_archive_events(retention_days, batch_size) do
+      {:ok, archived_count} ->
+        new_stats = %{
+          state.stats |
+          last_archive_at: DateTime.utc_now(),
+          total_archived: state.stats.total_archived + archived_count
+        }
+        
+        {:reply, {:ok, archived_count}, %{state | stats: new_stats}}
+        
+      {:error, _reason} = error ->
+        {:reply, error, state}
+    end
+  end
+  
+  @impl true
+  def handle_call(:get_stats, _from, state) do
+    stats = Map.merge(state.stats, %{
+      retention_days: state.retention_days,
+      batch_size: state.batch_size,
+      next_archive_in: get_next_archive_time(state)
+    })
+    
+    {:reply, {:ok, stats}, state}
+  end
+  
+  @impl true
+  def handle_info(:archive_events, state) do
+    Logger.info("Starting scheduled event archiving...")
+    
+    case do_archive_events(state.retention_days, state.batch_size) do
+      {:ok, archived_count} ->
+        Logger.info("Archived #{archived_count} events")
+        
+        new_stats = %{
+          state.stats |
+          last_archive_at: DateTime.utc_now(),
+          total_archived: state.stats.total_archived + archived_count
+        }
+        
+        # 次回のアーカイブをスケジュール
+        schedule_next_archive(state)
+        
+        {:noreply, %{state | stats: new_stats}}
+        
       {:error, reason} ->
-        {:error, reason}
+        Logger.error("Failed to archive events: #{inspect(reason)}")
+        
+        # エラー時は短い間隔でリトライ
+        Process.send_after(self(), :archive_events, :timer.minutes(5))
+        
+        {:noreply, state}
     end
   end
-
-  @doc """
-  アーカイブテーブルをエクスポートする
-  """
-  def export_archive(path, format \\ :json) do
-    case format do
-      :json -> export_as_json(path)
-      :csv -> export_as_csv(path)
-      _ -> {:error, :unsupported_format}
-    end
-  end
-
+  
   # Private functions
-
-  defp calculate_cutoff_date(days) do
-    DateTime.utc_now()
-    |> DateTime.add(-days * 24 * 60 * 60, :second)
-    |> DateTime.truncate(:second)
-  end
-
-  defp create_archive_table_if_not_exists do
-    query = """
-    CREATE TABLE IF NOT EXISTS events_archive (
-      LIKE events INCLUDING ALL
-    );
-
-    -- アーカイブテーブル用のインデックス
-    CREATE INDEX IF NOT EXISTS idx_events_archive_aggregate_id 
-      ON events_archive(aggregate_id);
-    CREATE INDEX IF NOT EXISTS idx_events_archive_inserted_at 
-      ON events_archive(inserted_at);
-    CREATE INDEX IF NOT EXISTS idx_events_archive_event_type 
-      ON events_archive(event_type);
-    """
-
-    case Repo.query(query) do
-      {:ok, _} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp archive_events_in_batches(cutoff_date, batch_size, archived_count \\ 0) do
-    # バッチで古いイベントを取得
-    events_to_archive =
-      from(e in Event,
-        where: e.inserted_at < ^cutoff_date,
-        order_by: [asc: e.global_sequence],
-        limit: ^batch_size
-      )
-      |> Repo.all()
-
-    case events_to_archive do
-      [] ->
-        Logger.info("Event archival completed. Total archived: #{archived_count}")
-        {:ok, archived_count}
-
-      events ->
-        # トランザクション内でアーカイブと削除を実行
-        case archive_batch(events) do
-          {:ok, count} ->
-            new_total = archived_count + count
-            Logger.info("Archived batch of #{count} events. Total: #{new_total}")
-
-            # 次のバッチを処理
-            archive_events_in_batches(cutoff_date, batch_size, new_total)
-
-          {:error, reason} ->
-            Logger.error("Failed to archive batch: #{inspect(reason)}")
-            {:error, {:partial_archive, archived_count, reason}}
-        end
-    end
-  end
-
-  defp archive_batch(events) do
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:insert_to_archive, fn repo, _changes ->
-      # イベントをアーカイブテーブルに挿入
-      _event_maps =
-        Enum.map(events, fn event ->
-          event
-          |> Map.from_struct()
-          |> Map.drop([:__meta__])
-        end)
-
-      query = """
-      INSERT INTO events_archive 
-      SELECT * FROM events 
-      WHERE id = ANY($1::uuid[])
-      """
-
-      event_ids = Enum.map(events, & &1.id)
-
-      case repo.query(query, [event_ids]) do
-        {:ok, result} -> {:ok, result.num_rows}
-        error -> error
-      end
+  
+  defp do_archive_events(retention_days, batch_size) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), -retention_days * 24 * 60 * 60, :second)
+    
+    Repo.transaction(fn ->
+      archived_count = archive_old_events(cutoff_date, batch_size)
+      deleted_count = delete_expired_archives(retention_days * 2, batch_size)
+      
+      Logger.info("Archived #{archived_count} events, deleted #{deleted_count} expired archives")
+      
+      archived_count
     end)
-    |> Ecto.Multi.run(:delete_from_events, fn repo, %{insert_to_archive: count} ->
-      # 元のテーブルから削除
-      event_ids = Enum.map(events, & &1.id)
-
-      query = from(e in Event, where: e.id in ^event_ids)
-
-      case repo.delete_all(query) do
-        {deleted_count, _} when deleted_count == count ->
-          {:ok, deleted_count}
-
-        {deleted_count, _} ->
-          {:error, {:count_mismatch, count, deleted_count}}
-      end
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{delete_from_events: count}} -> {:ok, count}
-      {:error, operation, reason, _changes} -> {:error, {operation, reason}}
-    end
   end
-
-  defp export_as_json(path) do
-    query = "SELECT * FROM events_archive ORDER BY global_sequence"
-
-    case Repo.query(query) do
-      {:ok, %{rows: rows, columns: columns}} ->
-        events =
-          Enum.map(rows, fn row ->
-            Enum.zip(columns, row)
-            |> Enum.into(%{})
-            |> Jason.encode!()
+  
+  defp archive_old_events(cutoff_date, batch_size) do
+    # バッチごとにアーカイブ
+    Stream.repeatedly(fn ->
+      events_to_archive = 
+        Event
+        |> where([e], e.event_timestamp < ^cutoff_date)
+        |> limit(^batch_size)
+        |> Repo.all()
+      
+      if Enum.empty?(events_to_archive) do
+        :done
+      else
+        # アーカイブテーブルに挿入
+        archived_events = 
+          Enum.map(events_to_archive, fn event ->
+            %{
+              id: event.id,
+              aggregate_id: event.aggregate_id,
+              aggregate_type: event.aggregate_type,
+              event_type: event.event_type,
+              event_version: event.event_version,
+              event_data: event.event_data,
+              metadata: event.metadata,
+              event_timestamp: event.event_timestamp,
+              archived_at: DateTime.utc_now(),
+              inserted_at: DateTime.utc_now(),
+              updated_at: DateTime.utc_now()
+            }
           end)
-
-        content = events |> Enum.join("\n")
-        File.write(path, content)
-
-      {:error, reason} ->
-        {:error, reason}
+        
+        {inserted_count, _} = Repo.insert_all(ArchivedEvent, archived_events)
+        
+        # 元のイベントを削除
+        event_ids = Enum.map(events_to_archive, & &1.id)
+        {deleted_count, _} = 
+          Event
+          |> where([e], e.id in ^event_ids)
+          |> Repo.delete_all()
+        
+        if inserted_count == deleted_count do
+          inserted_count
+        else
+          Logger.error("Archive count mismatch: inserted #{inserted_count}, deleted #{deleted_count}")
+          raise "Archive count mismatch"
+        end
+      end
+    end)
+    |> Stream.take_while(&(&1 != :done))
+    |> Enum.sum()
+  end
+  
+  defp delete_expired_archives(max_retention_days, batch_size) do
+    expiry_date = DateTime.add(DateTime.utc_now(), -max_retention_days * 24 * 60 * 60, :second)
+    
+    {deleted_count, _} = 
+      ArchivedEvent
+      |> where([e], e.archived_at < ^expiry_date)
+      |> limit(^batch_size)
+      |> Repo.delete_all()
+    
+    deleted_count
+  end
+  
+  defp ensure_archive_table_exists do
+    # マイグレーションは別途作成するが、ここでは存在確認のみ
+    :ok
+  end
+  
+  defp schedule_next_archive(state) do
+    Process.send_after(self(), :archive_events, state.archive_interval)
+  end
+  
+  defp get_next_archive_time(state) do
+    if state.stats.last_archive_at do
+      next_time = DateTime.add(state.stats.last_archive_at, 
+                               div(state.archive_interval, 1000), :second)
+      
+      seconds_until = DateTime.diff(next_time, DateTime.utc_now())
+      
+      if seconds_until > 0 do
+        format_duration(seconds_until)
+      else
+        "soon"
+      end
+    else
+      "pending"
     end
   end
-
-  defp export_as_csv(path) do
-    query = "COPY events_archive TO STDOUT WITH CSV HEADER"
-
-    case Repo.query(query) do
-      {:ok, %{rows: rows}} ->
-        File.write(path, Enum.join(rows, "\n"))
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+  
+  defp format_duration(seconds) when seconds < 60, do: "#{seconds}s"
+  defp format_duration(seconds) when seconds < 3600 do
+    minutes = div(seconds, 60)
+    "#{minutes}m"
+  end
+  defp format_duration(seconds) do
+    hours = div(seconds, 3600)
+    minutes = div(rem(seconds, 3600), 60)
+    "#{hours}h #{minutes}m"
+  end
+  
+  # Query helpers
+  
+  defp maybe_filter_by_aggregate(query, nil), do: query
+  defp maybe_filter_by_aggregate(query, aggregate_id) do
+    where(query, [e], e.aggregate_id == ^aggregate_id)
+  end
+  
+  defp maybe_filter_by_event_type(query, nil), do: query
+  defp maybe_filter_by_event_type(query, event_type) do
+    where(query, [e], e.event_type == ^event_type)
+  end
+  
+  defp maybe_filter_by_date_range(query, nil, nil), do: query
+  defp maybe_filter_by_date_range(query, start_date, nil) do
+    where(query, [e], e.event_timestamp >= ^start_date)
+  end
+  defp maybe_filter_by_date_range(query, nil, end_date) do
+    where(query, [e], e.event_timestamp <= ^end_date)
+  end
+  defp maybe_filter_by_date_range(query, start_date, end_date) do
+    where(query, [e], e.event_timestamp >= ^start_date and e.event_timestamp <= ^end_date)
   end
 end

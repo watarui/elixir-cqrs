@@ -34,7 +34,11 @@ defmodule Shared.Application do
       Shared.Infrastructure.Saga.SagaExecutor,
       Shared.Infrastructure.Saga.SagaMonitor,
       # サガメトリクス
-      Shared.Telemetry.SagaMetrics
+      Shared.Telemetry.SagaMetrics,
+      # Event Sourcing 改善
+      Shared.Infrastructure.EventStore.EventRegistry,
+      {Shared.Infrastructure.EventStore.EventArchiver, 
+       [archive_interval: :timer.hours(24), retention_days: 90]}
     ]
 
     opts = [strategy: :one_for_one, name: Shared.Supervisor]
