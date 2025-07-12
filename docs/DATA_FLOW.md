@@ -152,11 +152,11 @@
 
 ### プロジェクションの再構築
 
-Event Store と Query DB の同期が取れていない場合：
+Event Store と Query DB の同期が取れていない場合は、[開発ガイド](DEVELOPMENT.md#プロジェクションの管理) を参照してプロジェクションを再構築してください。
 
 ```bash
 # プロジェクションを再構築
-mix run scripts/rebuild_projections_manual.exs
+mix run scripts/simple_rebuild_projections.exs
 ```
 
 ## 🚨 トラブルシューティング
@@ -174,14 +174,10 @@ mix run scripts/rebuild_projections_manual.exs
 
 3. **手動でプロジェクションを再構築**
    ```bash
-   ./scripts/rebuild_projections_manual.exs
+   mix run scripts/simple_rebuild_projections.exs
    ```
 
-### イベントが記録されない場合
-
-1. **Event Store Repo の起動を確認**
-2. **PostgresAdapter のエラーログを確認**
-3. **トランザクションのロールバックがないか確認**
+詳細なトラブルシューティング手順については [TROUBLESHOOTING.md](TROUBLESHOOTING.md#プロジェクション) を参照してください。
 
 ## 📝 まとめ
 

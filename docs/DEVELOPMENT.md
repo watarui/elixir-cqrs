@@ -88,30 +88,17 @@ mix ecto.migrate
 
 ### 環境変数の設定
 
-#### 開発環境用の .env ファイル
+開発環境では `.env` ファイルを使用して環境変数を管理します：
 
 ```bash
-# .env.local を作成
+# .env.example をコピー
 cp .env.example .env.local
 
 # 必要に応じて編集
 vim .env.local
 ```
 
-#### 重要な環境変数
-
-```bash
-# データベース接続
-DATABASE_URL_COMMAND=postgres://postgres:postgres@localhost:5432/cqrs_command_dev
-DATABASE_URL_QUERY=postgres://postgres:postgres@localhost:5433/cqrs_query_dev
-DATABASE_URL_EVENT=postgres://postgres:postgres@localhost:5434/cqrs_event_dev
-
-# Phoenix
-SECRET_KEY_BASE=your-secret-key-base
-
-# 監視ツール
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-```
+環境変数の詳細な説明と設定方法については [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) を参照してください。
 
 ### VS Code の設定
 
@@ -410,35 +397,22 @@ end
 
 ## プロジェクションの管理
 
-### プロジェクションの再構築
+プロジェクションはイベントストアから読み取り専用モデル（Query DB）を構築する重要な機能です。
 
-イベントストアからRead Modelを再構築する必要がある場合：
+### 基本的な操作
 
 ```bash
 # すべてのプロジェクションを再構築
 mix run scripts/simple_rebuild_projections.exs
 
-# カテゴリのみ再構築（手動）
-mix run -e "
-  QueryService.Infrastructure.Repositories.CategoryRepository.delete_all()
-  # イベントを再処理
-  QueryService.Infrastructure.ProjectionManager.rebuild_all()
-"
-```
+# プロジェクションのステータス確認（IEx）
+GenServer.call(QueryService.Infrastructure.ProjectionManager, :get_status)
 
-### リアルタイムプロジェクションの確認
-
-```bash
-# 新しいイベントがリアルタイムで処理されているか確認
+# リアルタイムプロジェクションのテスト
 mix run scripts/test_realtime_projection.exs
 ```
 
-### プロジェクションのステータス確認
-
-```elixir
-# IEx で実行
-GenServer.call(QueryService.Infrastructure.ProjectionManager, :get_status)
-```
+詳細な仕組みとデータフローについては [DATA_FLOW.md](DATA_FLOW.md#イベントの伝播フロー) を参照してください。
 
 ## デバッグツール
 
@@ -488,35 +462,12 @@ QueryService.Infrastructure.Repositories.ProductRepository.list()
 
 ## トラブルシューティング
 
-### 依存関係の問題
+開発中によく発生する問題については、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。
 
-```bash
-# キャッシュをクリア
-mix deps.clean --all
-rm -rf _build
-mix deps.get
-```
-
-### データベース接続エラー
-
-```bash
-# PostgreSQL の状態確認
-docker compose ps
-docker compose logs postgres-command
-
-# 接続テスト
-psql -h localhost -p 5432 -U postgres -d cqrs_command_dev
-```
-
-### Phoenix PubSub の問題
-
-```elixir
-# ノードの確認
-Node.list()
-
-# PubSub の状態確認
-Phoenix.PubSub.Local.list(Shared.PubSub)
-```
+特に以下のセクションが開発に関連します：
+- [開発環境](#開発環境) - 依存関係やコンパイルエラーの解決
+- [データベース関連](#データベース関連) - 接続エラーやマイグレーションの問題
+- [サービス間通信](#サービス間通信) - Phoenix PubSub やノード間通信の問題
 
 ## パフォーマンスチューニング
 

@@ -135,42 +135,17 @@ query {
 
 ## トラブルシューティング
 
-### QueryService にデータが表示されない場合
+### よくある問題
 
-1. **イベントが正しく配信されているか確認**
-   ```bash
-   # ログでイベント配信を確認
-   tail -f log/query_service.log | grep "EventBus"
-   ```
+1. **QueryService にデータが表示されない**
+   - イベント配信の確認: `tail -f log/query_service.log | grep "EventBus"`
+   - プロジェクションの再構築: `mix run scripts/simple_rebuild_projections.exs`
 
-2. **プロジェクションを手動で再構築**
-   ```bash
-   # すべてのイベントからプロジェクションを再構築
-   mix run scripts/simple_rebuild_projections.exs
-   ```
+2. **データベース接続エラー**
+   - 各データベースのポートを確認（Event Store: 5432、Command: 5433、Query: 5434）
+   - Docker コンテナの状態を確認: `docker compose ps`
 
-3. **データベースの接続確認**
-   ```bash
-   # 各データベースの接続テスト
-   psql -h localhost -p 5432 -U postgres -d event_store_dev
-   psql -h localhost -p 5433 -U postgres -d command_service_dev
-   psql -h localhost -p 5434 -U postgres -d query_service_dev
-   ```
+3. **マイグレーションエラー**
+   - データベースの再作成: `mix ecto.drop && mix ecto.create && mix ecto.migrate`
 
-### マイグレーションエラーの場合
-
-```bash
-# データベースをリセットして再作成
-mix ecto.drop
-mix ecto.create
-mix ecto.migrate
-```
-
-### ノード間通信の問題
-
-分散環境で動作させる場合は、ノード名とクッキーの設定が必要です：
-
-```bash
-# ノード名を指定して起動
-iex --name query@127.0.0.1 --cookie your-secret-cookie -S mix
-```
+詳細なトラブルシューティングについては [TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。

@@ -157,19 +157,7 @@ echo $EVENT_STORE_DATABASE_URL
 mix run -e "IO.inspect(Application.get_env(:shared, Shared.Infrastructure.EventStore.Repo))"
 ```
 
-### データベース接続エラー
-
-1. 接続文字列の形式を確認
-
-```
-ecto://username:password@hostname:port/database
-```
-
-2. ネットワーク接続を確認
-
-```bash
-nc -zv hostname port
-```
+環境変数やデータベース接続の詳細なトラブルシューティングについては [TROUBLESHOOTING.md](TROUBLESHOOTING.md#データベース関連) を参照してください。
 
 ## 環境別の設定例
 
