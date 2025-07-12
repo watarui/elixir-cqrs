@@ -19,6 +19,9 @@ defmodule ClientServiceWeb.Router do
     plug(:accepts, ["text", "plain"])
   end
 
+  # ヘルスチェックエンドポイント
+  forward("/health", Shared.Health.HealthPlug)
+
   # GraphQL エンドポイント
   scope "/" do
     pipe_through(:api)

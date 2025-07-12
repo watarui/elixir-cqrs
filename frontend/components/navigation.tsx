@@ -13,6 +13,7 @@ const navItems = [
   { name: "Sagas", href: "/sagas" },
   { name: "PubSub", href: "/pubsub" },
   { name: "Metrics", href: "/metrics" },
+  { name: "Health", href: "/health" },
   { name: "Topology", href: "/topology" },
 ]
 

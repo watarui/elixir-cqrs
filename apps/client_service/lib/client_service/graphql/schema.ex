@@ -12,6 +12,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Order)
   import_types(ClientService.GraphQL.Types.Monitoring)
   import_types(ClientService.GraphQL.Types.Metrics)
+  import_types(ClientService.GraphQL.Types.Health)
 
   alias ClientService.GraphQL.Dataloader
 
@@ -21,6 +22,7 @@ defmodule ClientService.GraphQL.Schema do
   alias ClientService.GraphQL.Resolvers.OrderResolverPubsub, as: OrderResolver
   alias ClientService.GraphQL.Resolvers.MonitoringResolver
   alias ClientService.GraphQL.Resolvers.MetricsResolver
+  alias ClientService.GraphQL.Resolvers.HealthResolver
 
   query do
     @desc "カテゴリを取得"
@@ -200,6 +202,22 @@ defmodule ClientService.GraphQL.Schema do
       arg(:metric_names, non_null(list_of(non_null(:string))))
       arg(:duration, :integer, default_value: 3600)
       resolve(&MetricsResolver.get_metric_series/3)
+    end
+
+    @desc "ヘルスチェック結果を取得"
+    field :health, :health_report do
+      resolve(&HealthResolver.get_health/3)
+    end
+
+    @desc "メモリ情報を取得"
+    field :memory_info, :memory_info do
+      resolve(&HealthResolver.get_memory_info/3)
+    end
+
+    @desc "特定サービスのヘルスチェック"
+    field :service_health, :health_report do
+      arg(:service_name, non_null(:string))
+      resolve(&HealthResolver.check_service/3)
     end
   end
 

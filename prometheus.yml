@@ -3,8 +3,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'elixir-cqrs'
+  - job_name: 'elixir-cqrs-client-service'
     static_configs:
       - targets:
-        - 'host.docker.internal:4000'  # Client Service
-        # Command Service と Query Service は PubSub を使用するため、外部ポートなし
+        - 'host.docker.internal:4000'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
