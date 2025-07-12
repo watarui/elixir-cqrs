@@ -4,6 +4,7 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
   """
 
   alias ClientService.Infrastructure.{RemoteCommandBus, RemoteQueryBus}
+  alias Shared.Domain.Errors.{NotFoundError, BusinessRuleError}
 
   require Logger
 
@@ -37,11 +38,15 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
         Logger.info("Order created with id: #{order_id}, saga_id: #{saga_id}")
         {:ok, %{success: true, order: order, message: "Order created successfully"}}
 
+      {:error, error_module, context} when is_atom(error_module) ->
+        # 構造化されたエラーを返す
+        {:error, error_module, context}
+
       {:error, reason} ->
         Logger.error("Failed to create order: #{inspect(reason)}")
 
-        {:ok,
-         %{success: false, order: nil, message: "Failed to create order: #{inspect(reason)}"}}
+        {:error, BusinessRuleError,
+         %{rule: "order_creation_failed", context: %{reason: inspect(reason)}}}
     end
   end
 
@@ -60,9 +65,14 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       {:ok, order} ->
         {:ok, transform_order(order)}
 
+      {:error, :not_found} ->
+        {:error, NotFoundError, %{resource: "Order", id: id}}
+
       {:error, reason} ->
         Logger.error("Failed to get order: #{inspect(reason)}")
-        {:error, "Order not found"}
+
+        {:error, BusinessRuleError,
+         %{rule: "order_retrieval_failed", context: %{reason: inspect(reason)}}}
     end
   end
 
@@ -91,7 +101,9 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
 
       {:error, reason} ->
         Logger.error("Failed to list orders: #{inspect(reason)}")
-        {:ok, []}
+
+        {:error, BusinessRuleError,
+         %{rule: "order_listing_failed", context: %{reason: inspect(reason)}}}
     end
   end
 
@@ -118,7 +130,12 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
 
       {:error, reason} ->
         Logger.error("Failed to list user orders: #{inspect(reason)}")
-        {:ok, []}
+
+        {:error, BusinessRuleError,
+         %{
+           rule: "user_order_listing_failed",
+           context: %{reason: inspect(reason), user_id: user_id}
+         }}
     end
   end
 
@@ -131,16 +148,6 @@ defmodule ClientService.GraphQL.Resolvers.OrderResolverPubsub do
       quantity: item.quantity,
       # Decimal変換を削除
       unit_price: item.unit_price
-    }
-  end
-
-  defp transform_aggregate_item(item) do
-    %{
-      product_id: item.product_id,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      subtotal: Decimal.mult(item.unit_price, item.quantity)
     }
   end
 

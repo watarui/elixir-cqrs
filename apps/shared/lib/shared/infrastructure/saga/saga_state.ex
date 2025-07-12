@@ -24,7 +24,9 @@ defmodule Shared.Infrastructure.Saga.SagaState do
     :updated_at,
     :completed_at,
     :failed_at,
-    :metadata
+    :metadata,
+    :lock_ref,
+    :resource_lock_ref
   ]
 
   @type status :: :pending | :running | :compensating | :completed | :failed | :timeout
@@ -47,7 +49,9 @@ defmodule Shared.Infrastructure.Saga.SagaState do
           updated_at: DateTime.t(),
           completed_at: DateTime.t() | nil,
           failed_at: DateTime.t() | nil,
-          metadata: map()
+          metadata: map(),
+          lock_ref: reference() | nil,
+          resource_lock_ref: reference() | nil
         }
 
   @doc """

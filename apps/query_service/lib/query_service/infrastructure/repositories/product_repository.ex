@@ -10,6 +10,9 @@ defmodule QueryService.Infrastructure.Repositories.ProductRepository do
 
   # スキーマ定義
   defmodule ProductSchema do
+    @moduledoc """
+    商品のEctoスキーマ定義
+    """
     use Ecto.Schema
 
     @primary_key {:id, :binary_id, autogenerate: false}

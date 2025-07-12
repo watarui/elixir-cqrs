@@ -5,8 +5,8 @@ defmodule QueryService.Infrastructure.Projections.ProductProjection do
   商品関連のイベントを処理し、Read Model を更新します
   """
 
-  alias QueryService.Infrastructure.Repositories.ProductRepository
   alias QueryService.Infrastructure.Cache
+  alias QueryService.Infrastructure.Repositories.ProductRepository
 
   alias Shared.Domain.Events.ProductEvents.{
     ProductCreated,

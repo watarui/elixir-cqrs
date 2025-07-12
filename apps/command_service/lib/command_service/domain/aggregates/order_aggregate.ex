@@ -227,7 +227,7 @@ defmodule CommandService.Domain.Aggregates.OrderAggregate do
     end
   end
 
-  defp validate_items(_), do: {:error, "Items must be a non-empty list"}
+  defp validate_items(_), do: {:error, :invalid_items}
 
   defp validate_item(item) do
     with {:ok, _} <- validate_field(item, "product_id", :string),
@@ -236,7 +236,7 @@ defmodule CommandService.Domain.Aggregates.OrderAggregate do
       if quantity > 0 do
         {:ok, item}
       else
-        {:error, "Quantity must be positive"}
+        {:error, :invalid_quantity}
       end
     end
   end

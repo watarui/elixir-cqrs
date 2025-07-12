@@ -306,4 +306,11 @@ defmodule ClientService.GraphQL.Schema do
     # [Absinthe.Middleware.Dataloader] ++ Absinthe.Plugin.defaults()
     Absinthe.Plugin.defaults()
   end
+
+  @doc """
+  ミドルウェアの設定
+  """
+  def middleware(middleware, _field, _object) do
+    middleware ++ [ClientService.GraphQL.Middleware.ErrorHandler]
+  end
 end

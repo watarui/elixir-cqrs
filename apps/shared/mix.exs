@@ -41,7 +41,8 @@ defmodule Shared.MixProject do
       {:opentelemetry_api, "~> 1.2"},
       {:opentelemetry, "~> 1.3"},
       {:opentelemetry_exporter, "~> 1.6"},
-      {:phoenix_pubsub, "~> 2.1"}
+      {:phoenix_pubsub, "~> 2.1"},
+      {:finch, "~> 0.18"}
     ]
   end
 end

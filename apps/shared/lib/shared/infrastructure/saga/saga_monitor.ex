@@ -375,10 +375,9 @@ defmodule Shared.Infrastructure.Saga.SagaMonitor do
     |> Enum.filter(fn {_type, metrics} -> metrics.total_failed > 0 end)
     |> Enum.sort_by(fn {_type, metrics} -> -metrics.total_failed end)
     |> Enum.take(5)
-    |> Enum.map(fn {type, metrics} ->
+    |> Enum.map_join("\n", fn {type, metrics} ->
       "  #{type}: #{metrics.total_failed} failures"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_slowest_steps(step_metrics) do
@@ -386,10 +385,9 @@ defmodule Shared.Infrastructure.Saga.SagaMonitor do
     |> Enum.filter(fn {_key, metrics} -> metrics.duration_avg != nil end)
     |> Enum.sort_by(fn {_key, metrics} -> -metrics.duration_avg end)
     |> Enum.take(5)
-    |> Enum.map(fn {{saga_type, step_name}, metrics} ->
+    |> Enum.map_join("\n", fn {{saga_type, step_name}, metrics} ->
       "  #{saga_type}.#{step_name}: avg #{round(metrics.duration_avg)}ms"
     end)
-    |> Enum.join("\n")
   end
 
   defp init_state do

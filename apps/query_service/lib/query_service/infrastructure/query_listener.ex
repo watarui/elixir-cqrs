@@ -7,8 +7,8 @@ defmodule QueryService.Infrastructure.QueryListener do
 
   use GenServer
 
-  alias Shared.Infrastructure.EventBus
   alias QueryService.Infrastructure.QueryBus
+  alias Shared.Infrastructure.EventBus
 
   require Logger
 

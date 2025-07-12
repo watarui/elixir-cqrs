@@ -11,6 +11,8 @@ defmodule Shared.Application do
     Shared.Telemetry.Setup.init()
 
     children = [
+      # HTTPクライアント
+      {Finch, name: Shared.Finch},
       # イベントストアのリポジトリ
       Shared.Infrastructure.EventStore.Repo,
       # イベントバス
@@ -21,7 +23,13 @@ defmodule Shared.Application do
       Shared.Infrastructure.Resilience.CircuitBreakerSupervisor,
       # デッドレターキュー
       Shared.Infrastructure.DeadLetterQueue,
+      # べき等性ストア
+      Shared.Infrastructure.Idempotency.IdempotencyStore,
+      # サービスディスカバリ
+      Shared.Infrastructure.ServiceDiscovery.ServiceRegistry,
+      Shared.Infrastructure.ServiceDiscovery.ServiceRegistrar,
       # Sagaコンポーネント
+      Shared.Infrastructure.Saga.SagaLockManager,
       Shared.Infrastructure.Saga.SagaTimeoutManager,
       Shared.Infrastructure.Saga.SagaExecutor,
       Shared.Infrastructure.Saga.SagaMonitor,

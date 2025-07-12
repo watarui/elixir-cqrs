@@ -397,4 +397,29 @@ defmodule CommandService.Domain.Sagas.OrderSaga do
       Map.has_key?(state, :payment_failure_reason) ||
       Map.has_key?(state, :shipping_failure_reason)
   end
+
+  @doc """
+  各ステップで必要なリソースIDを返す（ロック順序制御のため）
+  """
+  def get_step_resources(:reserve_inventory, state) do
+    # 在庫予約では商品IDをリソースとしてロック
+    Enum.map(state.items, fn item -> "product:#{item.product_id}" end)
+  end
+
+  def get_step_resources(:process_payment, state) do
+    # 支払い処理ではユーザーIDをリソースとしてロック
+    ["user:#{state.user_id}"]
+  end
+
+  def get_step_resources(:arrange_shipping, state) do
+    # 配送手配では注文IDをリソースとしてロック
+    ["order:#{state.order_id}"]
+  end
+
+  def get_step_resources(:confirm_order, state) do
+    # 注文確定では注文IDをリソースとしてロック
+    ["order:#{state.order_id}"]
+  end
+
+  def get_step_resources(_, _), do: []
 end

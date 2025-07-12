@@ -34,18 +34,16 @@ defmodule CommandService.Application.Commands.SagaCommands.ReleaseInventory do
   defp validate_items([]), do: {:error, "items cannot be empty"}
 
   defp validate_items(items) when is_list(items) do
-    Enum.reduce(items, :ok, fn item, acc ->
-      case acc do
+    Enum.reduce_while(items, :ok, fn item, _acc ->
+      case validate_required(item["product_id"] || item[:product_id], "product_id in item") do
         :ok ->
-          with :ok <-
-                 validate_required(item["product_id"] || item[:product_id], "product_id in item"),
-               :ok <-
-                 validate_positive_number(item["quantity"] || item[:quantity], "quantity in item") do
-            :ok
+          case validate_positive_number(item["quantity"] || item[:quantity], "quantity in item") do
+            :ok -> {:cont, :ok}
+            error -> {:halt, error}
           end
 
         error ->
-          error
+          {:halt, error}
       end
     end)
   end

@@ -8,7 +8,7 @@ defmodule Shared.Infrastructure.Saga.SagaTimeoutManager do
 
   use GenServer
 
-  alias Shared.Infrastructure.Saga.{SagaState, SagaDefinition}
+  alias Shared.Infrastructure.Saga.{SagaDefinition, SagaState}
 
   require Logger
 

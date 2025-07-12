@@ -3,74 +3,110 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
   注文コマンドハンドラー
   """
 
+  use Shared.Infrastructure.Idempotency.IdempotentCommandHandler
+
   alias CommandService.Application.Commands.OrderCommands
   alias CommandService.Domain.Aggregates.OrderAggregate
   alias CommandService.Infrastructure.{RepositoryContext, UnitOfWork}
   alias Shared.Infrastructure.EventBus
-  alias Shared.Infrastructure.Saga.SagaExecutor
+  alias Shared.Domain.Errors.{NotFoundError, ValidationError, BusinessRuleError}
 
   require Logger
 
-  @behaviour CommandService.Application.Handlers.CommandHandler
-
-  @impl true
   def handle(%OrderCommands.CreateOrder{} = command) do
-    UnitOfWork.transaction(fn ->
-      case OrderAggregate.create(command.user_id, command.items) do
-        {:ok, order} ->
-          # イベントストアに保存
-          {:ok, repo} = RepositoryContext.get_repository(:order)
-          {:ok, _} = repo.save(order)
+    with_idempotency command, "create_order", key_fields: [:user_id, :items] do
+      UnitOfWork.transaction(fn ->
+        case OrderAggregate.create(command.user_id, command.items) do
+          {:ok, order} ->
+            # イベントストアに保存
+            {:ok, repo} = RepositoryContext.get_repository(:order)
+            {:ok, _} = repo.save(order)
 
-          # イベントを発行
-          Enum.each(order.uncommitted_events, fn event ->
-            EventBus.publish_event(event)
-          end)
+            # イベントを発行
+            Enum.each(order.uncommitted_events, fn event ->
+              EventBus.publish_event(event)
+            end)
 
-          # Sagaを開始（OrderCreatedイベントがトリガーとなる）
-          # V2ではイベント駆動でSagaが開始されるため、明示的な開始は不要
-          # OrderCreatedイベントは既に発行されている
+            # Sagaを開始（OrderCreatedイベントがトリガーとなる）
+            # V2ではイベント駆動でSagaが開始されるため、明示的な開始は不要
+            # OrderCreatedイベントは既に発行されている
 
-          Logger.info("Order created, saga will be triggered by OrderCreated event")
-          {:ok, %{order_id: order.id.value}}
+            Logger.info("Order created, saga will be triggered by OrderCreated event")
+            {:ok, %{order_id: order.id.value}}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end)
+          {:error, :invalid_items} ->
+            {:error, ValidationError, %{field: "items", reason: "Invalid order items"}}
+
+          {:error, :invalid_quantity} ->
+            {:error, ValidationError,
+             %{field: "quantity", reason: "Quantity must be greater than zero"}}
+
+          {:error, reason} ->
+            {:error, BusinessRuleError, %{rule: "order_creation", context: %{reason: reason}}}
+        end
+      end)
+    end
   end
 
-  @impl true
   def handle(%OrderCommands.ConfirmOrder{} = command) do
-    UnitOfWork.transaction(fn ->
-      {:ok, repo} = RepositoryContext.get_repository(:order)
+    with_idempotency command, "confirm_order", key_fields: [:order_id] do
+      UnitOfWork.transaction(fn ->
+        {:ok, repo} = RepositoryContext.get_repository(:order)
 
-      with {:ok, order} <- repo.find_by_id(command.order_id),
-           {:ok, updated_order} <- OrderAggregate.confirm(order) do
-        repo.save(updated_order)
-        EventBus.publish_all(updated_order.uncommitted_events)
+        with {:ok, order} <- repo.find_by_id(command.order_id),
+             {:ok, updated_order} <- OrderAggregate.confirm(order) do
+          repo.save(updated_order)
+          EventBus.publish_all(updated_order.uncommitted_events)
 
-        {:ok, %{confirmed: true}}
-      end
-    end)
+          {:ok, %{confirmed: true}}
+        else
+          {:error, :not_found} ->
+            {:error, NotFoundError, %{resource: "Order", id: command.order_id}}
+
+          {:error, :already_confirmed} ->
+            {:error, BusinessRuleError,
+             %{rule: "order_already_confirmed", context: %{order_id: command.order_id}}}
+
+          {:error, reason} ->
+            {:error, BusinessRuleError, %{rule: "order_confirmation", context: %{reason: reason}}}
+        end
+      end)
+    end
   end
 
-  @impl true
   def handle(%OrderCommands.CancelOrder{} = command) do
-    UnitOfWork.transaction(fn ->
-      {:ok, repo} = RepositoryContext.get_repository(:order)
+    with_idempotency command, "cancel_order", key_fields: [:order_id, :reason] do
+      UnitOfWork.transaction(fn ->
+        {:ok, repo} = RepositoryContext.get_repository(:order)
 
-      with {:ok, order} <- repo.find_by_id(command.order_id),
-           {:ok, updated_order} <- OrderAggregate.cancel(order, command.reason) do
-        repo.save(updated_order)
-        EventBus.publish_all(updated_order.uncommitted_events)
+        with {:ok, order} <- repo.find_by_id(command.order_id),
+             {:ok, updated_order} <- OrderAggregate.cancel(order, command.reason) do
+          repo.save(updated_order)
+          EventBus.publish_all(updated_order.uncommitted_events)
 
-        {:ok, %{cancelled: true}}
-      end
-    end)
+          {:ok, %{cancelled: true}}
+        else
+          {:error, :not_found} ->
+            {:error, NotFoundError, %{resource: "Order", id: command.order_id}}
+
+          {:error, :already_cancelled} ->
+            {:error, BusinessRuleError,
+             %{rule: "order_already_cancelled", context: %{order_id: command.order_id}}}
+
+          {:error, :cannot_cancel} ->
+            {:error, BusinessRuleError,
+             %{
+               rule: "order_cannot_be_cancelled",
+               context: %{order_id: command.order_id, reason: "Order is in final state"}
+             }}
+
+          {:error, reason} ->
+            {:error, BusinessRuleError, %{rule: "order_cancellation", context: %{reason: reason}}}
+        end
+      end)
+    end
   end
 
-  @impl true
   def handle(%OrderCommands.ReserveInventory{} = command) do
     UnitOfWork.transaction(fn ->
       {:ok, repo} = RepositoryContext.get_repository(:order)
@@ -78,6 +114,12 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
       with {:ok, order} <- repo.find_by_id(command.order_id),
            {:ok, results} <- reserve_all_items(order, command.items, repo) do
         {:ok, %{reserved_items: results}}
+      else
+        {:error, :not_found} ->
+          {:error, NotFoundError, %{resource: "Order", id: command.order_id}}
+
+        {:error, reason} ->
+          {:error, reason}
       end
     end)
   end
@@ -93,7 +135,12 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     if Enum.empty?(errors) do
       {:ok, Enum.map(results, fn {:ok, id} -> id end)}
     else
-      {:error, "Failed to reserve some items: #{inspect(errors)}"}
+      error_details =
+        Enum.map(errors, fn {:error, {product_id, reason}} ->
+          %{product_id: product_id, reason: to_string(reason)}
+        end)
+
+      {:error, ValidationError, %{errors: %{items: error_details}}}
     end
   end
 
@@ -109,7 +156,6 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     end
   end
 
-  @impl true
   def handle(%OrderCommands.ProcessPayment{} = command) do
     UnitOfWork.transaction(fn ->
       {:ok, repo} = RepositoryContext.get_repository(:order)
@@ -121,13 +167,26 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
         EventBus.publish_all(updated_order.uncommitted_events)
 
         {:ok, %{payment_processed: true, payment_id: command.payment_id}}
+      else
+        {:error, :not_found} ->
+          {:error, NotFoundError, %{resource: "Order", id: command.order_id}}
+
+        {:error, :payment_already_processed} ->
+          {:error, BusinessRuleError,
+           %{rule: "payment_already_processed", context: %{order_id: command.order_id}}}
+
+        {:error, :invalid_order_state} ->
+          {:error, BusinessRuleError,
+           %{rule: "invalid_order_state_for_payment", context: %{order_id: command.order_id}}}
+
+        {:error, reason} ->
+          {:error, BusinessRuleError, %{rule: "payment_processing", context: %{reason: reason}}}
       end
     end)
   end
 
   # 以下、補償用コマンドハンドラー
 
-  @impl true
   def handle(%OrderCommands.ReleaseInventory{} = command) do
     Logger.info("Releasing inventory for order #{command.order_id}")
 
@@ -143,7 +202,6 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     {:ok, %{released: true}}
   end
 
-  @impl true
   def handle(%OrderCommands.RefundPayment{} = command) do
     Logger.info("Refunding payment for order #{command.order_id}")
 
@@ -159,7 +217,6 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     {:ok, %{refunded: true}}
   end
 
-  @impl true
   def handle(%OrderCommands.CancelShipping{} = command) do
     Logger.info("Cancelling shipping for order #{command.order_id}")
 
@@ -174,22 +231,10 @@ defmodule CommandService.Application.Handlers.OrderCommandHandler do
     {:ok, %{cancelled: true}}
   end
 
-  @impl true
   def handle(command) do
-    {:error, "Unknown order command: #{inspect(command)}"}
+    {:error, ValidationError,
+     %{field: "command", reason: "Unknown order command: #{inspect(command.__struct__)}"}}
   end
 
   # Private functions
-
-  defp calculate_total_amount(items) do
-    Enum.reduce(items, Decimal.new(0), fn item, acc ->
-      item_total =
-        Decimal.mult(
-          Decimal.new(to_string(item.unit_price)),
-          Decimal.new(to_string(item.quantity))
-        )
-
-      Decimal.add(acc, item_total)
-    end)
-  end
 end

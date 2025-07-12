@@ -3,8 +3,8 @@ defmodule Shared.Infrastructure.EventStore.SnapshotStore do
   スナップショットの保存と取得を管理するモジュール
   """
 
-  alias Shared.Infrastructure.EventStore.Snapshot
   alias Shared.Infrastructure.EventStore.Repo
+  alias Shared.Infrastructure.EventStore.Snapshot
   import Ecto.Query
 
   @doc """

@@ -10,6 +10,9 @@ defmodule QueryService.Infrastructure.Repositories.CategoryRepository do
 
   # スキーマ定義
   defmodule CategorySchema do
+    @moduledoc """
+    カテゴリのEctoスキーマ定義
+    """
     use Ecto.Schema
 
     @primary_key {:id, :binary_id, autogenerate: false}

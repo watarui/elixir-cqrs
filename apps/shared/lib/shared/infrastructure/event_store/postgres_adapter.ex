@@ -6,13 +6,13 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
   @behaviour Shared.Infrastructure.EventStore.EventStore
 
   import Ecto.Query
+  alias Shared.Domain.ValueObjects.EntityId
   alias Shared.Infrastructure.EventBus
+  alias Shared.Infrastructure.EventStore.AggregateVersionCache
   alias Shared.Infrastructure.EventStore.Schema.Event
   alias Shared.Infrastructure.EventStore.SnapshotStore
   alias Shared.Infrastructure.EventStore.VersionConflictError
-  alias Shared.Infrastructure.EventStore.AggregateVersionCache
   alias Shared.Infrastructure.Resilience.CircuitBreaker
-  alias Shared.Domain.ValueObjects.EntityId
   require Logger
 
   @impl true

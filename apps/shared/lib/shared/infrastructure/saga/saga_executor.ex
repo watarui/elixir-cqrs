@@ -8,11 +8,18 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
   use GenServer
 
-  alias Shared.Infrastructure.Saga.{SagaState, SagaDefinition, SagaTimeoutManager}
-  alias Shared.Infrastructure.Saga.SagaRepository
-  alias Shared.Infrastructure.EventBus
-  alias Shared.Infrastructure.Retry.RetryStrategy
+  alias Shared.Infrastructure.Saga.{
+    SagaDefinition,
+    SagaLockManager,
+    SagaState,
+    SagaTimeoutManager
+  }
+
   alias Shared.Infrastructure.DeadLetterQueue
+  alias Shared.Infrastructure.EventBus
+  alias Shared.Infrastructure.Idempotency.IdempotentSaga
+  alias Shared.Infrastructure.Retry.RetryStrategy
+  alias Shared.Infrastructure.Saga.SagaRepository
 
   require Logger
 
@@ -81,42 +88,61 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
   def handle_call({:start_saga, saga_module, trigger_event, metadata}, _from, state) do
     saga_id = UUID.uuid4()
 
-    try do
-      # 初期状態を作成
-      initial_data = saga_module.initial_state(trigger_event)
-      saga_state = SagaState.new(saga_id, saga_module, initial_data, metadata)
+    # Sagaレベルのロックを取得（重複実行防止）
+    case SagaLockManager.acquire_saga_lock(saga_id, timeout: 5_000) do
+      {:ok, lock_ref} ->
+        try do
+          # 初期状態を作成
+          initial_data = saga_module.initial_state(trigger_event)
 
-      # 永続化
-      case SagaRepository.save(saga_state) do
-        {:ok, _saga_id} ->
-          # 最初のステップを実行
-          updated_saga_state = execute_next_step(saga_state)
+          saga_state =
+            SagaState.new(saga_id, saga_module, initial_data, metadata)
+            |> Map.put(:lock_ref, lock_ref)
 
-          # アクティブなSagaに追加
-          updated_active_sagas = Map.put(state.active_sagas, saga_id, updated_saga_state)
-          updated_stats = Map.update(state.stats, :total_started, 1, &(&1 + 1))
+          # 永続化
+          case SagaRepository.save(saga_state) do
+            {:ok, _saga_id} ->
+              # 最初のステップを実行
+              updated_saga_state = execute_next_step(saga_state)
 
-          new_state = %{state | active_sagas: updated_active_sagas, stats: updated_stats}
+              # アクティブなSagaに追加
+              updated_active_sagas = Map.put(state.active_sagas, saga_id, updated_saga_state)
+              updated_stats = Map.update(state.stats, :total_started, 1, &(&1 + 1))
 
-          Logger.info("Started saga #{saga_module} with id #{saga_id}")
+              new_state = %{state | active_sagas: updated_active_sagas, stats: updated_stats}
 
-          # Telemetry イベント
-          :telemetry.execute(
-            [:saga, :started],
-            %{},
-            %{saga_id: saga_id, saga_type: saga_module}
-          )
+              Logger.info("Started saga #{saga_module} with id #{saga_id}")
 
-          {:reply, {:ok, saga_id}, new_state}
+              # Telemetry イベント
+              :telemetry.execute(
+                [:saga, :started],
+                %{},
+                %{saga_id: saga_id, saga_type: saga_module}
+              )
 
-        {:error, reason} ->
-          Logger.error("Failed to save saga: #{inspect(reason)}")
-          {:reply, {:error, reason}, state}
-      end
-    rescue
-      e ->
-        Logger.error("Failed to start saga: #{inspect(e)}")
-        {:reply, {:error, e}, state}
+              {:reply, {:ok, saga_id}, new_state}
+
+            {:error, reason} ->
+              # ロックを解放
+              SagaLockManager.release_lock(lock_ref)
+              Logger.error("Failed to save saga: #{inspect(reason)}")
+              {:reply, {:error, reason}, state}
+          end
+        rescue
+          e ->
+            # ロックを解放
+            SagaLockManager.release_lock(lock_ref)
+            Logger.error("Failed to start saga: #{inspect(e)}")
+            {:reply, {:error, e}, state}
+        end
+
+      {:error, :locked} ->
+        Logger.warning("Saga #{saga_id} is already being processed")
+        {:reply, {:error, :duplicate_execution}, state}
+
+      {:error, reason} ->
+        Logger.error("Failed to acquire lock for saga #{saga_id}: #{inspect(reason)}")
+        {:reply, {:error, {:lock_failed, reason}}, state}
     end
   end
 
@@ -269,66 +295,117 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
     Logger.info("Executing step #{step_name} for saga #{saga_state.id}")
 
-    # ステップを開始
-    running_state = SagaState.start_step(saga_state, step_name)
+    # ステップに必要なリソースロックを取得
+    resource_ids = get_step_resources(saga_module, step_name, saga_state)
 
-    # タイムアウトを設定
-    {:ok, timer_ref} =
-      SagaTimeoutManager.start_timeout(
-        saga_state.id,
-        step_name,
-        saga_module,
-        running_state
-      )
-
-    timeout_state =
-      if timer_ref do
-        SagaState.record_timeout(running_state, step_name, timer_ref)
+    lock_result =
+      if Enum.any?(resource_ids) do
+        SagaLockManager.acquire_resource_locks(saga_state.id, resource_ids, timeout: 10_000)
       else
-        running_state
+        {:ok, nil}
       end
 
-    # リトライポリシーを取得
-    retry_policy = SagaDefinition.get_retry_policy(saga_module, step_name)
+    case lock_result do
+      {:ok, resource_lock_ref} ->
+        try do
+          # ステップを開始
+          running_state =
+            saga_state
+            |> SagaState.start_step(step_name)
+            |> struct(resource_lock_ref: resource_lock_ref)
 
-    # ステップを実行（リトライ付き）
-    result =
-      if retry_policy do
-        execute_step_with_retry(saga_module, step_name, timeout_state, retry_policy)
-      else
-        saga_module.execute_step(step_name, timeout_state)
-      end
+          # タイムアウトを設定
+          timeout_state =
+            case SagaTimeoutManager.start_timeout(
+                   saga_state.id,
+                   step_name,
+                   saga_module,
+                   running_state
+                 ) do
+              {:ok, timer_ref} when is_reference(timer_ref) ->
+                SagaState.record_timeout(running_state, step_name, timer_ref)
 
-    case result do
-      {:ok, commands} ->
-        # コマンドを発行
-        Enum.each(commands, &dispatch_command/1)
+              {:ok, nil} ->
+                running_state
 
-        # タイムアウトをクリア
-        SagaTimeoutManager.cancel_timeout(saga_state.id, step_name)
+              {:error, _reason} ->
+                running_state
+            end
 
-        # ステップを完了
-        completed_state = SagaState.complete_step(timeout_state, step_name)
-        SagaRepository.save(completed_state)
+          # リトライポリシーを取得
+          retry_policy = SagaDefinition.get_retry_policy(saga_module, step_name)
 
-        # Telemetry イベント
-        :telemetry.execute(
-          [:saga, :step_completed],
-          %{duration: SagaState.get_step_duration(completed_state, step_name)},
-          %{saga_id: saga_state.id, step_name: step_name}
-        )
+          # ステップをべき等に実行（リトライ付き）
+          result =
+            IdempotentSaga.execute_step(
+              saga_state.id,
+              step_name,
+              timeout_state,
+              fn ->
+                if retry_policy do
+                  execute_step_with_retry(saga_module, step_name, timeout_state, retry_policy)
+                else
+                  saga_module.execute_step(step_name, timeout_state)
+                end
+              end
+            )
 
-        completed_state
+          case result do
+            {:ok, commands} ->
+              # コマンドを発行
+              Enum.each(commands, &dispatch_command/1)
+
+              # タイムアウトをクリア
+              SagaTimeoutManager.cancel_timeout(saga_state.id, step_name)
+
+              # リソースロックを解放
+              if resource_lock_ref, do: SagaLockManager.release_lock(resource_lock_ref)
+
+              # ステップを完了
+              completed_state = SagaState.complete_step(timeout_state, step_name)
+              SagaRepository.save(completed_state)
+
+              # Telemetry イベント
+              :telemetry.execute(
+                [:saga, :step_completed],
+                %{duration: SagaState.get_step_duration(completed_state, step_name)},
+                %{saga_id: saga_state.id, step_name: step_name}
+              )
+
+              completed_state
+
+            {:error, reason} ->
+              # タイムアウトをクリア
+              SagaTimeoutManager.cancel_timeout(saga_state.id, step_name)
+
+              # リソースロックを解放
+              if resource_lock_ref, do: SagaLockManager.release_lock(resource_lock_ref)
+
+              # ステップが失敗
+              failed_state = SagaState.fail_step(timeout_state, step_name, reason)
+              SagaRepository.save(failed_state)
+
+              # 補償処理を開始
+              start_compensation(failed_state)
+          end
+        rescue
+          e ->
+            # リソースロックを解放
+            if resource_lock_ref, do: SagaLockManager.release_lock(resource_lock_ref)
+            reraise e, __STACKTRACE__
+        end
+
+      {:error, :locked} ->
+        Logger.warning("Resource lock conflict for saga #{saga_state.id}, step #{step_name}")
+        # ロック競合の場合は失敗として扱う
+        failed_state = SagaState.fail_step(saga_state, step_name, :resource_locked)
+        SagaRepository.save(failed_state)
+        start_compensation(failed_state)
 
       {:error, reason} ->
-        # タイムアウトをクリア
-        SagaTimeoutManager.cancel_timeout(saga_state.id, step_name)
-
-        # ステップが失敗
-        failed_state = SagaState.fail_step(timeout_state, step_name, reason)
+        Logger.error("Failed to acquire resource locks: #{inspect(reason)}")
+        failed_state = SagaState.fail_step(saga_state, step_name, {:lock_error, reason})
         SagaRepository.save(failed_state)
-
-        # 補償処理を開始
         start_compensation(failed_state)
     end
   end
@@ -363,8 +440,8 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
         {:error, {:max_retries_exceeded, errors}}
 
-      error ->
-        error
+      other ->
+        other
     end
   end
 
@@ -401,8 +478,19 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
     Logger.info("Compensating step #{step_name} for saga #{saga_state.id}")
 
-    case saga_module.compensate_step(step_name, saga_state) do
-      {:ok, commands} ->
+    # 補償をべき等に実行
+    result =
+      IdempotentSaga.compensate_step(
+        saga_state.id,
+        step_name,
+        saga_state,
+        fn ->
+          saga_module.compensate_step(step_name, saga_state)
+        end
+      )
+
+    case result do
+      {:ok, {:ok, commands}} ->
         # 補償コマンドを発行
         Enum.each(commands, &dispatch_command/1)
 
@@ -414,6 +502,14 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
         )
 
         {:ok, saga_state}
+
+      {:ok, {:error, reason}} ->
+        Logger.error("Failed to compensate step #{step_name}: #{inspect(reason)}")
+
+        failed_state = SagaState.fail_compensation(saga_state, reason)
+        SagaRepository.save(failed_state)
+
+        {:error, failed_state}
 
       {:error, reason} ->
         Logger.error("Failed to compensate step #{step_name}: #{inspect(reason)}")
@@ -447,6 +543,10 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
       {:error, _reason} ->
         # このイベントはこのSagaには関係ない
+        {:ok, saga_state}
+
+      _ ->
+        # 予期しない値の場合
         {:ok, saga_state}
     end
   end
@@ -492,5 +592,22 @@ defmodule Shared.Infrastructure.Saga.SagaExecutor do
 
     # すべてのタイムアウトをクリア
     SagaTimeoutManager.cancel_all_timeouts(saga_state.id)
+
+    # すべてのロックを解放
+    SagaLockManager.release_saga_locks(saga_state.id)
+
+    # べき等性キーをクリア
+    IdempotentSaga.clear_saga_keys(saga_state.id)
+  end
+
+  # ステップに必要なリソースIDを取得
+  defp get_step_resources(saga_module, step_name, saga_state) do
+    # Sagaモジュールがget_step_resourcesを実装している場合はそれを使用
+    if function_exported?(saga_module, :get_step_resources, 2) do
+      saga_module.get_step_resources(step_name, saga_state)
+    else
+      # デフォルトではリソースロックなし
+      []
+    end
   end
 end

@@ -12,7 +12,7 @@ defmodule Shared.Domain.Events.OrderEvents do
     use Shared.Domain.Events.BaseEvent
 
     @enforce_keys [:id, :user_id, :items, :total_amount, :saga_id, :created_at]
-    defstruct [:id, :user_id, :items, :total_amount, :saga_id, :created_at]
+    defstruct [:id, :user_id, :items, :total_amount, :saga_id, :created_at, :shipping_address]
 
     @type t :: %__MODULE__{
             id: EntityId.t(),
@@ -20,7 +20,8 @@ defmodule Shared.Domain.Events.OrderEvents do
             items: list(map()),
             total_amount: Money.t(),
             saga_id: EntityId.t(),
-            created_at: DateTime.t()
+            created_at: DateTime.t(),
+            shipping_address: map() | nil
           }
 
     @impl true
@@ -31,7 +32,8 @@ defmodule Shared.Domain.Events.OrderEvents do
         items: params.items,
         total_amount: params.total_amount,
         saga_id: params.saga_id,
-        created_at: params[:created_at] || DateTime.utc_now()
+        created_at: params[:created_at] || DateTime.utc_now(),
+        shipping_address: params[:shipping_address]
       }
     end
 

@@ -6,8 +6,8 @@ defmodule QueryService.Infrastructure.Repositories.OrderRepository do
   """
 
   import Ecto.Query
-  alias QueryService.Repo
   alias QueryService.Domain.ReadModels.Order
+  alias QueryService.Repo
 
   @doc """
   注文を作成する

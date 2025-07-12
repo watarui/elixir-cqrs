@@ -68,12 +68,13 @@ defmodule Shared.Domain.Events.SagaEvents do
     @moduledoc """
     配送手配成功イベント
     """
-    defstruct [:saga_id, :order_id, :shipping_id, :event_type, :occurred_at]
+    defstruct [:saga_id, :order_id, :shipping_id, :tracking_id, :event_type, :occurred_at]
 
     @type t :: %__MODULE__{
             saga_id: String.t(),
             order_id: String.t(),
             shipping_id: String.t(),
+            tracking_id: String.t() | nil,
             event_type: String.t(),
             occurred_at: DateTime.t()
           }
