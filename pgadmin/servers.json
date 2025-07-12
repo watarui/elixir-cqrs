@@ -1,0 +1,34 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Event Store DB",
+      "Group": "CQRS Databases",
+      "Host": "postgres-event-store",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass"
+    },
+    "2": {
+      "Name": "Command DB",
+      "Group": "CQRS Databases",
+      "Host": "postgres-command",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass"
+    },
+    "3": {
+      "Name": "Query DB",
+      "Group": "CQRS Databases",
+      "Host": "postgres-query",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass"
+    }
+  }
+}

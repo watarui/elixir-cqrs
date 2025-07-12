@@ -39,6 +39,12 @@ defmodule ClientServiceWeb.Endpoint do
 
   plug(Plug.RequestId)
   plug(Plug.Telemetry, event_prefix: [:phoenix, :endpoint])
+  
+  # CORS configuration for GraphQL
+  plug(CORSPlug,
+    origin: ["http://localhost:4001"],
+    headers: ["Authorization", "Content-Type", "Accept", "Origin", "User-Agent", "DNT", "Cache-Control", "X-Mx-ReqToken", "Keep-Alive", "X-Requested-With", "If-Modified-Since", "X-CSRF-Token"]
+  )
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],

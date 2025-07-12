@@ -1,0 +1,191 @@
+# CQRS/ES システムのデータフロー
+
+このドキュメントでは、CQRS/ES システムにおけるデータの流れと、各データベースの役割を説明します。
+
+## 📊 システム概要
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Client    │────▶│ GraphQL API  │────▶│  Command    │
+│  (Browser)  │     │  (Gateway)   │     │  Service    │
+└─────────────┘     └──────────────┘     └─────────────┘
+                            │                     │
+                            │                     ▼
+                            │              ┌─────────────┐
+                            │              │ Event Store │
+                            │              └─────────────┘
+                            │                     │
+                            │                     ▼
+                            │              ┌─────────────┐
+                            └─────────────▶│   Query     │
+                                          │  Service    │
+                                          └─────────────┘
+```
+
+## 🗄️ データベースの構成
+
+### 1. Event Store DB (ポート: 5432)
+**役割**: すべてのビジネスイベントを不変のログとして記録
+
+| テーブル | 用途 | 主なカラム |
+|---------|------|----------|
+| events | イベントログ | aggregate_id, aggregate_type, event_type, event_data, event_version, global_sequence |
+| snapshots | アグリゲートのスナップショット | aggregate_id, version, data |
+| sagas | SAGA の状態管理 | saga_id, saga_type, state, status, current_step |
+
+### 2. Command DB (ポート: 5433)
+**役割**: コマンド処理時の現在の状態を保持（書き込みモデル）
+
+| テーブル | 用途 | 主なカラム |
+|---------|------|----------|
+| categories | カテゴリの現在状態 | id, name, description, parent_id, active, version |
+| products | 商品の現在状態 | id, name, category_id, price_amount, stock_quantity, version |
+
+**注意**: orders テーブルは存在しません。注文は Event Store のみで管理されます。
+
+### 3. Query DB (ポート: 5434)
+**役割**: 読み取り専用のプロジェクション（読み取りモデル）
+
+| テーブル | 用途 | 主なカラム |
+|---------|------|----------|
+| categories | カテゴリ表示用 | id, name, description |
+| products | 商品表示用 | id, name, category_id, price, stock_quantity |
+| orders | 注文表示用 | id, user_id, status, total_amount, items (JSON) |
+
+## 🔄 データフローの詳細
+
+### 1. コマンドの処理フロー
+
+```
+1. Client → GraphQL Mutation → Command Service
+2. Command Service:
+   a. コマンドの検証
+   b. アグリゲートの復元（Event Store から）
+   c. ビジネスロジックの実行
+   d. イベントの生成
+3. イベントを Event Store に保存
+4. イベントを EventBus に発行
+5. 必要に応じて Command DB を更新（カテゴリ、商品のみ）
+```
+
+### 2. クエリの処理フロー
+
+```
+1. Client → GraphQL Query → Query Service
+2. Query Service:
+   a. Query DB から読み取り専用データを取得
+   b. 必要に応じてキャッシュを使用
+3. レスポンスを返却
+```
+
+### 3. イベントの伝播フロー
+
+```
+1. Event Store にイベントが保存される
+2. EventBus がイベントを発行
+3. ProjectionManager が購読してイベントを受信
+4. 該当するプロジェクションハンドラーを実行
+5. Query DB のプロジェクションを更新
+```
+
+## 📈 データの一貫性
+
+### イベントソーシングの利点
+- **監査証跡**: すべての変更がイベントとして記録される
+- **時点復元**: 任意の時点の状態を再構築可能
+- **イベント再生**: プロジェクションの再構築が可能
+
+### 結果整合性
+- Command 実行直後は Query DB に反映されない可能性がある
+- 通常、数ミリ秒〜数秒で同期される
+- プロジェクションの再構築により整合性を保証
+
+## 🔍 監視とデバッグ
+
+### GraphQL クエリによる監視
+
+```graphql
+# イベントストアの統計情報
+{
+  eventStoreStats {
+    totalEvents
+    eventsByType {
+      eventType
+      count
+    }
+    latestSequence
+  }
+}
+
+# システム全体の統計
+{
+  systemStatistics {
+    eventStore {
+      totalRecords
+    }
+    commandDb {
+      totalRecords
+    }
+    queryDb {
+      categories
+      products
+      orders
+    }
+    sagas {
+      active
+      completed
+      failed
+    }
+  }
+}
+
+# プロジェクションの状態
+{
+  projectionStatus {
+    name
+    status
+    processedCount
+    lastError
+  }
+}
+```
+
+### プロジェクションの再構築
+
+Event Store と Query DB の同期が取れていない場合：
+
+```bash
+# プロジェクションを再構築
+mix run scripts/rebuild_projections_manual.exs
+```
+
+## 🚨 トラブルシューティング
+
+### Query DB にデータが反映されない場合
+
+1. **ProjectionManager の状態を確認**
+   ```graphql
+   { projectionStatus { name status lastError } }
+   ```
+
+2. **EventBus の接続を確認**
+   - ノード間の接続状態を確認
+   - EventBus のプロセスが生きているか確認
+
+3. **手動でプロジェクションを再構築**
+   ```bash
+   ./scripts/rebuild_projections_manual.exs
+   ```
+
+### イベントが記録されない場合
+
+1. **Event Store Repo の起動を確認**
+2. **PostgresAdapter のエラーログを確認**
+3. **トランザクションのロールバックがないか確認**
+
+## 📝 まとめ
+
+- **永続化データ**: Event Store（イベント）、Command DB（現在状態）、Query DB（読み取りモデル）
+- **ストリームデータ**: EventBus を通じたリアルタイムイベント配信
+- **データの流れ**: Command → Event Store → EventBus → Query Service → Query DB
+- **整合性**: 結果整合性モデル（通常は数ミリ秒で同期）

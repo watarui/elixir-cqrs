@@ -73,3 +73,59 @@ shared-*.tar
 command_service-*.tar
 query_service-*.tar
 client_service-*.tar
+
+# Frontend (Next.js/React)
+# ========================
+
+# Next.js
+/frontend/.next/
+/frontend/out/
+/frontend/.vercel/
+
+# Environment variables
+/frontend/.env*.local
+
+# Production builds
+/frontend/build/
+/frontend/dist/
+
+# Dependencies
+/frontend/node_modules/
+/frontend/.pnp
+/frontend/.pnp.js
+
+# Bun
+/frontend/bun.lockb
+
+# Package manager logs
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/pnpm-debug.log*
+/frontend/.npm/
+
+# TypeScript
+/frontend/*.tsbuildinfo
+/frontend/next-env.d.ts
+
+# Biome
+/frontend/.biome/
+
+# Testing
+/frontend/coverage/
+/frontend/.nyc_output/
+
+# Debug
+/frontend/.debug/
+
+# Misc
+/frontend/.cache/
+/frontend/.turbo/
+
+# PWA files
+/frontend/public/sw.js
+/frontend/public/workbox-*.js
+
+# pgAdmin
+/pgadmin/pgpass
+pgadmin-data/

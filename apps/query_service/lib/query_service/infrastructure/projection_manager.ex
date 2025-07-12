@@ -309,8 +309,8 @@ defmodule QueryService.Infrastructure.ProjectionManager do
   end
 
   defp should_process_event?(projection_module, event) do
-    event_type = String.to_atom(event.__struct__.event_type())
-    event_type in get_handled_events(projection_module)
+    event_type = get_event_type(event)
+    event_type && event_type in get_handled_events(projection_module)
   end
 
   defp get_handled_events(CategoryProjection) do

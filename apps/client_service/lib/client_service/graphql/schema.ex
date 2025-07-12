@@ -10,6 +10,7 @@ defmodule ClientService.GraphQL.Schema do
   import_types(ClientService.GraphQL.Types.Category)
   import_types(ClientService.GraphQL.Types.Product)
   import_types(ClientService.GraphQL.Types.Order)
+  import_types(ClientService.GraphQL.Types.Monitoring)
 
   alias ClientService.GraphQL.{Dataloader, Resolvers}
 
@@ -17,6 +18,7 @@ defmodule ClientService.GraphQL.Schema do
   alias ClientService.GraphQL.Resolvers.CategoryResolverPubsub, as: CategoryResolver
   alias ClientService.GraphQL.Resolvers.ProductResolverPubsub, as: ProductResolver
   alias ClientService.GraphQL.Resolvers.OrderResolverPubsub, as: OrderResolver
+  alias ClientService.GraphQL.Resolvers.MonitoringResolver
 
   query do
     @desc "カテゴリを取得"
@@ -90,6 +92,38 @@ defmodule ClientService.GraphQL.Schema do
       arg(:limit, :integer, default_value: 20)
       arg(:offset, :integer, default_value: 0)
       resolve(&OrderResolver.list_user_orders/3)
+    end
+
+    # 監視用クエリ
+    @desc "イベントストアの統計情報を取得"
+    field :event_store_stats, non_null(:event_store_stats) do
+      resolve(&MonitoringResolver.get_event_store_stats/3)
+    end
+
+    @desc "イベント一覧を取得"
+    field :events, list_of(:event) do
+      arg(:aggregate_id, :id)
+      arg(:aggregate_type, :string)
+      arg(:event_type, :string)
+      arg(:limit, :integer, default_value: 100)
+      arg(:after_id, :integer)
+      resolve(&MonitoringResolver.list_events/3)
+    end
+
+    @desc "最新のイベントを取得"
+    field :recent_events, list_of(:event) do
+      arg(:limit, :integer, default_value: 50)
+      resolve(&MonitoringResolver.recent_events/3)
+    end
+
+    @desc "システム統計を取得"
+    field :system_statistics, non_null(:system_statistics) do
+      resolve(&MonitoringResolver.get_system_statistics/3)
+    end
+
+    @desc "プロジェクションの状態を取得"
+    field :projection_status, list_of(:projection_status) do
+      resolve(&MonitoringResolver.get_projection_status/3)
     end
   end
 

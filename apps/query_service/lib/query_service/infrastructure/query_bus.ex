@@ -58,6 +58,7 @@ defmodule QueryService.Infrastructure.QueryBus do
         "product.get_all" => QueryService.Application.Handlers.ProductQueryHandler,
         "product.get_by_category" => QueryService.Application.Handlers.ProductQueryHandler,
         "product.search" => QueryService.Application.Handlers.ProductQueryHandler,
+        "order.list" => QueryService.Application.Handlers.OrderQueryHandler,
         "order.get" => QueryService.Application.Handlers.OrderQueryHandler,
         "order.get_by_id" => QueryService.Application.Handlers.OrderQueryHandler,
         "order.get_by_user" => QueryService.Application.Handlers.OrderQueryHandler,

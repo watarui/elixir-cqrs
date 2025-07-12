@@ -187,7 +187,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
             select: max(e.event_version)
           )
 
-        version = repo.one(query) || 0
+        version = Shared.Infrastructure.EventStore.Repo.one(query) || 0
         # キャッシュに保存
         AggregateVersionCache.set_version(aggregate_id, version)
         version
@@ -212,7 +212,7 @@ defmodule Shared.Infrastructure.EventStore.PostgresAdapter do
           }
         end)
 
-      {count, inserted} = repo.insert_all(Event, event_records, returning: true)
+      {count, inserted} = Shared.Infrastructure.EventStore.Repo.insert_all(Event, event_records, returning: true)
 
       if count == length(events) do
         {:ok, inserted}

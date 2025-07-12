@@ -54,8 +54,13 @@ defmodule ElixirCqrs.MixProject do
         "dialyzer"
       ],
       # Setup all databases
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run apps/*/priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"]
+      "ecto.setup": [
+        "ecto.create --all",
+        "ecto.migrate --all",
+        "run apps/*/priv/repo/seeds.exs"
+      ],
+      "ecto.reset": ["ecto.drop --all", "ecto.setup"],
+      "ecto.migrate": ["ecto.migrate --all"]
     ]
   end
 end

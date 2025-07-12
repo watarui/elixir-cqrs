@@ -82,6 +82,48 @@ defmodule QueryService.Infrastructure.Repositories.OrderRepository do
   end
 
   @doc """
+  注文を検索する
+  """
+  def search(filters \\ %{}) do
+    query = from(o in Order)
+
+    query =
+      Enum.reduce(filters, query, fn
+        {:user_id, user_id}, query ->
+          from(o in query, where: o.user_id == ^user_id)
+
+        {:status, status}, query ->
+          from(o in query, where: o.status == ^status)
+
+        {:from_date, from_date}, query ->
+          from(o in query, where: o.created_at >= ^from_date)
+
+        {:to_date, to_date}, query ->
+          from(o in query, where: o.created_at <= ^to_date)
+
+        {:min_amount, min_amount}, query ->
+          from(o in query, where: o.total_amount >= ^min_amount)
+
+        {:max_amount, max_amount}, query ->
+          from(o in query, where: o.total_amount <= ^max_amount)
+
+        {:sort_by, field}, query ->
+          order_by_field(query, field, Map.get(filters, :sort_order, :asc))
+
+        {:limit, limit}, query ->
+          from(o in query, limit: ^limit)
+
+        {:offset, offset}, query ->
+          from(o in query, offset: ^offset)
+
+        _, query ->
+          query
+      end)
+
+    {:ok, Repo.all(query)}
+  end
+
+  @doc """
   注文を削除する
   """
   def delete(id) do

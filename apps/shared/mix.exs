@@ -11,7 +11,9 @@ defmodule Shared.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      # Event Store Repo を追加
+      ecto_repos: [Shared.Infrastructure.EventStore.Repo]
     ]
   end
 

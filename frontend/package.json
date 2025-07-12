@@ -1,0 +1,45 @@
+{
+  "name": "cqrs-monitor-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 4001",
+    "build": "next build",
+    "start": "next start -p 4001",
+    "lint": "biome check --write .",
+    "format": "biome format --write .",
+    "dev:backend": "cd .. && ./scripts/start_services.sh",
+    "dev:infra": "cd .. && ./scripts/setup_infra.sh",
+    "dev:all": "cd .. && ./scripts/start_all.sh --with-frontend",
+    "dev:docker": "cd .. && docker compose up monitor-dashboard"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.13.8",
+    "@radix-ui/react-navigation-menu": "^1.2.13",
+    "@radix-ui/themes": "^3.2.1",
+    "@xyflow/react": "^12.8.2",
+    "autoprefixer": "^10.4.21",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "effect": "^3.16.12",
+    "graphql": "^16.11.0",
+    "graphql-ws": "^6.0.5",
+    "lucide-react": "^0.525.0",
+    "next": "^15.3.5",
+    "postcss": "^8.5.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-flow-renderer": "^10.3.17",
+    "recharts": "^3.1.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.4.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.1",
+    "@types/node": "^24.0.13",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "typescript": "^5.8.3",
+    "@types/bun": "latest"
+  }
+}

@@ -60,55 +60,63 @@ fi
 # 各アプリケーションのデータベースセットアップ
 echo "=== Shared Service (Event Store) のセットアップ ==="
 cd "$PROJECT_ROOT/apps/shared"
-mix ecto.create >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+
+# データベース作成
+echo "Event Store データベースを作成中..."
+if mix ecto.create --repo Shared.Infrastructure.EventStore.Repo 2>&1 | grep -v "already exists"; then
     echo "Event Store データベースが作成されました"
 else
     echo "Event Store データベースは既に存在します"
 fi
 
-mix ecto.migrate >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+# マイグレーションの実行
+echo "Event Store マイグレーションを実行中..."
+MIGRATION_RESULT=$(mix ecto.migrate --repo Shared.Infrastructure.EventStore.Repo 2>&1)
+if echo "$MIGRATION_RESULT" | grep -E "(error|Error|failed|Failed)" > /dev/null; then
+    echo "Event Store マイグレーションに失敗しました:"
+    echo "$MIGRATION_RESULT"
+    exit 1
+elif echo "$MIGRATION_RESULT" | grep -E "(Already up|Migrated)"; then
     echo "Event Store マイグレーションが完了しました"
 else
-    echo "Event Store マイグレーションに失敗しました"
-    exit 1
+    echo "Event Store マイグレーション結果:"
+    echo "$MIGRATION_RESULT"
 fi
 
 echo ""
 echo "=== Command Service のセットアップ ==="
 cd "$PROJECT_ROOT/apps/command_service"
-mix ecto.create >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+mix ecto.create 2>&1 | grep -v "already exists" || true
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "Command Service データベースが作成されました"
 else
     echo "Command Service データベースは既に存在します"
 fi
 
-mix ecto.migrate >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "Command Service マイグレーションが完了しました"
-else
+# マイグレーションの実行（エラーのみ表示）
+if mix ecto.migrate 2>&1 | grep -E "(error|Error|failed|Failed)"; then
     echo "Command Service マイグレーションに失敗しました"
     exit 1
+else
+    echo "Command Service マイグレーションが完了しました"
 fi
 
 echo ""
 echo "=== Query Service のセットアップ ==="
 cd "$PROJECT_ROOT/apps/query_service"
-mix ecto.create >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+mix ecto.create 2>&1 | grep -v "already exists" || true
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "Query Service データベースが作成されました"
 else
     echo "Query Service データベースは既に存在します"
 fi
 
-mix ecto.migrate >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "Query Service マイグレーションが完了しました"
-else
+# マイグレーションの実行（エラーのみ表示）
+if mix ecto.migrate 2>&1 | grep -E "(error|Error|failed|Failed)"; then
     echo "Query Service マイグレーションに失敗しました"
     exit 1
+else
+    echo "Query Service マイグレーションが完了しました"
 fi
 
 # プロジェクトのルートに戻る

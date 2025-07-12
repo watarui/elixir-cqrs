@@ -5,6 +5,30 @@ defmodule ClientService.GraphQL.Types.Common do
 
   use Absinthe.Schema.Notation
 
+  @desc "JSON 型"
+  scalar :json, name: "JSON" do
+    serialize(&encode_json/1)
+    parse(&decode_json/1)
+  end
+
+  defp encode_json(value) when is_binary(value), do: value
+  defp encode_json(value), do: value
+
+  defp decode_json(%Absinthe.Blueprint.Input.String{value: value}) do
+    case Jason.decode(value) do
+      {:ok, result} -> {:ok, result}
+      _ -> {:ok, value}
+    end
+  end
+
+  defp decode_json(%Absinthe.Blueprint.Input.Null{}) do
+    {:ok, nil}
+  end
+
+  defp decode_json(_) do
+    :error
+  end
+
   @desc "ソート順"
   enum :sort_order do
     value(:asc, description: "昇順")

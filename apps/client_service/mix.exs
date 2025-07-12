@@ -46,6 +46,7 @@ defmodule ClientService.MixProject do
       {:absinthe_plug, "~> 1.5"},
       {:absinthe_phoenix, "~> 2.0"},
       {:dataloader, "~> 2.0"},
+      {:cors_plug, "~> 3.0"},
       {:cowlib, "~> 2.13", override: true}
     ]
   end

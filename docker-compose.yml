@@ -15,6 +15,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - elixir-cqrs-network
 
   # PostgreSQL - Command Service
   postgres-command:
@@ -32,6 +34,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - elixir-cqrs-network
 
   # PostgreSQL - Query Service
   postgres-query:
@@ -49,6 +53,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - elixir-cqrs-network
 
   # Jaeger - 分散トレーシング
   jaeger:
@@ -67,6 +73,8 @@ services:
       - "9411:9411"
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
+    networks:
+      - elixir-cqrs-network
 
   # Prometheus - メトリクス収集
   prometheus:
@@ -79,6 +87,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
     ports:
       - "9090:9090"
+    networks:
+      - elixir-cqrs-network
 
   # Grafana - ダッシュボード
   grafana:
@@ -91,6 +101,49 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+    networks:
+      - elixir-cqrs-network
+
+  # Monitor Dashboard (Frontend)
+  monitor-dashboard:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXT_PUBLIC_GRAPHQL_ENDPOINT=http://host.docker.internal:4000/graphql
+      - NEXT_PUBLIC_WS_ENDPOINT=ws://host.docker.internal:4000/graphql
+      - EVENT_STORE_DB_URL=postgresql://postgres:postgres@postgres-event-store:5432/elixir_cqrs_event_store_dev
+      - COMMAND_DB_URL=postgresql://postgres:postgres@postgres-command:5433/elixir_cqrs_command_dev
+      - QUERY_DB_URL=postgresql://postgres:postgres@postgres-query:5434/elixir_cqrs_query_dev
+    ports:
+      - "4001:4001"
+    depends_on:
+      - postgres-event-store
+      - postgres-command
+      - postgres-query
+    networks:
+      - elixir-cqrs-network
+
+  # pgAdmin - PostgreSQL Web管理ツール
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+      - ./pgadmin/pgpass:/tmp/pgpass
+    depends_on:
+      - postgres-event-store
+      - postgres-command
+      - postgres-query
+    networks:
+      - elixir-cqrs-network
 
 volumes:
   postgres-event-store-data:
@@ -98,3 +151,8 @@ volumes:
   postgres-query-data:
   prometheus-data:
   grafana-data:
+  pgadmin-data:
+
+networks:
+  elixir-cqrs-network:
+    driver: bridge

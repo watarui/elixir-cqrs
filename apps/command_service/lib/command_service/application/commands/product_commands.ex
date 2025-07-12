@@ -10,12 +10,14 @@ defmodule CommandService.Application.Commands.ProductCommands do
     use CommandService.Application.Commands.BaseCommand
 
     @enforce_keys [:name, :price, :category_id]
-    defstruct [:name, :price, :category_id, :metadata]
+    defstruct [:name, :price, :category_id, :stock_quantity, :description, :metadata]
 
     @type t :: %__MODULE__{
             name: String.t(),
             price: number(),
             category_id: String.t(),
+            stock_quantity: integer() | nil,
+            description: String.t() | nil,
             metadata: map() | nil
           }
 
@@ -30,6 +32,8 @@ defmodule CommandService.Application.Commands.ProductCommands do
            name: name,
            price: price,
            category_id: category_id,
+           stock_quantity: params["stock_quantity"] || params[:stock_quantity],
+           description: params["description"] || params[:description],
            metadata: params["metadata"] || params[:metadata]
          }}
       end

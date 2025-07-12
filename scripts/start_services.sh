@@ -4,6 +4,10 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# 環境変数を設定してElixirの警告を抑制
+export MIX_QUIET=1
+export ELIXIR_ERL_OPTIONS="+fnu"
+
 # ログディレクトリの作成
 mkdir -p "$PROJECT_ROOT/logs"
 

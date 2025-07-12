@@ -64,8 +64,8 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
   @doc """
   商品を作成する
   """
-  @spec create(String.t(), number(), String.t()) :: {:ok, t()} | {:error, String.t()}
-  def create(name, price, category_id) do
+  @spec create(String.t(), number(), String.t(), Keyword.t()) :: {:ok, t()} | {:error, String.t()}
+  def create(name, price, category_id, opts \\ []) do
     with {:ok, product_name} <- ProductName.new(name),
          {:ok, money} <- Money.new(price),
          {:ok, cat_id} <- EntityId.from_string(category_id) do
@@ -77,6 +77,8 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
           name: product_name,
           price: money,
           category_id: cat_id,
+          stock_quantity: Keyword.get(opts, :stock_quantity, 0),
+          description: Keyword.get(opts, :description),
           created_at: DateTime.utc_now()
         })
 
@@ -280,10 +282,10 @@ defmodule CommandService.Domain.Aggregates.ProductAggregate do
           ProductCreated.new(%{
             id: aggregate.id,
             name: product_name,
-            description: Map.get(command.metadata || %{}, :description, ""),
+            description: command.description,
             price: money,
             category_id: cat_id,
-            stock_quantity: Map.get(command.metadata || %{}, :stock_quantity, 0),
+            stock_quantity: command.stock_quantity || 0,
             created_at: DateTime.utc_now()
           })
 
